@@ -181,7 +181,7 @@ flowchart LR
 | Understand the project | `dashboard-development-docs.md` | Implementation steps 1-4 |
 | Implement features | `step-1-data-input.md` | Sequential through step 4 |
 | Prepare for production | `architecture-review.md` | Production checklist → Deployment |
-| Deploy the application | `production-readiness-checklist.md` | Render deployment guide |
+| Deploy the application | `production-readiness-checklist.md` | `Render-deployment.md` |
 | Review user experience | `dashboard-development-docs.md` | Step 3 (data review) → Step 4 (reporting) |
 | Assess security/compliance | `architecture-review.md` | Production checklist (HIPAA section) |
 
