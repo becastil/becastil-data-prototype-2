@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Analytics Dashboard - Data Upload</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            text-align: center;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: white;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: #f1f5f9;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background-color: #f8faff;
+        }
+
+        .upload-area.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            fill: #94a3b8;
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: #64748b;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-button {
+            background: #3b82f6;
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .upload-button:hover {
+            background: #2563eb;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .format-guide {
+            background: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .format-guide h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1e293b;
+        }
+
+        .format-example {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+            margin: 0.5rem 0;
+            overflow-x: auto;
+        }
+
+        .preview-table {
+            margin-top: 2rem;
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .preview-table th {
+            background: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .preview-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .preview-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fed7aa;
+            color: #d97706;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #2563eb;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+        }
+
+        .continue-button {
+            background: #22c55e;
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 2rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .continue-button:hover {
+            background: #16a34a;
+        }
+
+        .sample-data-section {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .sample-button {
+            background: #10b981;
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 1rem 0.5rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .sample-button:hover {
+            background: #059669;
+        }
+
+        .config-section {
+            padding: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Healthcare Analytics Dashboard</h1>
+            <p>Upload and configure your healthcare claims data for comprehensive analysis</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="data">Step 1: Data Upload</button>
+            <button class="tab" data-tab="configuration">Step 2: Configuration</button>
+            <button class="tab" data-tab="analysis">Step 3: Analysis</button>
+        </div>
+
+        <!-- Data Upload Tab -->
+        <div id="data" class="tab-content active">
+            <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b;">Data Upload</h2>
+            <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.125rem;">Upload your CSV file with healthcare claims data or use our sample dataset to get started.</p>
+
+            <div id="alerts-container"></div>
+
+            <div class="sample-data-section">
+                <h3 style="margin-bottom: 1rem; color: #374151;">Quick Start Options</h3>
+                <button class="sample-button" onclick="loadSampleData('standard')">Use Standard Sample Data</button>
+                <button class="sample-button" onclick="loadSampleData('complex')">Use Complex Sample Data</button>
+            </div>
+
+            <div style="text-align: center; margin: 2rem 0; color: #64748b; font-weight: 600;">OR</div>
+
+            <div class="upload-area" id="uploadArea">
+                <svg class="upload-icon" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                </svg>
+                <div class="upload-text">Drop your CSV file here</div>
+                <div class="upload-subtext">or click to browse and select a file</div>
+                <button class="upload-button" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                <input type="file" id="fileInput" class="file-input" accept=".csv" />
+            </div>
+
+            <div class="format-guide">
+                <h3>CSV Format Requirements</h3>
+                <p><strong>Required columns:</strong> ClaimantNumber/ID, Medical amount, Rx/Pharmacy amount</p>
+                <p><strong>Optional columns:</strong> ServiceType, ICDCode, Description, ClaimDate</p>
+                <p><strong>File limits:</strong> Maximum 10MB, 10,000 rows</p>
+                
+                <div class="format-example">ClaimantNumber,Medical,Rx,ServiceType,ICDCode,MedicalDesc
+12345,1500.00,250.00,Inpatient,Z51.11,Encounter for antineoplastic chemotherapy
+12346,750.00,0.00,Outpatient,M54.5,Low back pain
+12347,0.00,125.50,Pharmacy,E11.9,Type 2 diabetes mellitus</div>
+            </div>
+
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <span>Processing your file...</span>
+            </div>
+
+            <div id="previewSection" style="display: none;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.5rem; font-weight: 600;">Data Preview</h3>
+                <div id="summaryStats" class="summary-stats"></div>
+                <div id="previewTable" class="preview-table"></div>
+                <div style="text-align: center;">
+                    <button class="continue-button" onclick="proceedToConfiguration()">Continue to Configuration</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div id="configuration" class="tab-content">
+            <div class="config-section">
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b;">Configuration</h2>
+                <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.125rem;">Set up budget parameters and fee structures for your claims analysis.</p>
+
+                <div class="alert alert-info">
+                    <strong>Data Loaded:</strong> <span id="configDataInfo">No data uploaded yet</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medical Budget ($)</label>
+                        <input type="number" id="medicalBudget" placeholder="e.g., 100000" value="100000">
+                    </div>
+                    <div class="form-group">
+                        <label>Pharmacy Budget ($)</label>
+                        <input type="number" id="rxBudget" placeholder="e.g., 50000" value="50000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stop Loss Threshold ($)</label>
+                        <input type="number" id="stopLoss" placeholder="e.g., 10000" value="10000">
+                    </div>
+                    <div class="form-group">
+                        <label>Admin Fee Rate (%)</label>
+                        <input type="number" id="adminFee" placeholder="e.g., 12.5" step="0.1" value="12.5">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Analysis Period</label>
+                    <select style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; font-size: 1rem;" id="analysisPeriod">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annual" selected>Annual</option>
+                    </select>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button class="continue-button" onclick="proceedToAnalysis()">Generate Analysis</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Tab -->
+        <div id="analysis" class="tab-content">
+            <div class="config-section">
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem; color: #1e293b;">Analysis Results</h2>
+                <p style="color: #64748b; margin-bottom: 2rem; font-size: 1.125rem;">Comprehensive healthcare claims analysis based on your data and configuration.</p>
+
+                <div id="analysisResults">
+                    <div class="alert alert-info">
+                        Complete the data upload and configuration steps to view your analysis.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data sets
+        const sampleDataSets = {
+            standard: [
+                {ClaimantNumber: "12345", Medical: 1500.00, Rx: 250.00, ServiceType: "Inpatient", ICDCode: "Z51.11", MedicalDesc: "Encounter for antineoplastic chemotherapy"},
+                {ClaimantNumber: "12346", Medical: 750.00, Rx: 0.00, ServiceType: "Outpatient", ICDCode: "M54.5", MedicalDesc: "Low back pain"},
+                {ClaimantNumber: "12347", Medical: 0.00, Rx: 125.50, ServiceType: "Pharmacy", ICDCode: "E11.9", MedicalDesc: "Type 2 diabetes mellitus"},
+                {ClaimantNumber: "12348", Medical: 2500.00, Rx: 300.00, ServiceType: "Emergency", ICDCode: "S72.001A", MedicalDesc: "Fracture of unspecified part of neck"},
+                {ClaimantNumber: "12349", Medical: 450.00, Rx: 75.00, ServiceType: "Outpatient", ICDCode: "H25.9", MedicalDesc: "Unspecified age-related cataract"}
+            ],
+            complex: [
+                {ClaimantNumber: "A001", Medical: 15000.00, Rx: 2500.00, ServiceType: "Inpatient", ICDCode: "I21.9", MedicalDesc: "Acute myocardial infarction"},
+                {ClaimantNumber: "A002", Medical: 850.00, Rx: 450.00, ServiceType: "Outpatient", ICDCode: "E10.9", MedicalDesc: "Type 1 diabetes mellitus"},
+                {ClaimantNumber: "A003", Medical: 3200.00, Rx: 0.00, ServiceType: "Emergency", ICDCode: "G93.1", MedicalDesc: "Anoxic brain damage"},
+                {ClaimantNumber: "A004", Medical: 0.00, Rx: 1250.00, ServiceType: "Pharmacy", ICDCode: "F32.9", MedicalDesc: "Major depressive disorder"},
+                {ClaimantNumber: "A005", Medical: 7500.00, Rx: 800.00, ServiceType: "Inpatient", ICDCode: "C78.00", MedicalDesc: "Secondary malignant neoplasm"},
+                {ClaimantNumber: "A006", Medical: 1200.00, Rx: 200.00, ServiceType: "Outpatient", ICDCode: "K59.00", MedicalDesc: "Constipation"},
+                {ClaimantNumber: "A007", Medical: 950.00, Rx: 350.00, ServiceType: "Outpatient", ICDCode: "M79.3", MedicalDesc: "Panniculitis"},
+                {ClaimantNumber: "A008", Medical: 0.00, Rx: 95.50, ServiceType: "Pharmacy", ICDCode: "R50.9", MedicalDesc: "Fever"}
+            ]
+        };
+
+        let currentData = null;
+
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.dataset.tab;
+                switchTab(targetTab);
+            });
+        });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // File upload functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+
+        function showAlert(message, type = 'info') {
+            const alertsContainer = document.getElementById('alerts-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertsContainer.innerHTML = '';
+            alertsContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function processFile(file) {
+            if (!file.name.endsWith('.csv')) {
+                showAlert('Please select a CSV file.', 'error');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('File size must be less than 10MB.', 'error');
+                return;
+            }
+
+            document.getElementById('loadingIndicator').style.display = 'flex';
+            document.getElementById('previewSection').style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    const data = parseCSV(csv);
+                    
+                    if (data.length === 0) {
+                        throw new Error('No valid data found in CSV file');
+                    }
+                    
+                    currentData = data;
+                    displayPreview(data, file.name);
+                    showAlert('File uploaded and processed successfully!', 'success');
+                } catch (error) {
+                    showAlert(`Error processing file: ${error.message}`, 'error');
+                } finally {
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) {
+                throw new Error('CSV must contain at least a header row and one data row');
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const data = [];
+
+            // Auto-detect column mappings
+            const mappings = detectColumnMappings(headers);
+            
+            if (!mappings.claimantId) {
+                throw new Error('Could not find claimant identifier column. Expected columns like: ClaimantNumber, MemberID, ID, PatientID');
+            }
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                if (values.length !== headers.length) continue;
+
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index];
+                });
+
+                try {
+                    const transformedRow = transformRow(row, mappings);
+                    if (transformedRow) {
+                        data.push(transformedRow);
+                    }
+                } catch (error) {
+                    console.warn(`Skipping row ${i + 1}: ${error.message}`);
+                }
+            }
+
+            if (data.length === 0) {
+                throw new Error('No valid data rows found');
+            }
+
+            return data;
+        }
+
+        function detectColumnMappings(headers) {
+            const mappings = {};
+            
+            // Claimant ID patterns
+            const claimantPatterns = /^(claimant|member|patient|id|number).*$/i;
+            mappings.claimantId = headers.find(h => claimantPatterns.test(h)) || 
+                                 headers.find(h => ['ClaimantNumber', 'MemberID', 'ID', 'PatientID'].includes(h));
+
+            // Medical amount patterns
+            const medicalPatterns = /^(medical|med|inpatient|outpatient|hospital).*$/i;
+            mappings.medical = headers.find(h => medicalPatterns.test(h)) || 
+                              headers.find(h => ['Medical', 'MedicalClaims', 'MedicalCost', 'MedicalAmount'].includes(h));
+
+            // Rx amount patterns
+            const rxPatterns = /^(rx|pharmacy|pharm|drug|medication).*$/i;
+            mappings.rx = headers.find(h => rxPatterns.test(h)) || 
+                         headers.find(h => ['Rx', 'RxClaims', 'Pharmacy', 'PharmacyCost', 'RxAmount'].includes(h));
+
+            // Optional fields
+            mappings.serviceType = headers.find(h => /^(service|claim|type|category).*$/i.test(h));
+            mappings.icdCode = headers.find(h => /^(icd|diagnosis|code).*$/i.test(h));
+            mappings.description = headers.find(h => /^(desc|description|diagnosis|condition).*$/i.test(h));
+
+            return mappings;
+        }
+
+        function transformRow(row, mappings) {
+            const transformed = {};
+            
+            transformed.ClaimantNumber = row[mappings.claimantId];
+            if (!transformed.ClaimantNumber) {
+                throw new Error('Missing claimant identifier');
+            }
+
+            transformed.Medical = parseFloat(row[mappings.medical] || 0);
+            transformed.Rx = parseFloat(row[mappings.rx] || 0);
+            
+            if (isNaN(transformed.Medical)) transformed.Medical = 0;
+            if (isNaN(transformed.Rx)) transformed.Rx = 0;
+            
+            transformed.Total = transformed.Medical + transformed.Rx;
+            transformed.ServiceType = row[mappings.serviceType] || 'General';
+            transformed.ICDCode = row[mappings.icdCode] || '';
+            transformed.MedicalDesc = row[mappings.description] || '';
+
+            return transformed;
+        }
+
+        function loadSampleData(type) {
+            currentData = sampleDataSets[type];
+            const fileName = `${type}-sample-data.csv`;
+            displayPreview(currentData, fileName);
+            showAlert(`${type.charAt(0).toUpperCase() + type.slice(1)} sample data loaded successfully!`, 'success');
+        }
+
+        function displayPreview(data, fileName) {
+            const previewSection = document.getElementById('previewSection');
+            const summaryStats = document.getElementById('summaryStats');
+            const previewTable = document.getElementById('previewTable');
+
+            // Calculate summary statistics
+            const totalRows = data.length;
+            const totalMedical = data.reduce((sum, row) => sum + row.Medical, 0);
+            const totalRx = data.reduce((sum, row) => sum + row.Rx, 0);
+            const totalClaims = totalMedical + totalRx;
+            const avgClaimSize = totalClaims / totalRows;
+
+            summaryStats.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${totalRows}</div>
+                    <div class="stat-label">Total Claims</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">$${formatNumber(totalMedical)}</div>
+                    <div class="stat-label">Total Medical</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">$${formatNumber(totalRx)}</div>
+                    <div class="stat-label">Total Pharmacy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">$${formatNumber(avgClaimSize)}</div>
+                    <div class="stat-label">Avg Claim Size</div>
+                </div>
+            `;
+
+            // Create preview table (first 10 rows)
+            const previewData = data.slice(0, 10);
+            const tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Claimant#</th>
+                            <th>Medical</th>
+                            <th>Pharmacy</th>
+                            <th>Total</th>
+                            <th>Service Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${previewData.map(row => `
+                            <tr>
+                                <td>${row.ClaimantNumber}</td>
+                                <td>$${formatNumber(row.Medical)}</td>
+                                <td>$${formatNumber(row.Rx)}</td>
+                                <td>$${formatNumber(row.Total)}</td>
+                                <td>${row.ServiceType}</td>
+                                <td>${row.MedicalDesc.substring(0, 50)}${row.MedicalDesc.length > 50 ? '...' : ''}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${data.length > 10 ? `<p style="text-align: center; margin-top: 1rem; color: #64748b;">Showing first 10 of ${data.length} rows</p>` : ''}
+            `;
+
+            previewTable.innerHTML = tableHTML;
+            previewSection.style.display = 'block';
+        }
+
+        function formatNumber(num) {
+            return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        function proceedToConfiguration() {
+            if (!currentData) {
+                showAlert('Please upload data first.', 'error');
+                return;
+            }
+
+            const totalRows = currentData.length;
+            const totalClaims = currentData.reduce((sum, row) => sum + row.Total, 0);
+            
+            document.getElementById('configDataInfo').textContent = 
+                `${totalRows} claims totaling $${formatNumber(totalClaims)} from uploaded data`;
+            
+            switchTab('configuration');
+            showAlert('Ready to configure your analysis parameters.', 'info');
+        }
+
+        function proceedToAnalysis() {
+            if (!currentData) {
+                showAlert('Please upload data first.', 'error');
+                return;
+            }
+
+            const medicalBudget = parseFloat(document.getElementById('medicalBudget').value) || 100000;
+            const rxBudget = parseFloat(document.getElementById('rxBudget').value) || 50000;
+            const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 10000;
+            const adminFee = parseFloat(document.getElementById('adminFee').value) || 12.5;
+
+            generateAnalysis(currentData, {
+                medicalBudget,
+                rxBudget,
+                stopLoss,
+                adminFee
+            });
+
+            switchTab('analysis');
+        }
+
+        function generateAnalysis(data, config) {
+            const totalMedical = data.reduce((sum, row) => sum + row.Medical, 0);
+            const totalRx = data.reduce((sum, row) => sum + row.Rx, 0);
+            const totalClaims = totalMedical + totalRx;
+            
+            const medicalOverBudget = Math.max(0, totalMedical - config.medicalBudget);
+            const rxOverBudget = Math.max(0, totalRx - config.rxBudget);
+            
+            const stopLossClaims = data.filter(row => row.Total > config.stopLoss);
+            const stopLossAmount = stopLossClaims.reduce((sum, row) => sum + row.Total, 0);
+            
+            const adminFeeAmount = totalClaims * (config.adminFee / 100);
+            
+            const analysisResults = document.getElementById('analysisResults');
+            analysisResults.innerHTML = `
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.length}</div>
+                        <div class="stat-label">Total Claims</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">$${formatNumber(totalClaims)}</div>
+                        <div class="stat-label">Total Claims Cost</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">$${formatNumber(medicalOverBudget + rxOverBudget)}</div>
+                        <div class="stat-label">Over Budget</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stopLossClaims.length}</div>
+                        <div class="stat-label">Stop Loss Claims</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">$${formatNumber(adminFeeAmount)}</div>
+                        <div class="stat-label">Admin Fees</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h3 style="color: #1e293b; margin-bottom: 1rem;">Budget Analysis</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Medical Claims:</strong> $${formatNumber(totalMedical)}<br>
+                            <span style="color: ${totalMedical > config.medicalBudget ? '#dc2626' : '#16a34a'};">
+                                Budget: $${formatNumber(config.medicalBudget)} 
+                                (${totalMedical > config.medicalBudget ? 'OVER by $' + formatNumber(medicalOverBudget) : 'Under by $' + formatNumber(config.medicalBudget - totalMedical)})
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Pharmacy Claims:</strong> $${formatNumber(totalRx)}<br>
+                            <span style="color: ${totalRx > config.rxBudget ? '#dc2626' : '#16a34a'};">
+                                Budget: $${formatNumber(config.rxBudget)} 
+                                (${totalRx > config.rxBudget ? 'OVER by $' + formatNumber(rxOverBudget) : 'Under by $' + formatNumber(config.rxBudget - totalRx)})
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h3 style="color: #1e293b; margin-bottom: 1rem;">Stop Loss Analysis</h3>
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Threshold:</strong> $${formatNumber(config.stopLoss)}<br>
+                            <strong>Claims Above Threshold:</strong> ${stopLossClaims.length}<br>
+                            <strong>Total Stop Loss Amount:</strong> $${formatNumber(stopLossAmount)}
+                        </div>
+                        ${stopLossClaims.length > 0 ? `
+                            <div style="font-size: 0.875rem; color: #64748b;">
+                                Top claim: $${formatNumber(Math.max(...stopLossClaims.map(c => c.Total)))}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${stopLossClaims.length > 0 ? `
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: 2rem;">
+                        <h3 style="color: #1e293b; margin-bottom: 1rem;">High-Cost Claims (Stop Loss)</h3>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc;">
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Claimant</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Medical</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Pharmacy</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Total</th>
+                                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${stopLossClaims.slice(0, 5).map(claim => `
+                                        <tr>
+                                            <td style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0;">${claim.ClaimantNumber}</td>
+                                            <td style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0;">$${formatNumber(claim.Medical)}</td>
+                                            <td style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0;">$${formatNumber(claim.Rx)}</td>
+                                            <td style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0; font-weight: 600;">$${formatNumber(claim.Total)}</td>
+                                            <td style="padding: 0.75rem; border-bottom: 1px solid #e2e8f0;">${claim.MedicalDesc.substring(0, 40)}${claim.MedicalDesc.length > 40 ? '...' : ''}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            ${stopLossClaims.length > 5 ? `<p style="text-align: center; margin-top: 1rem; color: #64748b;">Showing top 5 of ${stopLossClaims.length} high-cost claims</p>` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+
+            showAlert('Analysis completed successfully!', 'success');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            showAlert('Welcome! Upload your CSV file or use sample data to get started.', 'info');
+        });
+    </script>
+</body>
+</html>
