@@ -31,6 +31,12 @@ const eslintConfig = [
       "@typescript-eslint/ban-types": "off",
     },
   },
+  {
+    files: ["scripts/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack --no-lint",
     "start": "node scripts/render-start.js",
-    "lint": "eslint",
+    "lint": "eslint app components lib middleware.ts scripts --ext .ts,.tsx",
     "startyarn": "node scripts/render-start.js"
   },
   "dependencies": {
