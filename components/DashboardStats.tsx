@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 interface DashboardStatsData {
   summary: {
@@ -69,6 +73,10 @@ export default function DashboardStats() {
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num)
+  }
+
+  const formatRelativeTime = (isoString: string) => {
+    return dayjs(isoString).fromNow()
   }
 
   if (loading) {
@@ -214,7 +222,7 @@ export default function DashboardStats() {
           <div className="px-4 py-5 sm:p-6">
             <div className="space-y-3">
               {stats.recentSessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between">
+                <div key={session.id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center space-x-3">
                     <div className={`w-2 h-2 rounded-full ${
                       session.status === 'completed' ? 'bg-green-400' :
@@ -225,8 +233,17 @@ export default function DashboardStats() {
                       {session.filename}
                     </span>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatNumber(session.processed_rows)} / {formatNumber(session.total_rows)} rows
+                  <div className="flex flex-col items-start gap-1 text-xs text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center sm:gap-3">
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      {formatNumber(session.processed_rows)} / {formatNumber(session.total_rows)} rows
+                    </span>
+                    <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l3 3" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {formatRelativeTime(session.created_at)}
+                    </span>
                   </div>
                 </div>
               ))}

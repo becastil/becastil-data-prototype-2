@@ -42,10 +42,21 @@ export default async function DashboardPage() {
   const showGuestBanner = !user
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50 pb-16 dark:bg-gray-900">
+      {showGuestBanner && (
+        <div className="pointer-events-none fixed right-6 top-28 hidden sm:block">
+          <div className="flex items-center gap-2 rounded-full border border-amber-400 bg-amber-100/90 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-amber-700 shadow-lg dark:border-amber-500 dark:bg-amber-900/70 dark:text-amber-200">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75M12 15.75h.008v.008H12zM2.25 12c0 5.385 4.365 9.75 9.75 9.75s9.75-4.365 9.75-9.75S17.385 2.25 12 2.25 2.25 6.615 2.25 12z" />
+            </svg>
+            Demo Mode
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-7xl py-12 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="mb-10 text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-5xl">
             Healthcare Analytics
             <span className="text-blue-600"> Dashboard</span>
@@ -59,11 +70,49 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href="/upload"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Upload CSV
+          </Link>
+          <Link
+            href="/insights/data-dashboards-for-business-success"
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-6 py-2 text-sm font-semibold text-blue-600 shadow-sm transition hover:border-blue-300 hover:text-blue-700 dark:border-blue-900 dark:bg-slate-900 dark:text-blue-300"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+            View Research Summary
+          </Link>
+        </div>
+
         {showGuestBanner && (
-          <div className="mb-10 max-w-3xl mx-auto">
-            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              You are viewing a demo version of the dashboard. Sign in to connect your Supabase
-              workspace and see live data.
+          <div className="mx-auto mt-10 max-w-4xl">
+            <div className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50/80 p-6 shadow-lg shadow-blue-900/10 dark:border-blue-900 dark:bg-blue-950/40 dark:shadow-none sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-base font-semibold text-blue-900 dark:text-blue-100">Demo data in use</p>
+                  <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">
+                    You&apos;re exploring sample insights. Sign in to connect your Supabase workspace and bring in your organization&apos;s live claims data.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                Sign In to Connect Your Data
+              </Link>
             </div>
           </div>
         )}
@@ -72,14 +121,14 @@ export default async function DashboardPage() {
         <DashboardStats />
 
         {/* Main Action Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-12">
+        <div className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {/* Upload & Process Data */}
           <Link href="/upload" className="group">
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-200">
+            <div className="overflow-hidden rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-blue-100 shadow-sm transition-transform duration-150 group-hover:-translate-y-1 group-hover:shadow-xl dark:border-blue-900 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
               <div className="p-8">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600 text-white transition-colors group-hover:bg-blue-700">
                       <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -96,10 +145,16 @@ export default async function DashboardPage() {
                     </dl>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="mt-6 space-y-4 text-sm text-gray-600 dark:text-gray-400">
+                  <p>
                     Upload healthcare claims CSV files with automatic format detection for Anthem, ESI, UHC, Aetna, and Cigna.
                   </p>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m4.5 2.25a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" />
+                    </svg>
+                    HIPAA-ready import pipeline
+                  </div>
                 </div>
               </div>
             </div>

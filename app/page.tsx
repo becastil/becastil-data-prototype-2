@@ -13,31 +13,25 @@ export default function HomePage() {
             Comprehensive healthcare claims analysis with advanced financial modeling, 
             stop-loss calculations, and interactive visualizations.
           </p>
-          <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
-            <div className="rounded-md shadow">
-              <Link
-                href="/auth/login"
-                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
-              >
-                Get Started
-              </Link>
-            </div>
-            <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
-              <Link
-                href="/dashboard"
-                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10"
-              >
-                View Dashboard
-              </Link>
-            </div>
-            <div className="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
-              <Link
-                href="/insights/data-dashboards-for-business-success"
-                className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10"
-              >
-                Read Research
-              </Link>
-            </div>
+          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+            <Link
+              href="/auth/login"
+              className="flex w-full items-center justify-center rounded-lg bg-blue-600 px-8 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto md:px-10 md:py-4 md:text-lg"
+            >
+              Get Started
+            </Link>
+            <Link
+              href="/dashboard"
+              className="flex w-full items-center justify-center rounded-lg border border-blue-600 bg-white px-8 py-3 text-base font-semibold text-blue-600 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto md:px-10 md:py-4 md:text-lg"
+            >
+              View Dashboard
+            </Link>
+            <Link
+              href="/insights/data-dashboards-for-business-success"
+              className="flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-8 py-3 text-base font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 sm:w-auto md:px-10 md:py-4 md:text-lg"
+            >
+              Read Research
+            </Link>
           </div>
         </div>
 
