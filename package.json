@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack --no-lint",
-    "start": "next start",
+    "start": "node scripts/render-start.js",
     "lint": "eslint",
-    "startyarn": "next start"
+    "startyarn": "node scripts/render-start.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.1.0",
