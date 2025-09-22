@@ -1,17 +1,1 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/claims/route": "app/api/claims/route.js",
-  "/api/configurations/route": "app/api/configurations/route.js",
-  "/api/dashboard/stats/route": "app/api/dashboard/stats/route.js",
-  "/api/process/route": "app/api/process/route.js",
-  "/api/sessions/route": "app/api/sessions/route.js",
-  "/api/upload/progress/route": "app/api/upload/progress/route.js",
-  "/api/upload/route": "app/api/upload/route.js",
-  "/auth/auth-code-error/page": "app/auth/auth-code-error/page.js",
-  "/auth/callback/route": "app/auth/callback/route.js",
-  "/auth/login/page": "app/auth/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/page": "app/page.js",
-  "/upload/page": "app/upload/page.js"
-}
+{}

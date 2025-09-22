@@ -31,7 +31,7 @@ async function middleware(request) {
             headers: request.headers
         }
     });
-    const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$ssr$2f$dist$2f$index$2e$mjs__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createServerClient"])(("TURBOPACK compile-time value", "https://uzcsiegkfzhrrmatzmox.supabase.co"), ("TURBOPACK compile-time value", "your-anon-key-here"), {
+    const supabase = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$ssr$2f$dist$2f$index$2e$mjs__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createServerClient"])(("TURBOPACK compile-time value", "https://uzcsiegkfzhrrmatzmox.supabase.co"), ("TURBOPACK compile-time value", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Y3NpZWdrZnpocnJtYXR6bW94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MTY5MDUsImV4cCI6MjA3NDA5MjkwNX0._COCa8R-s8y1lRIsuam8OpDTfxxDAe6KAkAp7Vgk4y0"), {
         cookies: {
             get (name) {
                 return request.cookies.get(name)?.value;
@@ -72,21 +72,43 @@ async function middleware(request) {
             }
         }
     });
-    const { data: { user } } = await supabase.auth.getUser();
-    // Protect dashboard routes
-    if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
-        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$exports$2f$index$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL('/auth/login', request.url));
+    // Protected routes that require authentication
+    const protectedPaths = [
+        '/api/upload',
+        '/api/process'
+    ];
+    const isProtectedPath = protectedPaths.some((path)=>request.nextUrl.pathname.startsWith(path));
+    // Check authentication for protected routes
+    if (isProtectedPath) {
+        const { data: { user } } = await supabase.auth.getUser();
+        // Require auth for API routes
+        if (!user) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$exports$2f$index$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"].json({
+                error: 'Authentication required'
+            }, {
+                status: 401
+            });
+        }
     }
-    // Redirect authenticated users from auth pages
-    if (request.nextUrl.pathname.startsWith('/auth') && user) {
-        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$exports$2f$index$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL('/dashboard', request.url));
+    // Auth routes redirects
+    if (request.nextUrl.pathname.startsWith('/auth/')) {
+        const { data: { user } } = await supabase.auth.getUser();
+        // Redirect authenticated users away from auth pages
+        if (user && (request.nextUrl.pathname === '/auth/login' || request.nextUrl.pathname === '/auth/signup')) {
+            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$esm$2f$server$2f$web$2f$exports$2f$index$2e$js__$5b$middleware$2d$edge$5d$__$28$ecmascript$29$__["NextResponse"].redirect(new URL('/dashboard', request.url));
+        }
     }
     return response;
 }
 const config = {
     matcher: [
-        '/dashboard/:path*',
-        '/auth/:path*'
+        /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */ '/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'
     ]
 };
 }),
