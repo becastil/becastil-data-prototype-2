@@ -105,12 +105,12 @@ export default class ErrorBoundary extends Component<Props, State> {
                 Reload Page
               </button>
               
-              <a
-                href="/"
+              <button
+                onClick={() => window.location.href = '/'}
                 className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-center"
               >
                 Go Home
-              </a>
+              </button>
             </div>
           </div>
         </div>

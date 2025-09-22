@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/claims/route": "/api/claims",
+  "/api/configurations/route": "/api/configurations",
+  "/api/dashboard/stats/route": "/api/dashboard/stats",
+  "/api/process/route": "/api/process",
+  "/api/sessions/route": "/api/sessions",
+  "/api/upload/progress/route": "/api/upload/progress",
+  "/api/upload/route": "/api/upload",
+  "/auth/auth-code-error/page": "/auth/auth-code-error",
+  "/auth/callback/route": "/auth/callback",
+  "/auth/login/page": "/auth/login",
+  "/dashboard/page": "/dashboard",
+  "/favicon.ico/route": "/favicon.ico",
+  "/page": "/",
+  "/upload/page": "/upload"
+}

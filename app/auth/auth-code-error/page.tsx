@@ -9,7 +9,7 @@ export default function AuthCodeErrorPage() {
             Authentication Error
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Sorry, we couldn't log you in. The link may have expired or been used already.
+            Sorry, we couldn&apos;t log you in. The link may have expired or been used already.
           </p>
         </div>
         <div className="text-center">
