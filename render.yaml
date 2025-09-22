@@ -4,7 +4,6 @@ services:
     env: node
     plan: starter
     buildCommand: yarn install --frozen-lockfile && yarn build
-    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
