@@ -14,6 +14,129 @@ The Data Input Layer is the foundation of the Healthcare Analytics Dashboard, re
 - **Security**: Implement secure file upload with validation and sanitization
 - **Compliance**: Ensure HIPAA-compliant data handling for healthcare information
 
+## Data Format Support
+
+### Two-Format CSV Upload System
+
+The Data Input Layer supports two distinct CSV formats to accommodate different organizational reporting structures:
+
+#### **Format 1: Financial Summary Report**
+```
+Structure: Row-based categories, Monthly columns
+Use Case: Comprehensive financial reports with hierarchical data
+Example:
+Category                           | Jan-24  | Feb-24  | Mar-24  | ...
+-----------------------------------|---------|---------|---------|----
+Domestic Medical Facility Claims   | 1250000 | 1180000 | 1320000 | ...
+Total Adjusted Medical Claims      | 1730000 | 1645000 | 1815000 | ...
+```
+
+#### **Format 2: Monthly Time Series**
+```
+Structure: Column-based categories, Time-series rows
+Use Case: Simple monthly summaries with flat structure
+Example:
+month    | medicalClaims | rxClaims | adminFees | totalExpenses
+---------|---------------|----------|-----------|---------------
+Jan '25  | 70330         | 57561    | 1050000   | 1267943
+Feb '25  | 58612         | 76826    | 1050000   | 1275688
+```
+
+### Format Detection and Selection
+
+```jsx
+const DataFormatSelector = ({ onFormatChange, detectedFormat }) => {
+  const [selectedFormat, setSelectedFormat] = useState(detectedFormat || 'auto');
+  
+  const formats = [
+    {
+      id: 'financial-report',
+      name: 'Financial Summary Report',
+      description: 'Row-based categories with monthly columns',
+      icon: '📊',
+      examples: ['Comprehensive P&L format', 'Hierarchical cost categories', 'Monthly breakdown columns'],
+      recommended: 'Large organizations with detailed reporting'
+    },
+    {
+      id: 'time-series',
+      name: 'Monthly Time Series',
+      description: 'Simple monthly totals in columns',
+      icon: '📈',
+      examples: ['Monthly summary data', 'Flat cost structure', 'Time-based rows'],
+      recommended: 'Small to medium organizations'
+    }
+  ];
+
+  return (
+    <div className="format-selector-container">
+      <div className="auto-detection-banner">
+        {detectedFormat && (
+          <div className="detection-result">
+            <span className="detection-icon">🔍</span>
+            <span>Auto-detected format: <strong>{formats.find(f => f.id === detectedFormat)?.name}</strong></span>
+            <span className="confidence">Confidence: High</span>
+          </div>
+        )}
+      </div>
+      
+      <h3>Select Your Data Format</h3>
+      <p className="format-help">Choose the format that matches your CSV structure, or let us auto-detect it.</p>
+      
+      <div className="format-cards">
+        {formats.map(format => (
+          <div 
+            key={format.id}
+            className={`format-card ${selectedFormat === format.id ? 'selected' : ''}`}
+            onClick={() => {
+              setSelectedFormat(format.id);
+              onFormatChange(format.id);
+            }}
+          >
+            <div className="format-header">
+              <span className="format-icon">{format.icon}</span>
+              <h4>{format.name}</h4>
+            </div>
+            <p className="format-description">{format.description}</p>
+            
+            <div className="format-examples">
+              <h5>Examples:</h5>
+              <ul>
+                {format.examples.map((example, idx) => (
+                  <li key={idx}>{example}</li>
+                ))}
+              </ul>
+            </div>
+            
+            <div className="format-recommendation">
+              <strong>Best for:</strong> {format.recommended}
+            </div>
+            
+            {selectedFormat === format.id && (
+              <div className="selection-indicator">
+                <span className="checkmark">✓</span>
+                <span>Selected</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      
+      <div className="format-actions">
+        <button className="btn-secondary" onClick={() => setSelectedFormat('auto')}>
+          Auto-Detect Format
+        </button>
+        <button 
+          className="btn-primary"
+          disabled={!selectedFormat || selectedFormat === 'auto'}
+        >
+          Continue with {formats.find(f => f.id === selectedFormat)?.name}
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
 ## User Flow Diagram
 
 ```mermaid
@@ -633,6 +756,934 @@ const handleUploadSuccess = (data) => {
 - [ ] Format guidance visibility
 
 ## Performance Considerations
+
+### Format Detection and Parsing Logic
+
+#### Intelligent Format Detection Algorithm
+
+```javascript
+class CSVFormatDetector {
+  static analyzeFormat(csvData, headers) {
+    const detection = {
+      format: null,
+      confidence: 0,
+      indicators: [],
+      issues: []
+    };
+
+    // Analyze structure patterns
+    const structureAnalysis = this.analyzeStructure(csvData, headers);
+    const contentAnalysis = this.analyzeContent(csvData);
+    const patternAnalysis = this.analyzePatterns(headers);
+
+    // Format 1: Financial Summary Report Detection
+    const reportIndicators = this.checkFinancialReportFormat(structureAnalysis, contentAnalysis, patternAnalysis);
+    
+    // Format 2: Time Series Detection  
+    const timeSeriesIndicators = this.checkTimeSeriesFormat(structureAnalysis, contentAnalysis, patternAnalysis);
+
+    // Determine best match
+    if (reportIndicators.score > timeSeriesIndicators.score) {
+      detection.format = 'financial-report';
+      detection.confidence = reportIndicators.score;
+      detection.indicators = reportIndicators.indicators;
+    } else {
+      detection.format = 'time-series';
+      detection.confidence = timeSeriesIndicators.score;
+      detection.indicators = timeSeriesIndicators.indicators;
+    }
+
+    return detection;
+  }
+
+  static checkFinancialReportFormat(structure, content, patterns) {
+    let score = 0;
+    const indicators = [];
+
+    // Check for category column as first column
+    if (patterns.hasCategoryColumn) {
+      score += 30;
+      indicators.push('Category column detected');
+    }
+
+    // Check for month columns (Jan-24, Feb-24, etc.)
+    if (patterns.monthColumnsCount >= 6) {
+      score += 25;
+      indicators.push(`${patterns.monthColumnsCount} month columns found`);
+    }
+
+    // Check for hierarchical structure
+    if (content.hasHierarchicalData) {
+      score += 20;
+      indicators.push('Hierarchical data structure detected');
+    }
+
+    // Check for financial categories
+    if (content.hasFinancialCategories) {
+      score += 15;
+      indicators.push('Financial category names found');
+    }
+
+    // Check for section headers
+    if (content.hasSectionHeaders) {
+      score += 10;
+      indicators.push('Section headers detected');
+    }
+
+    return { score, indicators };
+  }
+
+  static checkTimeSeriesFormat(structure, content, patterns) {
+    let score = 0;
+    const indicators = [];
+
+    // Check for time/date column
+    if (patterns.hasTimeColumn) {
+      score += 30;
+      indicators.push('Time period column detected');
+    }
+
+    // Check for simple column structure
+    if (structure.columnCount >= 3 && structure.columnCount <= 10) {
+      score += 20;
+      indicators.push('Simple column structure (3-10 columns)');
+    }
+
+    // Check for numeric data columns
+    if (patterns.numericColumnCount >= 2) {
+      score += 20;
+      indicators.push(`${patterns.numericColumnCount} numeric columns found`);
+    }
+
+    // Check for flat data structure (no hierarchical categories)
+    if (!content.hasHierarchicalData) {
+      score += 15;
+      indicators.push('Flat data structure detected');
+    }
+
+    // Check for consistent row structure
+    if (structure.hasConsistentRows) {
+      score += 15;
+      indicators.push('Consistent row structure');
+    }
+
+    return { score, indicators };
+  }
+
+  static analyzeStructure(csvData, headers) {
+    return {
+      rowCount: csvData.length,
+      columnCount: headers.length,
+      hasConsistentRows: this.checkRowConsistency(csvData),
+      emptyRowCount: csvData.filter(row => this.isEmptyRow(row)).length
+    };
+  }
+
+  static analyzeContent(csvData) {
+    const categoryNames = this.extractCategoryNames(csvData);
+    
+    return {
+      hasHierarchicalData: this.detectHierarchy(categoryNames),
+      hasFinancialCategories: this.hasFinancialTerms(categoryNames),
+      hasSectionHeaders: this.detectSectionHeaders(categoryNames),
+      categoryNames
+    };
+  }
+
+  static analyzePatterns(headers) {
+    return {
+      hasCategoryColumn: this.detectCategoryColumn(headers),
+      hasTimeColumn: this.detectTimeColumn(headers),
+      monthColumnsCount: this.countMonthColumns(headers),
+      numericColumnCount: this.countNumericColumns(headers),
+      headers
+    };
+  }
+
+  static detectCategoryColumn(headers) {
+    const categoryIndicators = ['category', 'description', 'item', 'line item'];
+    return headers.some(header => 
+      categoryIndicators.some(indicator => 
+        header.toLowerCase().includes(indicator)
+      )
+    );
+  }
+
+  static detectTimeColumn(headers) {
+    const timeIndicators = ['month', 'date', 'period', 'time', 'year'];
+    return headers.some(header => 
+      timeIndicators.some(indicator => 
+        header.toLowerCase().includes(indicator)
+      )
+    );
+  }
+
+  static countMonthColumns(headers) {
+    const monthPatterns = [
+      /jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i,
+      /\d{1,2}[-\/]\d{2,4}/,  // MM/YY or MM/YYYY
+      /\d{4}[-\/]\d{1,2}/     // YYYY/MM
+    ];
+    
+    return headers.filter(header => 
+      monthPatterns.some(pattern => pattern.test(header))
+    ).length;
+  }
+
+  static hasFinancialTerms(categoryNames) {
+    const financialTerms = [
+      'medical', 'pharmacy', 'claims', 'administrative', 'stop loss',
+      'expenses', 'costs', 'fees', 'reimbursements', 'budget'
+    ];
+    
+    const allText = categoryNames.join(' ').toLowerCase();
+    return financialTerms.some(term => allText.includes(term));
+  }
+}
+```
+
+#### Format-Specific Parsers
+
+```javascript
+class FinancialReportParser {
+  static parse(csvData, headers) {
+    const result = {
+      format: 'financial-report',
+      data: {},
+      metadata: {
+        monthColumns: [],
+        categories: [],
+        sections: []
+      },
+      validation: {
+        calculationErrors: [],
+        missingData: [],
+        structureIssues: []
+      }
+    };
+
+    // Identify month columns
+    result.metadata.monthColumns = this.identifyMonthColumns(headers);
+    
+    // Parse hierarchical categories
+    const categorizedData = this.parseCategoricalData(csvData, headers);
+    result.data = categorizedData.data;
+    result.metadata.categories = categorizedData.categories;
+    result.metadata.sections = categorizedData.sections;
+
+    // Validate calculations
+    this.validateCalculations(result);
+
+    // Handle Excel artifacts (#NAME? errors, etc.)
+    this.fixExcelArtifacts(result);
+
+    return result;
+  }
+
+  static identifyMonthColumns(headers) {
+    const monthColumns = [];
+    const monthPattern = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[-\s]?\d{2,4}$/i;
+    
+    headers.forEach((header, index) => {
+      if (monthPattern.test(header.trim())) {
+        monthColumns.push({
+          index,
+          header: header.trim(),
+          month: this.parseMonth(header),
+          year: this.parseYear(header)
+        });
+      }
+    });
+
+    return monthColumns.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
+    });
+  }
+
+  static parseCategoricalData(csvData, headers) {
+    const data = {};
+    const categories = [];
+    const sections = [];
+    let currentSection = null;
+
+    csvData.forEach((row, index) => {
+      const categoryName = row[headers[0]]; // First column is category
+      
+      if (!categoryName || categoryName.trim() === '') {
+        return; // Skip empty rows
+      }
+
+      // Detect section headers (ALL CAPS, no numeric data)
+      if (this.isSectionHeader(row, headers)) {
+        currentSection = categoryName.trim();
+        sections.push({
+          name: currentSection,
+          startRow: index,
+          categories: []
+        });
+        return;
+      }
+
+      // Parse financial data row
+      const categoryData = this.parseDataRow(row, headers);
+      
+      if (categoryData) {
+        const categoryKey = this.sanitizeCategoryName(categoryName);
+        data[categoryKey] = categoryData;
+        
+        const categoryInfo = {
+          name: categoryName.trim(),
+          key: categoryKey,
+          section: currentSection,
+          isCalculated: this.isCalculatedField(categoryName),
+          level: this.detectIndentationLevel(categoryName)
+        };
+        
+        categories.push(categoryInfo);
+        
+        // Add to current section
+        if (currentSection && sections.length > 0) {
+          sections[sections.length - 1].categories.push(categoryKey);
+        }
+      }
+    });
+
+    return { data, categories, sections };
+  }
+
+  static parseDataRow(row, headers) {
+    const data = {
+      monthlyValues: [],
+      yearToDate: 0,
+      budget: 0,
+      metadata: {}
+    };
+
+    // Parse monthly values (skip category column)
+    for (let i = 1; i < headers.length; i++) {
+      const value = this.parseNumericValue(row[headers[i]]);
+      data.monthlyValues.push(value);
+    }
+
+    // Calculate YTD (sum of non-zero monthly values)
+    data.yearToDate = data.monthlyValues
+      .filter(val => val !== null && val !== 0)
+      .reduce((sum, val) => sum + val, 0);
+
+    return data;
+  }
+
+  static parseNumericValue(value) {
+    if (!value || value === '') return 0;
+    
+    // Handle Excel artifacts
+    if (value === '#NAME?' || value === '#N/A' || value === '#REF!') {
+      return null; // Flag for manual review
+    }
+
+    // Clean currency and formatting
+    const cleaned = value.toString()
+      .replace(/[$,\s]/g, '')
+      .replace(/[()]/g, '-'); // Convert (1000) to -1000
+
+    const numeric = parseFloat(cleaned);
+    return isNaN(numeric) ? null : numeric;
+  }
+
+  static fixExcelArtifacts(result) {
+    const fixMappings = {
+      '#NAME?': 'Unknown Fee Category',
+      '#N/A': 'Data Not Available',
+      '#REF!': 'Reference Error'
+    };
+
+    // Suggest fixes for common Excel errors
+    result.metadata.categories.forEach(category => {
+      if (category.name in fixMappings) {
+        result.validation.structureIssues.push({
+          category: category.key,
+          issue: 'Excel artifact detected',
+          suggestion: fixMappings[category.name],
+          severity: 'warning'
+        });
+      }
+    });
+  }
+
+  static validateCalculations(result) {
+    // Validate that totals match sums of components
+    const validationRules = [
+      {
+        total: 'total_hospital_medical_claims',
+        components: ['domestic_medical_facility_claims', 'non_domestic_medical_claims']
+      },
+      {
+        total: 'total_all_medical_claims', 
+        components: ['total_hospital_medical_claims', 'non_hospital_medical_claims']
+      }
+    ];
+
+    validationRules.forEach(rule => {
+      if (result.data[rule.total] && rule.components.every(comp => result.data[comp])) {
+        const calculated = rule.components.reduce((sum, comp) => {
+          return sum + (result.data[comp].yearToDate || 0);
+        }, 0);
+        
+        const reported = result.data[rule.total].yearToDate || 0;
+        const difference = Math.abs(calculated - reported);
+        
+        if (difference > 1) { // Allow for rounding differences
+          result.validation.calculationErrors.push({
+            category: rule.total,
+            calculated,
+            reported,
+            difference,
+            components: rule.components
+          });
+        }
+      }
+    });
+  }
+}
+
+class TimeSeriesParser {
+  static parse(csvData, headers) {
+    const result = {
+      format: 'time-series',
+      data: {},
+      metadata: {
+        timeColumn: null,
+        valueColumns: [],
+        periods: []
+      },
+      validation: {
+        calculationErrors: [],
+        missingData: [],
+        dateIssues: []
+      }
+    };
+
+    // Identify time and value columns
+    result.metadata.timeColumn = this.identifyTimeColumn(headers);
+    result.metadata.valueColumns = this.identifyValueColumns(headers);
+
+    // Parse time series data
+    const timeSeriesData = this.parseTimeSeriesData(csvData, headers, result.metadata);
+    result.data = timeSeriesData.data;
+    result.metadata.periods = timeSeriesData.periods;
+
+    // Validate data consistency
+    this.validateTimeSeriesData(result);
+
+    return result;
+  }
+
+  static identifyTimeColumn(headers) {
+    const timePatterns = [
+      /month/i,
+      /date/i, 
+      /period/i,
+      /time/i
+    ];
+
+    const timeColumn = headers.findIndex(header => 
+      timePatterns.some(pattern => pattern.test(header))
+    );
+
+    return timeColumn !== -1 ? { index: timeColumn, name: headers[timeColumn] } : null;
+  }
+
+  static identifyValueColumns(headers) {
+    const valueColumns = [];
+    const skipPatterns = [/month/i, /date/i, /period/i, /time/i];
+
+    headers.forEach((header, index) => {
+      if (!skipPatterns.some(pattern => pattern.test(header))) {
+        valueColumns.push({
+          index,
+          name: header,
+          mappedTo: this.mapColumnToStandardCategory(header)
+        });
+      }
+    });
+
+    return valueColumns;
+  }
+
+  static mapColumnToStandardCategory(columnName) {
+    const mappings = {
+      'medicalclaims': 'medical_claims',
+      'rxclaims': 'pharmacy_claims', 
+      'adminfees': 'administrative_fees',
+      'stoplossfees': 'stop_loss_fees',
+      'totalexpenses': 'total_expenses',
+      'budget': 'budget_amount'
+    };
+
+    const normalized = columnName.toLowerCase().replace(/[^a-z]/g, '');
+    return mappings[normalized] || columnName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  }
+
+  static parseTimeSeriesData(csvData, headers, metadata) {
+    const data = {};
+    const periods = [];
+
+    // Initialize data structure for each value column
+    metadata.valueColumns.forEach(column => {
+      data[column.mappedTo] = {
+        monthlyValues: [],
+        yearToDate: 0,
+        budget: 0,
+        columnName: column.name
+      };
+    });
+
+    // Parse each row
+    csvData.forEach((row, index) => {
+      if (metadata.timeColumn) {
+        const timeValue = row[headers[metadata.timeColumn.index]];
+        const period = this.parseTimePeriod(timeValue);
+        
+        if (period) {
+          periods.push(period);
+          
+          // Parse values for this period
+          metadata.valueColumns.forEach(column => {
+            const value = this.parseNumericValue(row[headers[column.index]]);
+            data[column.mappedTo].monthlyValues.push(value || 0);
+          });
+        }
+      }
+    });
+
+    // Calculate year-to-date totals
+    Object.keys(data).forEach(key => {
+      if (key !== 'budget_amount') {
+        data[key].yearToDate = data[key].monthlyValues.reduce((sum, val) => sum + val, 0);
+      }
+    });
+
+    return { data, periods };
+  }
+
+  static parseTimePeriod(timeValue) {
+    if (!timeValue) return null;
+
+    const patterns = [
+      /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s*['']?(\d{2})$/i,
+      /^(\d{1,2})\/(\d{2,4})$/,
+      /^(\d{4})-(\d{1,2})$/
+    ];
+
+    for (const pattern of patterns) {
+      const match = timeValue.match(pattern);
+      if (match) {
+        return this.normalizeTimePeriod(match);
+      }
+    }
+
+    return null;
+  }
+
+  static validateTimeSeriesData(result) {
+    // Check for missing months
+    const expectedMonths = 12;
+    if (result.metadata.periods.length < expectedMonths) {
+      result.validation.missingData.push({
+        issue: 'Incomplete monthly data',
+        expected: expectedMonths,
+        actual: result.metadata.periods.length,
+        missing: expectedMonths - result.metadata.periods.length
+      });
+    }
+
+    // Validate total calculations if total column exists
+    if (result.data.total_expenses && result.data.medical_claims) {
+      result.data.total_expenses.monthlyValues.forEach((total, index) => {
+        const components = [
+          result.data.medical_claims?.monthlyValues[index] || 0,
+          result.data.pharmacy_claims?.monthlyValues[index] || 0,
+          result.data.administrative_fees?.monthlyValues[index] || 0,
+          result.data.stop_loss_fees?.monthlyValues[index] || 0
+        ];
+        
+        const calculated = components.reduce((sum, val) => sum + val, 0);
+        const difference = Math.abs(calculated - total);
+        
+        if (difference > 1) {
+          result.validation.calculationErrors.push({
+            month: index,
+            period: result.metadata.periods[index],
+            calculated,
+            reported: total,
+            difference
+          });
+        }
+      });
+    }
+  }
+}
+```
+
+#### Format Detection Integration
+
+```jsx
+const CSVUploadWithFormatDetection = () => {
+  const [uploadStatus, setUploadStatus] = useState('ready');
+  const [detectedFormat, setDetectedFormat] = useState(null);
+  const [selectedFormat, setSelectedFormat] = useState(null);
+  const [parseResult, setParseResult] = useState(null);
+  const [validationResults, setValidationResults] = useState(null);
+
+  const handleFileUpload = async (file) => {
+    setUploadStatus('analyzing');
+    
+    try {
+      // Parse CSV file
+      const csvData = await parseCSVFile(file);
+      const headers = Object.keys(csvData[0] || {});
+      
+      // Auto-detect format
+      const detection = CSVFormatDetector.analyzeFormat(csvData, headers);
+      setDetectedFormat(detection);
+      
+      // Set initial format selection
+      setSelectedFormat(detection.format);
+      
+      // Parse with detected format
+      await parseWithFormat(csvData, headers, detection.format);
+      
+      setUploadStatus('detected');
+    } catch (error) {
+      console.error('File analysis failed:', error);
+      setUploadStatus('error');
+    }
+  };
+
+  const parseWithFormat = async (csvData, headers, format) => {
+    let result;
+    
+    if (format === 'financial-report') {
+      result = FinancialReportParser.parse(csvData, headers);
+    } else {
+      result = TimeSeriesParser.parse(csvData, headers);
+    }
+    
+    setParseResult(result);
+    setValidationResults(result.validation);
+  };
+
+  const handleFormatChange = async (newFormat) => {
+    setSelectedFormat(newFormat);
+    
+    if (parseResult && newFormat !== parseResult.format) {
+      // Re-parse with new format
+      setUploadStatus('parsing');
+      const csvData = parseResult.rawData; // Assume we keep raw data
+      const headers = parseResult.headers;
+      await parseWithFormat(csvData, headers, newFormat);
+      setUploadStatus('parsed');
+    }
+  };
+
+  return (
+    <div className="csv-upload-container">
+      {/* File Upload Area */}
+      <FileDropZone onFileUpload={handleFileUpload} />
+      
+      {/* Format Detection Results */}
+      {detectedFormat && (
+        <FormatDetectionResults 
+          detection={detectedFormat}
+          onFormatChange={handleFormatChange}
+          selectedFormat={selectedFormat}
+        />
+      )}
+      
+      {/* Parse Results Preview */}
+      {parseResult && (
+        <ParseResultsPreview 
+          result={parseResult}
+          validation={validationResults}
+        />
+      )}
+      
+      {/* Action Buttons */}
+      {parseResult && (
+        <div className="upload-actions">
+          <button 
+            className="btn-secondary"
+            onClick={() => window.location.reload()}
+          >
+            Start Over
+          </button>
+          <button 
+            className="btn-primary"
+            onClick={() => proceedToConfiguration(parseResult)}
+            disabled={validationResults?.calculationErrors?.length > 0}
+          >
+            Continue to Configuration
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FormatDetectionResults = ({ detection, onFormatChange, selectedFormat }) => {
+  return (
+    <div className="format-detection-results">
+      <div className="detection-header">
+        <h3>Format Detection Results</h3>
+        <div className="confidence-meter">
+          <span>Confidence: </span>
+          <div className="confidence-bar">
+            <div 
+              className="confidence-fill"
+              style={{ width: `${detection.confidence}%` }}
+            />
+          </div>
+          <span>{detection.confidence}%</span>
+        </div>
+      </div>
+      
+      <div className="detection-details">
+        <div className="detected-format">
+          <h4>Detected Format: {detection.format === 'financial-report' ? 'Financial Summary Report' : 'Monthly Time Series'}</h4>
+          
+          <div className="detection-indicators">
+            <h5>Detection Indicators:</h5>
+            <ul>
+              {detection.indicators.map((indicator, index) => (
+                <li key={index}>
+                  <span className="indicator-icon">✓</span>
+                  {indicator}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        
+        <div className="format-override">
+          <h5>Override Format (if needed):</h5>
+          <div className="format-buttons">
+            <button 
+              className={`format-btn ${selectedFormat === 'financial-report' ? 'active' : ''}`}
+              onClick={() => onFormatChange('financial-report')}
+            >
+              📊 Financial Report
+            </button>
+            <button 
+              className={`format-btn ${selectedFormat === 'time-series' ? 'active' : ''}`}
+              onClick={() => onFormatChange('time-series')}
+            >
+              📈 Time Series
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ParseResultsPreview = ({ result, validation }) => {
+  const hasErrors = validation.calculationErrors.length > 0 || 
+                   validation.structureIssues.length > 0;
+  
+  return (
+    <div className="parse-results-preview">
+      <div className="preview-header">
+        <h3>Data Preview</h3>
+        <div className={`status-badge ${hasErrors ? 'warning' : 'success'}`}>
+          {hasErrors ? '⚠️ Issues Found' : '✅ Data Valid'}
+        </div>
+      </div>
+      
+      {/* Format-specific preview */}
+      {result.format === 'financial-report' ? (
+        <FinancialReportPreview result={result} />
+      ) : (
+        <TimeSeriesPreview result={result} />
+      )}
+      
+      {/* Validation Issues */}
+      {hasErrors && (
+        <ValidationIssuesPanel validation={validation} />
+      )}
+    </div>
+  );
+};
+
+const FinancialReportPreview = ({ result }) => {
+  const { data, metadata } = result;
+  const sampleCategories = metadata.categories.slice(0, 5);
+  
+  return (
+    <div className="financial-report-preview">
+      <div className="preview-stats">
+        <div className="stat">
+          <span className="stat-label">Categories:</span>
+          <span className="stat-value">{metadata.categories.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Sections:</span>
+          <span className="stat-value">{metadata.sections.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Months:</span>
+          <span className="stat-value">{metadata.monthColumns.length}</span>
+        </div>
+      </div>
+      
+      <div className="preview-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Section</th>
+              <th>YTD Total</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sampleCategories.map(category => (
+              <tr key={category.key}>
+                <td className={`level-${category.level}`}>
+                  {category.name}
+                </td>
+                <td>{category.section || 'N/A'}</td>
+                <td>
+                  {data[category.key]?.yearToDate ? 
+                    formatCurrency(data[category.key].yearToDate) : 
+                    'No data'
+                  }
+                </td>
+                <td>
+                  {category.isCalculated ? 
+                    <span className="calc-badge">Calculated</span> : 
+                    <span className="data-badge">Raw Data</span>
+                  }
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        
+        {metadata.categories.length > 5 && (
+          <div className="preview-more">
+            And {metadata.categories.length - 5} more categories...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const TimeSeriesPreview = ({ result }) => {
+  const { data, metadata } = result;
+  
+  return (
+    <div className="time-series-preview">
+      <div className="preview-stats">
+        <div className="stat">
+          <span className="stat-label">Time Periods:</span>
+          <span className="stat-value">{metadata.periods.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Value Columns:</span>
+          <span className="stat-value">{metadata.valueColumns.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Time Column:</span>
+          <span className="stat-value">{metadata.timeColumn?.name || 'Not detected'}</span>
+        </div>
+      </div>
+      
+      <div className="preview-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Data Category</th>
+              <th>Original Column</th>
+              <th>YTD Total</th>
+              <th>Avg Monthly</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metadata.valueColumns.map(column => (
+              <tr key={column.mappedTo}>
+                <td>{column.mappedTo.replace(/_/g, ' ').toUpperCase()}</td>
+                <td>{column.name}</td>
+                <td>
+                  {data[column.mappedTo]?.yearToDate ? 
+                    formatCurrency(data[column.mappedTo].yearToDate) : 
+                    'No data'
+                  }
+                </td>
+                <td>
+                  {data[column.mappedTo]?.yearToDate ? 
+                    formatCurrency(data[column.mappedTo].yearToDate / metadata.periods.length) : 
+                    'No data'
+                  }
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const ValidationIssuesPanel = ({ validation }) => {
+  return (
+    <div className="validation-issues-panel">
+      <h4>Validation Issues</h4>
+      
+      {validation.calculationErrors.length > 0 && (
+        <div className="issue-section">
+          <h5>🔢 Calculation Errors</h5>
+          {validation.calculationErrors.map((error, index) => (
+            <div key={index} className="issue-item error">
+              <strong>{error.category || `Month ${error.month + 1}`}</strong>
+              <p>Calculated: {formatCurrency(error.calculated)}</p>
+              <p>Reported: {formatCurrency(error.reported)}</p>
+              <p>Difference: {formatCurrency(error.difference)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {validation.structureIssues.length > 0 && (
+        <div className="issue-section">
+          <h5>📋 Structure Issues</h5>
+          {validation.structureIssues.map((issue, index) => (
+            <div key={index} className={`issue-item ${issue.severity}`}>
+              <strong>{issue.issue}</strong>
+              <p>Category: {issue.category}</p>
+              {issue.suggestion && <p>Suggestion: {issue.suggestion}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {validation.missingData.length > 0 && (
+        <div className="issue-section">
+          <h5>📅 Missing Data</h5>
+          {validation.missingData.map((issue, index) => (
+            <div key={index} className="issue-item warning">
+              <strong>{issue.issue}</strong>
+              <p>Expected: {issue.expected}, Found: {issue.actual}</p>
+              <p>Missing: {issue.missing} periods</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+```
 
 ### File Processing Optimization
 ```javascript
