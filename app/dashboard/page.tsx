@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ProfileSetup from '@/components/ProfileSetup'
 import DashboardStats from '@/components/DashboardStats'
@@ -23,20 +22,24 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/auth/login')
+  let profile: { full_name?: string } | null = null
+
+  if (user) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    profile = data
+
+    if (!profile) {
+      return <ProfileSetup user={user} />
+    }
   }
 
-  // Check if user has completed profile setup
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile) {
-    return <ProfileSetup user={user} />
-  }
+  const displayName = profile?.full_name ?? user?.email ?? 'Guest Analyst'
+  const showGuestBanner = !user
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -48,9 +51,22 @@ export default async function DashboardPage() {
             <span className="text-blue-600"> Dashboard</span>
           </h1>
           <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400">
-            Welcome back, {profile.full_name}
+            {user ? (
+              <>Welcome back, {displayName}</>
+            ) : (
+              'Explore our interactive analytics experience using curated sample data.'
+            )}
           </p>
         </div>
+
+        {showGuestBanner && (
+          <div className="mb-10 max-w-3xl mx-auto">
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              You are viewing a demo version of the dashboard. Sign in to connect your Supabase
+              workspace and see live data.
+            </div>
+          </div>
+        )}
 
         {/* Dashboard Stats */}
         <DashboardStats />

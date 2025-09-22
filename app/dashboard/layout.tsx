@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 
 export default async function DashboardLayout({
@@ -25,9 +25,7 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect('/auth/login')
-  }
+  const userEmail = user?.email ?? null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,8 +38,19 @@ export default async function DashboardLayout({
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">{user.email}</span>
-              <LogoutButton />
+              {userEmail ? (
+                <>
+                  <span className="text-sm text-gray-700">{userEmail}</span>
+                  <LogoutButton />
+                </>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="text-sm text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md hover:bg-gray-100"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>
