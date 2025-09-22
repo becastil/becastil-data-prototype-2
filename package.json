@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack --no-lint",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "startyarn": "next start"
   },
   "dependencies": {
     "@supabase/ssr": "^0.1.0",
