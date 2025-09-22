@@ -860,8 +860,589 @@ const validationEndpoint = {
 - Audit log completeness > 99.9%
 - Security scan pass rate > 95%
 
+---
+
+## Advanced CSV Ingestion & Mapping Module
+
+### 🎯 **Saved Mapping Profiles System**
+
+#### Profile Management Architecture
+```javascript
+// Mapping profile database schema
+const MappingProfile = {
+  id: 'UUID primary key',
+  organizationId: 'UUID foreign key',
+  profileName: 'String - user-friendly name',
+  dataSourceType: 'Enum: [anthem, aetna, cigna, custom]',
+  columnMappings: 'JSON object with field mappings',
+  validationRules: 'JSON object with custom rules',
+  isDefault: 'Boolean - default for this org',
+  createdBy: 'UUID user who created profile',
+  createdAt: 'Timestamp',
+  lastUsedAt: 'Timestamp',
+  useCount: 'Integer - popularity tracking'
+};
+
+// Example mapping profile JSON structure
+const sampleMappingProfile = {
+  profileName: "Anthem Medical Claims - Standard",
+  dataSourceType: "anthem",
+  columnMappings: {
+    claimantId: "Member_ID",
+    medicalAmount: "Medical_Claims_Amount", 
+    rxAmount: "Pharmacy_Claims_Amount",
+    serviceType: "Service_Category",
+    icdCode: "Primary_Diagnosis_Code",
+    description: "Diagnosis_Description",
+    claimDate: "Service_Date",
+    providerId: "Provider_NPI",
+    planCode: "Benefit_Plan_Code"
+  },
+  validationRules: {
+    requiredFields: ["Member_ID", "Medical_Claims_Amount"],
+    numericFields: ["Medical_Claims_Amount", "Pharmacy_Claims_Amount"],
+    dateFields: ["Service_Date"],
+    allowEmptyRx: true,
+    allowEmptyMedical: false
+  }
+};
+```
+
+#### Profile Selection UI Component
+```javascript
+const MappingProfileSelector = ({ onProfileSelect, organizationId }) => {
+  const [profiles, setProfiles] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [showCreateNew, setShowCreateNew] = useState(false);
+
+  useEffect(() => {
+    loadSavedProfiles();
+  }, [organizationId]);
+
+  const loadSavedProfiles = async () => {
+    const response = await fetch(`/api/v1/mapping-profiles?orgId=${organizationId}`);
+    const profileData = await response.json();
+    setProfiles(profileData.profiles);
+    
+    // Auto-select default profile if exists
+    const defaultProfile = profileData.profiles.find(p => p.isDefault);
+    if (defaultProfile) {
+      setSelectedProfile(defaultProfile);
+      onProfileSelect(defaultProfile);
+    }
+  };
+
+  const handleProfileSelection = (profile) => {
+    setSelectedProfile(profile);
+    onProfileSelect(profile);
+    
+    // Update last used timestamp
+    updateProfileUsage(profile.id);
+  };
+
+  return (
+    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold mb-3">Select Data Source Mapping</h3>
+      
+      {profiles.length > 0 ? (
+        <div className="space-y-2">
+          {profiles.map(profile => (
+            <div 
+              key={profile.id}
+              className={`p-3 border rounded cursor-pointer transition-colors ${
+                selectedProfile?.id === profile.id 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+              onClick={() => handleProfileSelection(profile)}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="font-medium">{profile.profileName}</h4>
+                  <p className="text-sm text-gray-600">
+                    {profile.dataSourceType} • Used {profile.useCount} times
+                  </p>
+                </div>
+                {profile.isDefault && (
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                    Default
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          <button 
+            className="w-full p-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-gray-400"
+            onClick={() => setShowCreateNew(true)}
+          >
+            + Create New Mapping Profile
+          </button>
+        </div>
+      ) : (
+        <div className="text-center py-6">
+          <p className="text-gray-600 mb-3">No saved mapping profiles yet</p>
+          <button 
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            onClick={() => setShowCreateNew(true)}
+          >
+            Create First Mapping Profile
+          </button>
+        </div>
+      )}
+      
+      {showCreateNew && (
+        <CreateMappingProfileModal 
+          onSave={(newProfile) => {
+            setProfiles([...profiles, newProfile]);
+            setShowCreateNew(false);
+            handleProfileSelection(newProfile);
+          }}
+          onCancel={() => setShowCreateNew(false)}
+        />
+      )}
+    </div>
+  );
+};
+```
+
+#### Auto-Detection with Learning
+```javascript
+const intelligentColumnDetection = (csvHeaders, organizationId) => {
+  // Load organization's historical mappings for pattern learning
+  const historicalMappings = getHistoricalMappings(organizationId);
+  
+  // Enhanced pattern matching with learning
+  const patterns = {
+    claimantId: {
+      exact: ['member_id', 'claimant_number', 'patient_id'],
+      patterns: [/member.*id/i, /claimant.*number/i, /patient.*id/i],
+      historical: getHistoricalMatches(historicalMappings, 'claimantId')
+    },
+    medicalAmount: {
+      exact: ['medical_amount', 'medical_claims', 'medical_cost'],
+      patterns: [/medical.*amount/i, /medical.*cost/i, /inpatient/i],
+      historical: getHistoricalMatches(historicalMappings, 'medicalAmount')
+    },
+    rxAmount: {
+      exact: ['rx_amount', 'pharmacy_cost', 'drug_cost'],
+      patterns: [/rx.*amount/i, /pharmacy/i, /drug.*cost/i],
+      historical: getHistoricalMatches(historicalMappings, 'rxAmount')
+    }
+  };
+
+  const detectedMappings = {};
+  const confidence = {};
+
+  csvHeaders.forEach(header => {
+    const cleanHeader = header.toLowerCase().trim();
+    
+    for (const [field, matchers] of Object.entries(patterns)) {
+      let score = 0;
+      
+      // Exact match (highest confidence)
+      if (matchers.exact.includes(cleanHeader)) {
+        score = 100;
+      }
+      // Pattern match (high confidence)
+      else if (matchers.patterns.some(pattern => pattern.test(cleanHeader))) {
+        score = 80;
+      }
+      // Historical match (medium confidence)
+      else if (matchers.historical.includes(cleanHeader)) {
+        score = 60;
+      }
+      // Fuzzy string matching (low confidence)
+      else {
+        score = getFuzzyMatchScore(cleanHeader, matchers.exact);
+      }
+      
+      if (score > 50 && (!detectedMappings[field] || score > confidence[field])) {
+        detectedMappings[field] = header;
+        confidence[field] = score;
+      }
+    }
+  });
+
+  return { mappings: detectedMappings, confidence };
+};
+```
+
+### 🔄 **Idempotency & Deduplication Logic**
+
+#### Upload Fingerprinting
+```javascript
+const generateUploadFingerprint = (file, mappings) => {
+  return {
+    fileFingerprint: {
+      name: file.name,
+      size: file.size,
+      lastModified: file.lastModified,
+      hash: calculateFileHash(file) // SHA-256 hash of content
+    },
+    dataFingerprint: {
+      columnCount: Object.keys(mappings).length,
+      columnNames: Object.keys(mappings).sort().join('|'),
+      mappingHash: calculateMappingHash(mappings)
+    },
+    uploadTimestamp: new Date().toISOString()
+  };
+};
+
+const calculateFileHash = async (file) => {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+```
+
+#### Duplicate Detection System
+```javascript
+const checkForDuplicateUpload = async (fingerprint, organizationId) => {
+  const existingUploads = await db.uploads.findMany({
+    where: {
+      organizationId,
+      fileHash: fingerprint.fileFingerprint.hash,
+      createdAt: {
+        gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+      }
+    },
+    include: {
+      processedData: {
+        select: { rowCount: true, totalAmount: true }
+      }
+    }
+  });
+
+  if (existingUploads.length > 0) {
+    const exactMatch = existingUploads.find(upload => 
+      upload.fileName === fingerprint.fileFingerprint.name &&
+      upload.fileSize === fingerprint.fileFingerprint.size
+    );
+
+    return {
+      isDuplicate: true,
+      exactMatch: !!exactMatch,
+      previousUploads: existingUploads.map(upload => ({
+        id: upload.id,
+        fileName: upload.fileName,
+        uploadDate: upload.createdAt,
+        rowCount: upload.processedData?.rowCount,
+        totalAmount: upload.processedData?.totalAmount
+      }))
+    };
+  }
+
+  return { isDuplicate: false };
+};
+```
+
+#### Smart Deduplication UI
+```javascript
+const DuplicateDetectionModal = ({ duplicateInfo, onAction }) => {
+  const [selectedAction, setSelectedAction] = useState('review');
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full mx-4 p-6">
+        <div className="flex items-center mb-4">
+          <AlertCircle className="w-6 h-6 text-orange-500 mr-2" />
+          <h2 className="text-xl font-semibold">Potential Duplicate Upload Detected</h2>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          We found {duplicateInfo.previousUploads.length} similar upload(s) from the last 30 days:
+        </p>
+        
+        <div className="space-y-3 mb-6">
+          {duplicateInfo.previousUploads.map(upload => (
+            <div key={upload.id} className="bg-gray-50 p-3 rounded">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{upload.fileName}</p>
+                  <p className="text-sm text-gray-600">
+                    Uploaded {formatDate(upload.uploadDate)} • {upload.rowCount} rows • {formatCurrency(upload.totalAmount)}
+                  </p>
+                </div>
+                {duplicateInfo.exactMatch && upload.exactMatch && (
+                  <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                    Exact Match
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="space-y-3 mb-6">
+          <label className="flex items-center">
+            <input 
+              type="radio" 
+              name="action" 
+              value="review"
+              checked={selectedAction === 'review'}
+              onChange={(e) => setSelectedAction(e.target.value)}
+              className="mr-2"
+            />
+            <span>Review differences and proceed if intentional</span>
+          </label>
+          
+          <label className="flex items-center">
+            <input 
+              type="radio" 
+              name="action" 
+              value="replace"
+              checked={selectedAction === 'replace'}
+              onChange={(e) => setSelectedAction(e.target.value)}
+              className="mr-2"
+            />
+            <span>Replace previous upload with this data</span>
+          </label>
+          
+          <label className="flex items-center">
+            <input 
+              type="radio" 
+              name="action" 
+              value="append"
+              checked={selectedAction === 'append'}
+              onChange={(e) => setSelectedAction(e.target.value)}
+              className="mr-2"
+            />
+            <span>Append as additional data (merge claims)</span>
+          </label>
+          
+          <label className="flex items-center">
+            <input 
+              type="radio" 
+              name="action" 
+              value="cancel"
+              checked={selectedAction === 'cancel'}
+              onChange={(e) => setSelectedAction(e.target.value)}
+              className="mr-2"
+            />
+            <span>Cancel upload and use existing data</span>
+          </label>
+        </div>
+        
+        <div className="flex justify-end space-x-3">
+          <button 
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            onClick={() => onAction('cancel')}
+          >
+            Cancel
+          </button>
+          <button 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => onAction(selectedAction)}
+          >
+            {selectedAction === 'cancel' ? 'Use Existing' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+#### Advanced Data Reconciliation
+```javascript
+const reconcileClaimsData = (newData, existingData, action) => {
+  switch (action) {
+    case 'replace':
+      return {
+        data: newData,
+        changes: {
+          type: 'replacement',
+          previousRowCount: existingData.length,
+          newRowCount: newData.length,
+          impact: 'All previous data replaced'
+        }
+      };
+      
+    case 'append':
+      const mergedData = [...existingData, ...newData];
+      const duplicateClaimants = findDuplicateClaimants(mergedData);
+      
+      return {
+        data: mergedData,
+        changes: {
+          type: 'append',
+          addedRows: newData.length,
+          totalRows: mergedData.length,
+          duplicateWarnings: duplicateClaimants
+        }
+      };
+      
+    case 'merge':
+      return smartMergeClaimsData(newData, existingData);
+      
+    default:
+      return { data: newData, changes: { type: 'new' } };
+  }
+};
+
+const smartMergeClaimsData = (newData, existingData) => {
+  const mergedMap = new Map();
+  
+  // Add existing data
+  existingData.forEach(claim => {
+    mergedMap.set(claim.ClaimantNumber, claim);
+  });
+  
+  // Merge or add new data
+  const mergeResults = {
+    updated: 0,
+    added: 0,
+    conflicts: []
+  };
+  
+  newData.forEach(newClaim => {
+    const existing = mergedMap.get(newClaim.ClaimantNumber);
+    
+    if (existing) {
+      // Check for conflicts in amounts
+      if (existing.Total !== newClaim.Total) {
+        mergeResults.conflicts.push({
+          claimantNumber: newClaim.ClaimantNumber,
+          existing: existing.Total,
+          new: newClaim.Total,
+          difference: newClaim.Total - existing.Total
+        });
+      }
+      
+      // Update with new data (business rule: latest data wins)
+      mergedMap.set(newClaim.ClaimantNumber, {
+        ...existing,
+        ...newClaim,
+        updatedAt: new Date()
+      });
+      mergeResults.updated++;
+    } else {
+      mergedMap.set(newClaim.ClaimantNumber, newClaim);
+      mergeResults.added++;
+    }
+  });
+  
+  return {
+    data: Array.from(mergedMap.values()),
+    changes: {
+      type: 'merge',
+      ...mergeResults
+    }
+  };
+};
+```
+
+### 🔍 **Advanced Validation & Error Recovery**
+
+#### Multi-Pass Validation System
+```javascript
+const comprehensiveDataValidation = (data, mappings, validationRules) => {
+  const validationPasses = [
+    { name: 'Structure', validator: validateDataStructure },
+    { name: 'Types', validator: validateDataTypes },
+    { name: 'Business Rules', validator: validateBusinessRules },
+    { name: 'Data Quality', validator: validateDataQuality },
+    { name: 'Completeness', validator: validateDataCompleteness }
+  ];
+  
+  const results = {
+    overallValid: true,
+    passResults: {},
+    errorSummary: {},
+    warnings: [],
+    recommendations: []
+  };
+  
+  validationPasses.forEach(pass => {
+    const passResult = pass.validator(data, mappings, validationRules);
+    results.passResults[pass.name] = passResult;
+    
+    if (!passResult.isValid) {
+      results.overallValid = false;
+      results.errorSummary[pass.name] = passResult.errors;
+    }
+    
+    if (passResult.warnings) {
+      results.warnings.push(...passResult.warnings);
+    }
+    
+    if (passResult.recommendations) {
+      results.recommendations.push(...passResult.recommendations);
+    }
+  });
+  
+  return results;
+};
+```
+
+#### Error Recovery Mechanisms
+```javascript
+const autoCorrectCommonIssues = (data, errors) => {
+  const correctedData = [...data];
+  const corrections = [];
+  
+  errors.forEach(error => {
+    switch (error.type) {
+      case 'MISSING_DECIMAL':
+        // Attempt to fix amounts missing decimal points
+        correctedData.forEach((row, index) => {
+          if (error.affectedRows.includes(index)) {
+            row.Medical = parseFloat(row.Medical) / 100;
+            row.Rx = parseFloat(row.Rx) / 100;
+            corrections.push({
+              row: index,
+              field: 'amounts',
+              action: 'Applied decimal correction (divided by 100)'
+            });
+          }
+        });
+        break;
+        
+      case 'INVALID_DATE_FORMAT':
+        correctedData.forEach((row, index) => {
+          if (error.affectedRows.includes(index)) {
+            row.ClaimDate = attemptDateParsing(row.ClaimDate);
+            corrections.push({
+              row: index,
+              field: 'ClaimDate',
+              action: 'Standardized date format'
+            });
+          }
+        });
+        break;
+        
+      case 'INCONSISTENT_SERVICE_TYPE':
+        const serviceTypeMapping = inferServiceTypeMapping(correctedData);
+        correctedData.forEach((row, index) => {
+          if (serviceTypeMapping[row.ServiceType]) {
+            row.ServiceType = serviceTypeMapping[row.ServiceType];
+            corrections.push({
+              row: index,
+              field: 'ServiceType',
+              action: `Standardized to ${row.ServiceType}`
+            });
+          }
+        });
+        break;
+    }
+  });
+  
+  return { correctedData, corrections };
+};
+```
+
 ## Conclusion
 
-Step 1 establishes a robust foundation for the healthcare dashboard by ensuring reliable data ingestion with intelligent column detection, comprehensive validation, and seamless user experience. The flexible architecture accommodates various CSV formats while maintaining data quality standards essential for accurate healthcare analytics.
+Step 1 establishes a robust foundation for the healthcare dashboard by ensuring reliable data ingestion with intelligent column detection, comprehensive validation, and seamless user experience. The enhanced system includes:
+
+- **Saved Mapping Profiles**: Reusable configurations for different data sources
+- **Intelligent Auto-Detection**: Learning-based column mapping with confidence scoring  
+- **Idempotency Controls**: Duplicate detection and smart data reconciliation
+- **Advanced Validation**: Multi-pass validation with auto-correction capabilities
+- **Production Security**: HIPAA-compliant file handling and API endpoints
+
+The flexible architecture accommodates various CSV formats while maintaining data quality standards essential for accurate healthcare analytics, with built-in safeguards against data duplication and processing errors.
 
 Upon successful completion of data upload and validation, users are automatically guided to Step 2 (Configuration) where they can set budget parameters and fee structures for their uploaded claims data.

@@ -990,18 +990,103 @@ const calculateStopLossReimbursements = (processedClaims) => {
 The two-page PDF export implements a structured approach to present financial data professionally:
 
 ```javascript
-const exportTwoPagePDF = (reportData) => {
-  // Generate Page 1: Financial Summary Table
-  generatePage1FinancialTable(reportData);
+// Express.js API endpoint for PDF generation
+app.post('/api/reports/financial/pdf', async (req, res) => {
+  const pdfGenerator = new HealthcareReportPDFGenerator();
   
-  // Insert page break
-  addPageBreak();
-  
-  // Generate Page 2: Visual Exhibits
-  generatePage2VisualExhibits(reportData);
-  
-  // Trigger print dialog for PDF save
-  window.print();
+  try {
+    const { reportData, options } = req.body;
+    
+    // Validate input data
+    if (!reportData) {
+      return res.status(400).json({ error: 'Report data is required' });
+    }
+    
+    // Generate PDF buffer
+    const pdfBuffer = await pdfGenerator.generateFinancialReport(reportData, options);
+    
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Financial_Report_${new Date().toISOString().split('T')[0]}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    // Send PDF buffer
+    res.send(pdfBuffer);
+    
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate PDF report',
+      details: error.message 
+    });
+  }
+});
+
+// Frontend function to trigger PDF generation
+const exportTwoPagePDF = async (reportData) => {
+  try {
+    // Show loading indicator
+    setIsGeneratingPDF(true);
+    
+    // Prepare report data for server
+    const payload = {
+      reportData: {
+        ...reportData,
+        reportPeriod: getCurrentReportPeriod(),
+        organizationName: getOrganizationName(),
+        trendData: generateTrendData(reportData),
+        budgetComparison: generateBudgetComparison(reportData),
+        distributionData: generateDistributionData(reportData),
+        kpiMetrics: calculateKPIMetrics(reportData)
+      },
+      options: {
+        includeCharts: true,
+        highResolution: true,
+        watermark: false
+      }
+    };
+    
+    // Make API request to generate PDF
+    const response = await fetch('/api/reports/financial/pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`PDF generation failed: ${response.statusText}`);
+    }
+    
+    // Get PDF blob and trigger download
+    const pdfBlob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(pdfBlob);
+    
+    // Create download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = downloadUrl;
+    downloadLink.download = `Financial_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+    downloadLink.style.display = 'none';
+    
+    // Trigger download
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up
+    window.URL.revokeObjectURL(downloadUrl);
+    
+    // Show success message
+    showNotification('PDF report generated successfully', 'success');
+    
+  } catch (error) {
+    console.error('PDF export error:', error);
+    showNotification('Failed to generate PDF report', 'error');
+  } finally {
+    setIsGeneratingPDF(false);
+  }
 };
 
 const generatePage1FinancialTable = (reportData) => {
@@ -1372,12 +1457,386 @@ const reportLayoutConfig = {
 3. **CSV (Tabular)**: Raw data export for further analysis
 4. **Print (Browser)**: Direct printing with proper page formatting
 
+## Advanced Reporting Features
+
+### Facility Utilization Analysis Charts
+
+The healthcare dashboard includes advanced facility utilization charts to provide deeper insights into healthcare service consumption patterns and facility efficiency metrics.
+
+#### Facility Utilization Dashboard Component
+
+```jsx
+const FacilityUtilizationCharts = ({ processedClaims, configuration }) => {
+  const [selectedFacility, setSelectedFacility] = useState('all');
+  const [timeRange, setTimeRange] = useState('12months');
+  
+  const facilityData = useMemo(() => {
+    return calculateFacilityUtilization(processedClaims, selectedFacility, timeRange);
+  }, [processedClaims, selectedFacility, timeRange]);
+
+  return (
+    <div className="facility-utilization-dashboard">
+      <div className="dashboard-header">
+        <h3>Facility Utilization Analysis</h3>
+        <div className="controls">
+          <select 
+            value={selectedFacility}
+            onChange={(e) => setSelectedFacility(e.target.value)}
+          >
+            <option value="all">All Facilities</option>
+            <option value="inpatient">Inpatient Facilities</option>
+            <option value="outpatient">Outpatient Facilities</option>
+            <option value="emergency">Emergency Departments</option>
+          </select>
+          <select 
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+          >
+            <option value="3months">Last 3 Months</option>
+            <option value="6months">Last 6 Months</option>
+            <option value="12months">Last 12 Months</option>
+            <option value="24months">Last 24 Months</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="charts-grid">
+        {/* Utilization Rate by Facility Type */}
+        <FacilityUtilizationRateChart data={facilityData.utilizationRates} />
+        
+        {/* Cost per Visit by Facility */}
+        <CostPerVisitChart data={facilityData.costPerVisit} />
+        
+        {/* Monthly Visit Volume Trends */}
+        <VisitVolumeTrendChart data={facilityData.volumeTrends} />
+        
+        {/* Facility Efficiency Metrics */}
+        <FacilityEfficiencyChart data={facilityData.efficiencyMetrics} />
+      </div>
+
+      {/* Detailed Facility Performance Table */}
+      <FacilityPerformanceTable data={facilityData.facilityDetails} />
+    </div>
+  );
+};
+
+const calculateFacilityUtilization = (claims, facilityFilter, timeRange) => {
+  const filteredClaims = filterClaimsByFacility(claims, facilityFilter, timeRange);
+  
+  return {
+    utilizationRates: calculateUtilizationRates(filteredClaims),
+    costPerVisit: calculateCostPerVisit(filteredClaims),
+    volumeTrends: calculateVolumeTrends(filteredClaims),
+    efficiencyMetrics: calculateEfficiencyMetrics(filteredClaims),
+    facilityDetails: generateFacilityDetails(filteredClaims)
+  };
+};
+```
+
+### High-Cost Claimant Analysis
+
+#### Advanced High-Cost Claimant Exhibit
+
+```jsx
+const HighCostClaimantExhibit = ({ processedClaims, configuration }) => {
+  const highCostThreshold = configuration.stopLossThreshold || 100000;
+  
+  const highCostData = useMemo(() => {
+    return analyzeHighCostClaimants(processedClaims, highCostThreshold);
+  }, [processedClaims, highCostThreshold]);
+
+  return (
+    <div className="high-cost-claimant-exhibit">
+      <div className="exhibit-header">
+        <h3>High-Cost Claimant Analysis</h3>
+        <p className="threshold-note">
+          Analysis based on claims exceeding ${highCostThreshold.toLocaleString()} threshold
+        </p>
+      </div>
+
+      <div className="summary-metrics">
+        <div className="metric-card">
+          <div className="metric-label">Total High-Cost Claimants</div>
+          <div className="metric-value">{highCostData.totalClaimants}</div>
+          <div className="metric-subtitle">
+            {((highCostData.totalClaimants / highCostData.totalMembers) * 100).toFixed(1)}% of members
+          </div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-label">Total High-Cost Claims</div>
+          <div className="metric-value">${highCostData.totalCost.toLocaleString()}</div>
+          <div className="metric-subtitle">
+            {((highCostData.totalCost / highCostData.totalAllClaims) * 100).toFixed(1)}% of total costs
+          </div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-label">Average Cost per High-Cost Claimant</div>
+          <div className="metric-value">${highCostData.averageCost.toLocaleString()}</div>
+          <div className="metric-subtitle">
+            vs ${highCostData.overallAverage.toLocaleString()} overall average
+          </div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-label">Stop Loss Recovery</div>
+          <div className="metric-value">${highCostData.stopLossRecovery.toLocaleString()}</div>
+          <div className="metric-subtitle">
+            {((highCostData.stopLossRecovery / highCostData.totalCost) * 100).toFixed(1)}% recovery rate
+          </div>
+        </div>
+      </div>
+
+      <div className="analysis-charts">
+        {/* High-Cost Claims Distribution */}
+        <HighCostDistributionChart data={highCostData.distribution} />
+        
+        {/* Cost Concentration Analysis */}
+        <CostConcentrationChart data={highCostData.concentration} />
+        
+        {/* Condition Category Breakdown */}
+        <ConditionCategoryChart data={highCostData.conditions} />
+        
+        {/* Monthly High-Cost Trend */}
+        <HighCostTrendChart data={highCostData.monthlyTrend} />
+      </div>
+
+      {/* Detailed High-Cost Claimant Table */}
+      <HighCostClaimantTable data={highCostData.claimantDetails} />
+    </div>
+  );
+};
+
+const analyzeHighCostClaimants = (claims, threshold) => {
+  // Group claims by member to identify high-cost individuals
+  const memberClaims = claims.reduce((acc, claim) => {
+    const memberId = claim.MemberId || claim.SubscriberID;
+    if (!acc[memberId]) {
+      acc[memberId] = {
+        memberId,
+        claims: [],
+        totalCost: 0,
+        totalMedical: 0,
+        totalRx: 0
+      };
+    }
+    acc[memberId].claims.push(claim);
+    acc[memberId].totalCost += (claim.NetMedical || 0) + (claim.NetRx || 0);
+    acc[memberId].totalMedical += claim.NetMedical || 0;
+    acc[memberId].totalRx += claim.NetRx || 0;
+    return acc;
+  }, {});
+
+  // Identify high-cost claimants
+  const highCostClaimants = Object.values(memberClaims)
+    .filter(member => member.totalCost >= threshold)
+    .sort((a, b) => b.totalCost - a.totalCost);
+
+  // Calculate analytics
+  const totalHighCostAmount = highCostClaimants.reduce((sum, member) => sum + member.totalCost, 0);
+  const totalAllClaims = Object.values(memberClaims).reduce((sum, member) => sum + member.totalCost, 0);
+  
+  return {
+    totalClaimants: highCostClaimants.length,
+    totalMembers: Object.keys(memberClaims).length,
+    totalCost: totalHighCostAmount,
+    totalAllClaims,
+    averageCost: highCostClaimants.length > 0 ? totalHighCostAmount / highCostClaimants.length : 0,
+    overallAverage: Object.keys(memberClaims).length > 0 ? totalAllClaims / Object.keys(memberClaims).length : 0,
+    stopLossRecovery: calculateStopLossRecovery(highCostClaimants, threshold),
+    distribution: calculateCostDistribution(highCostClaimants),
+    concentration: calculateCostConcentration(highCostClaimants, totalAllClaims),
+    conditions: analyzeConditionCategories(highCostClaimants),
+    monthlyTrend: calculateMonthlyHighCostTrend(highCostClaimants),
+    claimantDetails: generateClaimantDetails(highCostClaimants)
+  };
+};
+```
+
+### Performance Optimization for Large Reports
+
+#### Report Caching and Optimization
+
+```javascript
+class ReportOptimizationService {
+  constructor() {
+    this.cache = new Map();
+    this.cacheExpiry = 30 * 60 * 1000; // 30 minutes
+  }
+
+  async generateOptimizedReport(reportParams) {
+    const cacheKey = this.generateCacheKey(reportParams);
+    const cachedReport = this.cache.get(cacheKey);
+    
+    // Return cached report if valid
+    if (cachedReport && (Date.now() - cachedReport.timestamp) < this.cacheExpiry) {
+      return cachedReport.data;
+    }
+    
+    // Generate new report with optimizations
+    const reportData = await this.generateReport(reportParams);
+    
+    // Cache the result
+    this.cache.set(cacheKey, {
+      data: reportData,
+      timestamp: Date.now()
+    });
+    
+    return reportData;
+  }
+
+  async generateReport(params) {
+    // Implement pagination for large datasets
+    if (params.totalRecords > 50000) {
+      return await this.generatePaginatedReport(params);
+    }
+    
+    // Use Web Workers for heavy calculations
+    if (params.complexCalculations) {
+      return await this.generateReportWithWorkers(params);
+    }
+    
+    // Standard report generation
+    return await this.generateStandardReport(params);
+  }
+
+  async generatePaginatedReport(params) {
+    const pageSize = 10000;
+    const totalPages = Math.ceil(params.totalRecords / pageSize);
+    const aggregatedResults = {
+      summary: {},
+      details: []
+    };
+    
+    for (let page = 0; page < totalPages; page++) {
+      const pageParams = {
+        ...params,
+        offset: page * pageSize,
+        limit: pageSize
+      };
+      
+      const pageResults = await this.processReportPage(pageParams);
+      this.aggregateResults(aggregatedResults, pageResults);
+    }
+    
+    return aggregatedResults;
+  }
+
+  async generateReportWithWorkers(params) {
+    return new Promise((resolve, reject) => {
+      const worker = new Worker('/workers/report-calculator.js');
+      
+      worker.postMessage(params);
+      
+      worker.onmessage = (event) => {
+        if (event.data.error) {
+          reject(new Error(event.data.error));
+        } else {
+          resolve(event.data.result);
+        }
+        worker.terminate();
+      };
+      
+      worker.onerror = (error) => {
+        reject(error);
+        worker.terminate();
+      };
+    });
+  }
+}
+```
+
+### Report Security and Compliance
+
+#### HIPAA-Compliant Report Generation
+
+```javascript
+class HIPAACompliantReportGenerator {
+  constructor() {
+    this.auditLogger = new AuditLogger();
+    this.encryptionService = new EncryptionService();
+  }
+
+  async generateSecureReport(reportData, userContext) {
+    // Log report access
+    await this.auditLogger.logReportAccess({
+      userId: userContext.userId,
+      organizationId: userContext.organizationId,
+      reportType: 'financial_summary',
+      timestamp: new Date(),
+      ipAddress: userContext.ipAddress
+    });
+
+    // Sanitize data based on user permissions
+    const sanitizedData = await this.sanitizeReportData(reportData, userContext);
+    
+    // Add watermarks and security headers
+    const secureReport = await this.addSecurityFeatures(sanitizedData, userContext);
+    
+    return secureReport;
+  }
+
+  async sanitizeReportData(data, userContext) {
+    // Remove or mask PHI based on user role
+    if (userContext.role !== 'admin') {
+      return {
+        ...data,
+        // Mask member IDs
+        processedClaims: data.processedClaims.map(claim => ({
+          ...claim,
+          MemberId: this.maskMemberId(claim.MemberId),
+          SubscriberID: this.maskMemberId(claim.SubscriberID),
+          // Remove other identifying information
+          MemberName: '***REDACTED***',
+          DOB: null
+        }))
+      };
+    }
+    
+    return data;
+  }
+
+  maskMemberId(id) {
+    if (!id) return null;
+    return id.substring(0, 3) + '***' + id.substring(id.length - 2);
+  }
+
+  async addSecurityFeatures(reportData, userContext) {
+    return {
+      ...reportData,
+      metadata: {
+        generatedBy: userContext.userId,
+        generatedAt: new Date(),
+        organizationId: userContext.organizationId,
+        securityLevel: 'confidential',
+        watermark: `CONFIDENTIAL - ${userContext.organizationName}`,
+        accessControlled: true
+      }
+    };
+  }
+}
+```
+
 ## Conclusion
 
-Step 4 provides comprehensive financial reporting that transforms healthcare claims data into executive-ready financial analysis. The two-page format ensures professional presentation with:
+Step 4 provides comprehensive financial reporting that transforms healthcare claims data into executive-ready financial analysis. The enhanced implementation includes:
 
-**Page 1**: Complete financial summary table with all line items and monthly columns (January through December), providing detailed cost breakdowns and budget variance analysis.
+**Core Features:**
+- **Two-Page Professional Format**: Financial summary table (Page 1) with visual exhibits and analysis (Page 2)
+- **Advanced PDF Generation**: Server-side Puppeteer implementation with high-fidelity charts and optimized performance
+- **Comprehensive Cost Analysis**: Complete categorization of medical, pharmacy, administrative, and stop loss costs
+- **PEPM Metrics**: Detailed per-employee-per-month calculations with budget variance analysis
 
-**Page 2**: Visual exhibits including charts, graphs, and executive-level insights that complement the detailed financial data.
+**Advanced Analytics:**
+- **Facility Utilization Charts**: Deep insights into healthcare service consumption patterns and facility efficiency
+- **High-Cost Claimant Analysis**: Comprehensive exhibit tracking members exceeding stop loss thresholds
+- **Performance Optimization**: Caching, pagination, and Web Worker support for large datasets
+- **Security Compliance**: HIPAA-compliant report generation with audit trails and data sanitization
 
-The detailed cost categorization, PEPM metrics, and budget variance analysis enable informed decision-making and regulatory compliance for healthcare plan management. The robust calculation engine and dual-format export capabilities support both operational reporting and strategic planning needs.
+**Production Features:**
+- **Enterprise PDF Service**: Dockerized Puppeteer service with Kubernetes deployment configuration
+- **Error Handling**: Robust retry mechanisms and specific error handling for various failure scenarios
+- **Performance Monitoring**: Comprehensive metrics tracking and optimization for large-scale deployments
+
+The detailed cost categorization, facility utilization analysis, and high-cost claimant tracking enable informed decision-making and regulatory compliance for healthcare plan management. The robust calculation engine, advanced PDF generation capabilities, and enterprise-grade security features support both operational reporting and strategic planning needs for healthcare organizations of all sizes.

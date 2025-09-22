@@ -1995,8 +1995,1042 @@ const VirtualizedClaimsTable = ({ claims, configuration }) => {
 - Export completion < 10 seconds for full dataset
 - User engagement rate with detail modals > 40%
 
+---
+
+## Advanced ETL & Data Transformation Pipeline
+
+### 🔄 **Production ETL Architecture**
+
+#### ETL Process Overview
+```mermaid
+flowchart LR
+    subgraph "Extract Layer"
+        A[Raw CSV Upload] --> B[File Validation]
+        B --> C[Schema Detection]
+        C --> D[Column Mapping]
+    end
+    
+    subgraph "Transform Layer"
+        D --> E[Data Cleansing]
+        E --> F[Business Rules]
+        F --> G[Enrichment]
+        G --> H[Validation]
+    end
+    
+    subgraph "Load Layer"
+        H --> I[Staging Tables]
+        I --> J[Data Quality Checks]
+        J --> K[Production Tables]
+        K --> L[Index Refresh]
+    end
+    
+    subgraph "Monitor Layer"
+        L --> M[ETL Logging]
+        M --> N[Error Handling]
+        N --> O[Alert System]
+    end
+```
+
+#### Advanced Data Transformation Engine
+```javascript
+class HealthcareETLPipeline {
+  constructor(configuration) {
+    this.config = configuration;
+    this.transformationRules = new Map();
+    this.validationRules = new Map();
+    this.enrichmentProcessors = new Map();
+    this.errorCollector = new ErrorCollector();
+    this.qualityMetrics = new DataQualityMetrics();
+  }
+
+  async processClaimsData(rawData, mappingProfile) {
+    const pipeline = new ETLPipeline([
+      new ExtractionStage(mappingProfile),
+      new ValidationStage(this.validationRules),
+      new TransformationStage(this.transformationRules),
+      new EnrichmentStage(this.enrichmentProcessors),
+      new QualityAssuranceStage(this.qualityMetrics),
+      new LoadingStage(this.config.database)
+    ]);
+
+    return await pipeline.execute(rawData);
+  }
+
+  // Advanced data transformation with business logic
+  async executeAdvancedTransformations(claims) {
+    const transformedClaims = await Promise.all(
+      claims.map(async (claim) => {
+        const transformed = { ...claim };
+        
+        // Apply business transformation rules
+        transformed.processedData = await this.applyBusinessRules(claim);
+        transformed.riskAssessment = await this.calculateRiskMetrics(claim);
+        transformed.financialImpact = await this.calculateFinancialImpact(claim);
+        transformed.qualityScores = await this.calculateQualityScores(claim);
+        
+        return transformed;
+      })
+    );
+
+    return transformedClaims;
+  }
+
+  async applyBusinessRules(claim) {
+    const rules = {
+      stopLossQualification: this.evaluateStopLossEligibility(claim),
+      riskCategorization: this.categorizeRisk(claim),
+      costAdjustments: this.applyAdjustments(claim),
+      rebateCalculations: this.calculateRebates(claim),
+      providerNetworkStatus: await this.validateProviderNetwork(claim),
+      diagnosisValidation: await this.validateDiagnosisCodes(claim)
+    };
+
+    return rules;
+  }
+
+  async calculateRiskMetrics(claim) {
+    return {
+      clinicalRisk: this.assessClinicalRisk(claim),
+      financialRisk: this.assessFinancialRisk(claim),
+      utilizationRisk: this.assessUtilizationRisk(claim),
+      predictiveRisk: await this.calculatePredictiveRisk(claim)
+    };
+  }
+
+  async calculateFinancialImpact(claim) {
+    const budgetImpact = claim.NetTotal / this.config.monthlyBudget;
+    const stopLossSavings = claim.StopLossReimbursement;
+    const rebateSavings = claim.RxRebateApplied;
+    
+    return {
+      budgetPercentage: budgetImpact * 100,
+      totalSavings: stopLossSavings + rebateSavings,
+      savingsPercentage: ((stopLossSavings + rebateSavings) / claim.OriginalTotal) * 100,
+      netCostRatio: claim.NetTotal / claim.OriginalTotal,
+      costEffectiveness: this.calculateCostEffectiveness(claim)
+    };
+  }
+}
+
+// Advanced extraction stage with intelligent parsing
+class ExtractionStage extends ETLStage {
+  async execute(rawData) {
+    const extractedData = {
+      records: [],
+      metadata: {
+        totalRecords: rawData.length,
+        extractionTimestamp: new Date(),
+        sourceFormat: this.detectSourceFormat(rawData),
+        columnProfile: this.analyzeColumnProfile(rawData)
+      },
+      quality: {
+        completenessScore: this.calculateCompleteness(rawData),
+        consistencyScore: this.calculateConsistency(rawData),
+        validityScore: this.calculateValidity(rawData)
+      }
+    };
+
+    for (const record of rawData) {
+      try {
+        const extractedRecord = await this.extractRecord(record);
+        extractedData.records.push(extractedRecord);
+      } catch (error) {
+        this.errorCollector.addError('extraction', record, error);
+      }
+    }
+
+    return extractedData;
+  }
+
+  async extractRecord(record) {
+    return {
+      // Core fields
+      claimantNumber: this.extractClaimantNumber(record),
+      serviceType: this.extractServiceType(record),
+      claimDate: this.extractAndValidateDate(record),
+      
+      // Financial fields with currency normalization
+      medicalAmount: this.extractCurrencyAmount(record, 'medical'),
+      pharmacyAmount: this.extractCurrencyAmount(record, 'pharmacy'),
+      
+      // Medical information
+      icdCode: this.extractAndValidateICD(record),
+      diagnosisDescription: this.extractDiagnosis(record),
+      
+      // Provider information
+      providerInfo: this.extractProviderData(record),
+      
+      // Administrative fields
+      planCode: this.extractPlanCode(record),
+      memberInfo: this.extractMemberInfo(record),
+      
+      // Metadata
+      extractionMetadata: {
+        sourceRow: record.rowIndex,
+        extractedAt: new Date(),
+        dataQuality: this.assessRecordQuality(record)
+      }
+    };
+  }
+
+  extractCurrencyAmount(record, fieldType) {
+    const rawValue = record[this.mapping[fieldType]];
+    
+    // Handle various currency formats
+    if (typeof rawValue === 'string') {
+      // Remove currency symbols and normalize
+      const cleaned = rawValue.replace(/[$,\s]/g, '');
+      const parsed = parseFloat(cleaned);
+      
+      if (isNaN(parsed)) {
+        throw new Error(`Invalid currency format: ${rawValue}`);
+      }
+      
+      return parsed;
+    }
+    
+    return parseFloat(rawValue) || 0;
+  }
+
+  extractAndValidateICD(record) {
+    const icdValue = record[this.mapping.icdCode];
+    
+    if (!icdValue) return null;
+    
+    // Validate ICD-10 format
+    const icd10Pattern = /^[A-Z]\d{2}(\.\d{1,4})?$/;
+    const icd9Pattern = /^\d{3}(\.\d{1,2})?$/;
+    
+    if (icd10Pattern.test(icdValue) || icd9Pattern.test(icdValue)) {
+      return icdValue;
+    }
+    
+    this.errorCollector.addWarning('icd_validation', record, `Invalid ICD format: ${icdValue}`);
+    return icdValue; // Return as-is but flagged
+  }
+}
+
+// Advanced transformation stage with business logic
+class TransformationStage extends ETLStage {
+  async execute(extractedData) {
+    const transformedData = {
+      ...extractedData,
+      records: await this.transformRecords(extractedData.records),
+      transformationMetadata: {
+        rulesApplied: this.appliedRules,
+        transformationTimestamp: new Date(),
+        dataQualityImprovements: this.calculateQualityImprovements()
+      }
+    };
+
+    return transformedData;
+  }
+
+  async transformRecords(records) {
+    return await Promise.all(
+      records.map(async (record) => {
+        const transformed = { ...record };
+        
+        // Apply normalization rules
+        transformed.normalizedData = await this.normalizeRecord(record);
+        
+        // Apply business calculations
+        transformed.businessMetrics = await this.calculateBusinessMetrics(record);
+        
+        // Apply enrichment
+        transformed.enrichedData = await this.enrichRecord(record);
+        
+        return transformed;
+      })
+    );
+  }
+
+  async normalizeRecord(record) {
+    return {
+      // Standardize service types
+      serviceType: this.standardizeServiceType(record.serviceType),
+      
+      // Normalize amounts
+      amounts: {
+        medical: this.normalizeAmount(record.medicalAmount),
+        pharmacy: this.normalizeAmount(record.pharmacyAmount),
+        total: record.medicalAmount + record.pharmacyAmount
+      },
+      
+      // Standardize dates
+      dates: {
+        claimDate: this.normalizeDate(record.claimDate),
+        processedDate: new Date()
+      },
+      
+      // Standardize provider information
+      provider: this.normalizeProviderInfo(record.providerInfo)
+    };
+  }
+
+  async calculateBusinessMetrics(record) {
+    const config = this.configuration;
+    const amounts = record.normalizedData.amounts;
+    
+    // Stop loss calculations
+    const stopLoss = this.calculateStopLossMetrics(amounts, config);
+    
+    // Rebate calculations
+    const rebates = this.calculateRebateMetrics(amounts, config);
+    
+    // Risk calculations
+    const risk = this.calculateRiskMetrics(record, config);
+    
+    return {
+      stopLoss,
+      rebates,
+      risk,
+      netAmounts: {
+        medical: amounts.medical - stopLoss.medicalReimbursement,
+        pharmacy: amounts.pharmacy - rebates.pharmacyRebate,
+        total: amounts.total - stopLoss.totalReimbursement - rebates.totalRebate
+      },
+      budgetImpact: {
+        percentage: (amounts.total / config.monthlyBudget) * 100,
+        category: this.categorizeBudgetImpact(amounts.total, config)
+      }
+    };
+  }
+
+  calculateStopLossMetrics(amounts, config) {
+    const threshold = config.stopLossThreshold;
+    const rate = config.reimbursementRate / 100;
+    
+    const qualifiesForStopLoss = amounts.total >= threshold;
+    const excessAmount = Math.max(0, amounts.total - threshold);
+    const reimbursement = qualifiesForStopLoss ? excessAmount * rate : 0;
+    
+    return {
+      qualifies: qualifiesForStopLoss,
+      threshold,
+      excessAmount,
+      reimbursementRate: rate,
+      medicalReimbursement: reimbursement * (amounts.medical / amounts.total),
+      pharmacyReimbursement: reimbursement * (amounts.pharmacy / amounts.total),
+      totalReimbursement: reimbursement
+    };
+  }
+
+  calculateRebateMetrics(amounts, config) {
+    const monthlyRebatePool = config.monthlyRxRebates;
+    const totalMonthlyRx = this.getTotalMonthlyRx(); // From other claims
+    const allocationRate = amounts.pharmacy / totalMonthlyRx;
+    const allocatedRebate = monthlyRebatePool * allocationRate;
+    
+    return {
+      rebatePool: monthlyRebatePool,
+      allocationRate,
+      pharmacyRebate: allocatedRebate,
+      totalRebate: allocatedRebate,
+      rebatePercentage: (allocatedRebate / amounts.pharmacy) * 100
+    };
+  }
+}
+
+// Advanced enrichment stage
+class EnrichmentStage extends ETLStage {
+  async execute(transformedData) {
+    const enrichedData = {
+      ...transformedData,
+      records: await this.enrichRecords(transformedData.records),
+      enrichmentMetadata: {
+        enrichmentSources: this.getEnrichmentSources(),
+        enrichmentTimestamp: new Date(),
+        enrichmentQuality: this.calculateEnrichmentQuality()
+      }
+    };
+
+    return enrichedData;
+  }
+
+  async enrichRecords(records) {
+    return await Promise.all(
+      records.map(async (record) => {
+        const enriched = { ...record };
+        
+        // Provider network enrichment
+        enriched.providerEnrichment = await this.enrichProviderData(record);
+        
+        // Diagnosis enrichment
+        enriched.diagnosisEnrichment = await this.enrichDiagnosisData(record);
+        
+        // Geographic enrichment
+        enriched.geographicEnrichment = await this.enrichGeographicData(record);
+        
+        // Historical enrichment
+        enriched.historicalEnrichment = await this.enrichHistoricalData(record);
+        
+        return enriched;
+      })
+    );
+  }
+
+  async enrichProviderData(record) {
+    const providerInfo = record.normalizedData.provider;
+    
+    return {
+      networkStatus: await this.lookupNetworkStatus(providerInfo),
+      facilityType: await this.determineFacilityType(providerInfo),
+      qualityRatings: await this.getQualityRatings(providerInfo),
+      costEfficiency: await this.calculateCostEfficiency(providerInfo),
+      geographicRegion: await this.determineGeographicRegion(providerInfo)
+    };
+  }
+
+  async enrichDiagnosisData(record) {
+    const icdCode = record.icdCode;
+    
+    return {
+      diagnosisCategory: this.categorizeByICD(icdCode),
+      severityLevel: await this.assessSeverity(icdCode),
+      treatmentProtocols: await this.getStandardProtocols(icdCode),
+      expectedCosts: await this.getExpectedCosts(icdCode),
+      chronicCondition: await this.isChronicCondition(icdCode)
+    };
+  }
+
+  async enrichHistoricalData(record) {
+    const claimantNumber = record.claimantNumber;
+    
+    return {
+      previousClaims: await this.getPreviousClaims(claimantNumber),
+      utilizationPattern: await this.analyzeUtilizationPattern(claimantNumber),
+      riskTrends: await this.calculateRiskTrends(claimantNumber),
+      costTrends: await this.calculateCostTrends(claimantNumber)
+    };
+  }
+}
+```
+
+### 🔍 **Data Quality Assurance Framework**
+
+#### Quality Metrics Engine
+```javascript
+class DataQualityMetrics {
+  constructor() {
+    this.qualityDimensions = {
+      completeness: new CompletenessChecker(),
+      accuracy: new AccuracyChecker(),
+      consistency: new ConsistencyChecker(),
+      validity: new ValidityChecker(),
+      uniqueness: new UniquenessChecker(),
+      timeliness: new TimelinessChecker()
+    };
+  }
+
+  async assessDataQuality(dataset) {
+    const qualityReport = {
+      overall: 0,
+      dimensions: {},
+      issues: [],
+      recommendations: [],
+      timestamp: new Date()
+    };
+
+    for (const [dimension, checker] of Object.entries(this.qualityDimensions)) {
+      const result = await checker.assess(dataset);
+      qualityReport.dimensions[dimension] = result;
+      
+      if (result.issues.length > 0) {
+        qualityReport.issues.push(...result.issues);
+      }
+      
+      if (result.recommendations.length > 0) {
+        qualityReport.recommendations.push(...result.recommendations);
+      }
+    }
+
+    // Calculate overall quality score
+    qualityReport.overall = this.calculateOverallScore(qualityReport.dimensions);
+
+    return qualityReport;
+  }
+
+  calculateOverallScore(dimensions) {
+    const weights = {
+      completeness: 0.25,
+      accuracy: 0.25,
+      consistency: 0.20,
+      validity: 0.15,
+      uniqueness: 0.10,
+      timeliness: 0.05
+    };
+
+    let weightedScore = 0;
+    for (const [dimension, weight] of Object.entries(weights)) {
+      weightedScore += dimensions[dimension].score * weight;
+    }
+
+    return Math.round(weightedScore);
+  }
+}
+
+class CompletenessChecker {
+  async assess(dataset) {
+    const requiredFields = [
+      'claimantNumber',
+      'serviceType', 
+      'medicalAmount',
+      'claimDate'
+    ];
+
+    const completenessResults = {
+      score: 0,
+      issues: [],
+      recommendations: [],
+      fieldCompleteness: {}
+    };
+
+    for (const field of requiredFields) {
+      const complete = dataset.filter(record => 
+        record[field] !== null && 
+        record[field] !== undefined && 
+        record[field] !== ''
+      ).length;
+      
+      const completenessRate = (complete / dataset.length) * 100;
+      completenessResults.fieldCompleteness[field] = completenessRate;
+      
+      if (completenessRate < 95) {
+        completenessResults.issues.push({
+          type: 'completeness',
+          field,
+          severity: completenessRate < 80 ? 'high' : 'medium',
+          message: `${field} is ${completenessRate.toFixed(1)}% complete`,
+          affectedRecords: dataset.length - complete
+        });
+        
+        completenessResults.recommendations.push({
+          field,
+          action: 'Implement data validation at source',
+          priority: completenessRate < 80 ? 'high' : 'medium'
+        });
+      }
+    }
+
+    // Calculate overall completeness score
+    const avgCompleteness = Object.values(completenessResults.fieldCompleteness)
+      .reduce((sum, rate) => sum + rate, 0) / requiredFields.length;
+    
+    completenessResults.score = Math.round(avgCompleteness);
+
+    return completenessResults;
+  }
+}
+
+class AccuracyChecker {
+  async assess(dataset) {
+    const accuracyResults = {
+      score: 0,
+      issues: [],
+      recommendations: [],
+      fieldAccuracy: {}
+    };
+
+    // Check amount field accuracy
+    const amountAccuracy = this.checkAmountAccuracy(dataset);
+    accuracyResults.fieldAccuracy.amounts = amountAccuracy;
+
+    // Check date accuracy
+    const dateAccuracy = this.checkDateAccuracy(dataset);
+    accuracyResults.fieldAccuracy.dates = dateAccuracy;
+
+    // Check ICD code accuracy
+    const icdAccuracy = await this.checkICDAccuracy(dataset);
+    accuracyResults.fieldAccuracy.icdCodes = icdAccuracy;
+
+    // Calculate overall accuracy
+    const avgAccuracy = Object.values(accuracyResults.fieldAccuracy)
+      .reduce((sum, rate) => sum + rate, 0) / Object.keys(accuracyResults.fieldAccuracy).length;
+    
+    accuracyResults.score = Math.round(avgAccuracy);
+
+    return accuracyResults;
+  }
+
+  checkAmountAccuracy(dataset) {
+    let accurateCount = 0;
+    const issues = [];
+
+    for (const record of dataset) {
+      const medical = record.medicalAmount || 0;
+      const pharmacy = record.pharmacyAmount || 0;
+      const total = record.totalAmount || (medical + pharmacy);
+
+      // Check if totals match
+      if (Math.abs(total - (medical + pharmacy)) > 0.01) {
+        issues.push({
+          record: record.claimantNumber,
+          issue: 'Total amount mismatch',
+          expected: medical + pharmacy,
+          actual: total
+        });
+      } else {
+        accurateCount++;
+      }
+
+      // Check for negative amounts
+      if (medical < 0 || pharmacy < 0) {
+        issues.push({
+          record: record.claimantNumber,
+          issue: 'Negative amount detected',
+          medical,
+          pharmacy
+        });
+      }
+    }
+
+    return {
+      rate: (accurateCount / dataset.length) * 100,
+      issues
+    };
+  }
+
+  async checkICDAccuracy(dataset) {
+    const icdPattern = /^[A-Z]\d{2}(\.\d{1,4})?$/; // ICD-10 pattern
+    let validCount = 0;
+    const issues = [];
+
+    for (const record of dataset) {
+      if (record.icdCode) {
+        if (icdPattern.test(record.icdCode)) {
+          // Additional validation against ICD database
+          const isValid = await this.validateICDAgainstDatabase(record.icdCode);
+          if (isValid) {
+            validCount++;
+          } else {
+            issues.push({
+              record: record.claimantNumber,
+              issue: 'ICD code not found in database',
+              icdCode: record.icdCode
+            });
+          }
+        } else {
+          issues.push({
+            record: record.claimantNumber,
+            issue: 'Invalid ICD format',
+            icdCode: record.icdCode
+          });
+        }
+      }
+    }
+
+    return {
+      rate: (validCount / dataset.length) * 100,
+      issues
+    };
+  }
+}
+```
+
+### 📊 **Real-Time Data Processing Dashboard**
+
+#### ETL Monitoring Interface
+```jsx
+const ETLMonitoringDashboard = ({ pipelineId }) => {
+  const [pipelineStatus, setPipelineStatus] = useState(null);
+  const [qualityMetrics, setQualityMetrics] = useState(null);
+  const [processingLogs, setProcessingLogs] = useState([]);
+  const [errorAnalysis, setErrorAnalysis] = useState(null);
+
+  useEffect(() => {
+    const statusInterval = setInterval(async () => {
+      const status = await fetchPipelineStatus(pipelineId);
+      setPipelineStatus(status);
+      
+      if (status.stage === 'completed' || status.stage === 'failed') {
+        clearInterval(statusInterval);
+      }
+    }, 2000);
+
+    return () => clearInterval(statusInterval);
+  }, [pipelineId]);
+
+  const getPipelineStageColor = (stage, currentStage) => {
+    if (stage === currentStage) return 'blue';
+    if (pipelineStatus?.completedStages?.includes(stage)) return 'green';
+    return 'gray';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Pipeline Progress */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">ETL Pipeline Progress</h3>
+        
+        <div className="flex items-center justify-between mb-4">
+          {['extract', 'transform', 'enrich', 'validate', 'load'].map((stage, index) => (
+            <div key={stage} className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                getPipelineStageColor(stage, pipelineStatus?.currentStage) === 'green' 
+                  ? 'bg-green-600'
+                  : getPipelineStageColor(stage, pipelineStatus?.currentStage) === 'blue'
+                  ? 'bg-blue-600'
+                  : 'bg-gray-400'
+              }`}>
+                {index + 1}
+              </div>
+              <div className="ml-2 text-sm">
+                <div className="font-medium capitalize">{stage}</div>
+                <div className="text-gray-500">
+                  {pipelineStatus?.stageProgress?.[stage] || '0'}% complete
+                </div>
+              </div>
+              {index < 4 && (
+                <div className={`flex-1 h-0.5 mx-4 ${
+                  pipelineStatus?.completedStages?.includes(stage) ? 'bg-green-600' : 'bg-gray-300'
+                }`} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${pipelineStatus?.overallProgress || 0}%` }}
+          />
+        </div>
+        <div className="text-sm text-gray-600 mt-2">
+          Processing {pipelineStatus?.processedRecords || 0} of {pipelineStatus?.totalRecords || 0} records
+        </div>
+      </div>
+
+      {/* Real-time Quality Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <QualityMetricCard 
+          title="Data Completeness"
+          score={qualityMetrics?.completeness?.score || 0}
+          trend={qualityMetrics?.completeness?.trend}
+          issues={qualityMetrics?.completeness?.issues || []}
+        />
+        <QualityMetricCard 
+          title="Data Accuracy"
+          score={qualityMetrics?.accuracy?.score || 0}
+          trend={qualityMetrics?.accuracy?.trend}
+          issues={qualityMetrics?.accuracy?.issues || []}
+        />
+        <QualityMetricCard 
+          title="Data Consistency"
+          score={qualityMetrics?.consistency?.score || 0}
+          trend={qualityMetrics?.consistency?.trend}
+          issues={qualityMetrics?.consistency?.issues || []}
+        />
+      </div>
+
+      {/* Processing Logs */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold mb-4">Processing Logs</h3>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {processingLogs.map((log, index) => (
+            <div key={index} className={`text-sm p-2 rounded ${
+              log.level === 'error' ? 'bg-red-50 text-red-800' :
+              log.level === 'warning' ? 'bg-yellow-50 text-yellow-800' :
+              'bg-gray-50 text-gray-800'
+            }`}>
+              <span className="font-mono text-xs mr-2">{log.timestamp}</span>
+              <span className="font-medium mr-2">[{log.stage.toUpperCase()}]</span>
+              {log.message}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Error Analysis */}
+      {errorAnalysis && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <h3 className="text-lg font-semibold mb-4">Error Analysis</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium mb-2">Error Categories</h4>
+              <div className="space-y-2">
+                {errorAnalysis.categories.map(category => (
+                  <div key={category.name} className="flex justify-between">
+                    <span>{category.name}</span>
+                    <span className="font-medium">{category.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Resolution Recommendations</h4>
+              <ul className="space-y-1 text-sm">
+                {errorAnalysis.recommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-blue-600 mr-2">•</span>
+                    {rec}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const QualityMetricCard = ({ title, score, trend, issues }) => {
+  const getScoreColor = (score) => {
+    if (score >= 90) return 'text-green-600';
+    if (score >= 70) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getTrendIcon = (trend) => {
+    if (trend > 0) return '↗️';
+    if (trend < 0) return '↘️';
+    return '→';
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-medium text-sm">{title}</h4>
+        <span className="text-xs text-gray-500">
+          {getTrendIcon(trend)} {Math.abs(trend || 0).toFixed(1)}%
+        </span>
+      </div>
+      <div className={`text-2xl font-bold ${getScoreColor(score)}`}>
+        {score}%
+      </div>
+      <div className="text-xs text-gray-600 mt-1">
+        {issues.length} issues detected
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+        <div 
+          className={`h-1 rounded-full ${
+            score >= 90 ? 'bg-green-600' : 
+            score >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+          }`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+### 🛠️ **Error Recovery & Retry Mechanisms**
+
+#### Intelligent Error Handling System
+```javascript
+class ETLErrorRecoverySystem {
+  constructor() {
+    this.retryStrategies = new Map();
+    this.errorClassifiers = new Map();
+    this.recoveryActions = new Map();
+    this.circuitBreakers = new Map();
+  }
+
+  async handleETLError(error, context) {
+    const classification = this.classifyError(error);
+    const strategy = this.determineRecoveryStrategy(classification, context);
+    
+    return await this.executeRecoveryStrategy(strategy, error, context);
+  }
+
+  classifyError(error) {
+    const classifiers = {
+      network: /network|timeout|connection/i,
+      validation: /validation|invalid|format/i,
+      business: /business.*rule|constraint/i,
+      system: /memory|disk|cpu/i,
+      data: /corrupt|missing|duplicate/i
+    };
+
+    for (const [type, pattern] of Object.entries(classifiers)) {
+      if (pattern.test(error.message)) {
+        return {
+          type,
+          severity: this.assessSeverity(error),
+          retryable: this.isRetryable(type),
+          recoverable: this.isRecoverable(type)
+        };
+      }
+    }
+
+    return {
+      type: 'unknown',
+      severity: 'high',
+      retryable: false,
+      recoverable: false
+    };
+  }
+
+  async executeRecoveryStrategy(strategy, error, context) {
+    const recovery = {
+      action: strategy.action,
+      attempts: 0,
+      maxAttempts: strategy.maxAttempts,
+      success: false,
+      recoveredData: null,
+      fallbackUsed: false
+    };
+
+    while (recovery.attempts < recovery.maxAttempts && !recovery.success) {
+      try {
+        recovery.attempts++;
+        
+        await this.waitForRetry(strategy, recovery.attempts);
+        
+        switch (strategy.action) {
+          case 'retry':
+            recovery.recoveredData = await this.retryOperation(context);
+            break;
+          case 'partial_recovery':
+            recovery.recoveredData = await this.partialRecovery(context, error);
+            break;
+          case 'fallback':
+            recovery.recoveredData = await this.fallbackRecovery(context);
+            recovery.fallbackUsed = true;
+            break;
+          case 'skip':
+            recovery.recoveredData = await this.skipAndContinue(context);
+            break;
+        }
+        
+        recovery.success = true;
+        
+      } catch (retryError) {
+        if (recovery.attempts >= recovery.maxAttempts) {
+          recovery.finalError = retryError;
+          break;
+        }
+      }
+    }
+
+    return recovery;
+  }
+
+  async partialRecovery(context, error) {
+    const { stage, batch, record } = context;
+    
+    if (stage === 'validation') {
+      // Try to fix common validation errors
+      if (error.type === 'currency_format') {
+        return this.fixCurrencyFormat(record);
+      }
+      if (error.type === 'date_format') {
+        return this.fixDateFormat(record);
+      }
+      if (error.type === 'missing_required') {
+        return this.fillMissingRequired(record);
+      }
+    }
+    
+    if (stage === 'transformation') {
+      // Apply default values or approximations
+      return this.applyDefaultTransformations(record);
+    }
+    
+    throw error; // Can't recover
+  }
+
+  async fallbackRecovery(context) {
+    const { stage, record } = context;
+    
+    // Use previous successful patterns
+    const fallbackData = await this.getFallbackData(record.claimantNumber);
+    
+    if (fallbackData) {
+      return {
+        ...record,
+        ...fallbackData,
+        flags: ['fallback_data_used'],
+        confidence: 'low'
+      };
+    }
+    
+    // Use statistical estimates
+    return this.generateStatisticalEstimates(record);
+  }
+
+  fixCurrencyFormat(record) {
+    const currencyFields = ['medicalAmount', 'pharmacyAmount', 'totalAmount'];
+    const fixed = { ...record };
+    
+    for (const field of currencyFields) {
+      if (fixed[field] && typeof fixed[field] === 'string') {
+        // Remove currency symbols and convert
+        const cleaned = fixed[field].replace(/[$,\s]/g, '');
+        const parsed = parseFloat(cleaned);
+        
+        if (!isNaN(parsed)) {
+          fixed[field] = parsed;
+          fixed.flags = fixed.flags || [];
+          fixed.flags.push(`${field}_format_corrected`);
+        }
+      }
+    }
+    
+    return fixed;
+  }
+
+  fixDateFormat(record) {
+    const dateFields = ['claimDate', 'serviceDate'];
+    const fixed = { ...record };
+    
+    for (const field of dateFields) {
+      if (fixed[field]) {
+        const date = this.parseFlexibleDate(fixed[field]);
+        if (date) {
+          fixed[field] = date.toISOString();
+          fixed.flags = fixed.flags || [];
+          fixed.flags.push(`${field}_format_corrected`);
+        }
+      }
+    }
+    
+    return fixed;
+  }
+
+  parseFlexibleDate(dateString) {
+    const formats = [
+      /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // MM/DD/YYYY
+      /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+      /(\d{1,2})-(\d{1,2})-(\d{4})/, // MM-DD-YYYY
+    ];
+    
+    for (const format of formats) {
+      const match = dateString.match(format);
+      if (match) {
+        const [, part1, part2, part3] = match;
+        // Try different interpretations
+        const attempts = [
+          new Date(part3, part1 - 1, part2), // MM/DD/YYYY
+          new Date(part1, part2 - 1, part3), // YYYY-MM-DD
+        ];
+        
+        for (const attempt of attempts) {
+          if (!isNaN(attempt.getTime())) {
+            return attempt;
+          }
+        }
+      }
+    }
+    
+    return null;
+  }
+}
+```
+
 ## Conclusion
 
-Step 3 provides users with comprehensive tools to review and validate their processed claims data. The interactive table, advanced filtering, high-cost analysis, and detailed claim views ensure users understand their data thoroughly before proceeding to visual analysis and reporting.
+Step 3 provides users with comprehensive tools to review and validate their processed claims data, enhanced with:
 
-The robust export capabilities and performance optimizations support both small and large healthcare organizations in their data review processes.
+- **Production ETL Pipeline**: Advanced extraction, transformation, and loading capabilities with intelligent error handling and recovery mechanisms
+- **Data Quality Framework**: Comprehensive quality assessment across six dimensions (completeness, accuracy, consistency, validity, uniqueness, timeliness)
+- **Real-time Monitoring**: Live dashboard for tracking ETL progress, quality metrics, and error analysis
+- **Advanced Transformations**: Business rule engine with stop loss calculations, rebate processing, and risk assessments
+- **Error Recovery System**: Intelligent error classification and recovery strategies with partial data recovery and fallback mechanisms
+
+The interactive table, advanced filtering, high-cost analysis, and detailed claim views ensure users understand their data thoroughly before proceeding to visual analysis and reporting. The robust export capabilities and performance optimizations support both small and large healthcare organizations in their data review processes.
+
+The comprehensive ETL framework provides production-grade data processing capabilities essential for handling sensitive healthcare information at scale while maintaining data quality and compliance standards.

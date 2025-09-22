@@ -60,31 +60,307 @@ The current healthcare dashboard shows strong foundational development with exce
 - No persistence layer
 
 **Required for Production**:
+
+## Complete Database Schema Design
+
+### Entity-Relationship Diagram (Text Format)
+```
+Clients (client_id PK, name, ... )         -- Each employer or client organization
+Users (user_id PK, email, name, role, client_id FK )   -- Basic user info and role; role could be admin/consultant/viewer
+MappingProfiles (profile_id PK, client_id FK, source_name, mapping_json, last_used, created_at)  -- Saved column mappings for a data source (e.g. Anthem claims)
+Uploads (upload_id PK, client_id FK, file_name, source_type, uploaded_by (FK to Users), uploaded_at, file_hash, status, error_log) 
+    -- Tracks each CSV upload, status (e.g. processed, error), and link to raw file in storage
+Claims (claim_id PK, client_id FK, claim_date, claim_type, amount, service_category, ... various fields ...) 
+    -- Stores normalized claim/expense records (medical and pharmacy claims could be in one table with type flag, or split if schemas differ)
+Budgets (budget_id PK, client_id FK, year, month, budget_medical, budget_pharmacy, budget_admin, ... ) 
+    -- Budget figures by month (and could include annual or YTD targets)
+Enrollments (enroll_id PK, client_id FK, month, member_count, employee_count, ...) 
+    -- Enrollment counts by month to compute PMPM/PEPM
+AdminFees (admin_id PK, client_id FK, month, amount)   -- Administrative fees paid (could be part of claims table as a type as well)
+Rebates (rebate_id PK, client_id FK, period, amount, type)  -- Pharmacy rebate amounts received
+StopLossReimbursements (stop_id PK, client_id FK, claim_id FK->Claims, amount, paid_date, carrier) 
+    -- Reimbursements for claims exceeding stop-loss threshold
+ReportRuns (report_id PK, client_id FK, run_date, run_by FK->Users, period_covered, source_uploads, output_path, stats_json) 
+    -- Record of each report generated, linking to which uploads or data it used, and where the PDF is stored in S3.
+```
+
+### Complete PostgreSQL Schema Implementation
 ```sql
 -- Healthcare Data Schema (PostgreSQL)
 CREATE SCHEMA healthcare_analytics;
 
-CREATE TABLE claims (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    claimant_number VARCHAR(50) NOT NULL,
-    service_type VARCHAR(50) NOT NULL,
-    icd_code VARCHAR(20),
-    medical_amount DECIMAL(10,2),
-    pharmacy_amount DECIMAL(10,2),
-    total_amount DECIMAL(10,2),
+-- Core entity tables
+CREATE TABLE clients (
+    client_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    contact_email VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE configurations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL,
-    monthly_budget DECIMAL(12,2),
-    stop_loss_threshold DECIMAL(10,2),
-    admin_fees JSONB,
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'consultant', 'viewer')),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP,
+    is_active BOOLEAN DEFAULT true
+);
+
+-- CSV upload and mapping tables
+CREATE TABLE mapping_profiles (
+    profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    source_name VARCHAR(255) NOT NULL,
+    mapping_json JSONB NOT NULL,
+    last_used TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE uploads (
+    upload_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    file_name VARCHAR(255) NOT NULL,
+    source_type VARCHAR(100),
+    uploaded_by UUID NOT NULL REFERENCES users(user_id),
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    file_hash VARCHAR(64) NOT NULL,
+    file_size BIGINT,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('pending', 'processing', 'completed', 'error')),
+    error_log TEXT,
+    record_count INTEGER,
+    s3_path VARCHAR(500)
+);
+
+-- Core data tables
+CREATE TABLE claims (
+    claim_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    upload_id UUID REFERENCES uploads(upload_id),
+    claimant_number VARCHAR(50) NOT NULL,
+    claim_date DATE NOT NULL,
+    claim_type VARCHAR(50) NOT NULL CHECK (claim_type IN ('medical', 'pharmacy', 'admin')),
+    service_type VARCHAR(100),
+    service_category VARCHAR(100),
+    icd_code VARCHAR(20),
+    medical_desc TEXT,
+    layman_term TEXT,
+    medical_amount DECIMAL(10,2) DEFAULT 0,
+    pharmacy_amount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE budgets (
+    budget_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+    budget_medical DECIMAL(12,2) NOT NULL DEFAULT 0,
+    budget_pharmacy DECIMAL(12,2) NOT NULL DEFAULT 0,
+    budget_admin DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total_budget DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(client_id, year, month)
+);
+
+CREATE TABLE enrollments (
+    enroll_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+    member_count INTEGER NOT NULL DEFAULT 0,
+    employee_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(client_id, year, month)
+);
+
+CREATE TABLE admin_fees (
+    admin_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+    amount DECIMAL(10,2) NOT NULL,
+    fee_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE rebates (
+    rebate_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    period VARCHAR(20) NOT NULL, -- e.g. "2025-Q1", "2025-01"
+    amount DECIMAL(10,2) NOT NULL,
+    rebate_type VARCHAR(100) NOT NULL CHECK (rebate_type IN ('pharmacy', 'medical', 'admin')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE stop_loss_reimbursements (
+    stop_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    claim_id UUID REFERENCES claims(claim_id),
+    amount DECIMAL(10,2) NOT NULL,
+    paid_date DATE,
+    carrier VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE report_runs (
+    report_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(client_id),
+    run_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    run_by UUID NOT NULL REFERENCES users(user_id),
+    period_covered VARCHAR(100) NOT NULL, -- e.g. "2025 YTD", "2025-Q3"
+    source_uploads UUID[] DEFAULT '{}', -- Array of upload_ids used
+    output_path VARCHAR(500), -- S3 path to generated PDF
+    stats_json JSONB, -- Summary stats at time of generation
+    report_type VARCHAR(50) DEFAULT 'standard'
+);
+
+-- Performance indexes
+CREATE INDEX idx_claims_client_date ON claims(client_id, claim_date);
+CREATE INDEX idx_claims_client_type ON claims(client_id, claim_type);
+CREATE INDEX idx_claims_amount ON claims(total_amount DESC);
+CREATE INDEX idx_claims_service_type ON claims(client_id, service_type);
+CREATE INDEX idx_uploads_client_status ON uploads(client_id, status);
+CREATE INDEX idx_uploads_hash ON uploads(file_hash);
+CREATE INDEX idx_budgets_client_period ON budgets(client_id, year, month);
+CREATE INDEX idx_users_client ON users(client_id);
+CREATE INDEX idx_users_email ON users(email);
+
+-- Audit log table for HIPAA compliance
+CREATE TABLE audit_log (
+    audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name VARCHAR(100) NOT NULL,
+    record_id UUID NOT NULL,
+    action VARCHAR(50) NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE', 'SELECT')),
+    user_id UUID REFERENCES users(user_id),
+    client_id UUID REFERENCES clients(client_id),
+    old_values JSONB,
+    new_values JSONB,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address INET,
+    user_agent TEXT
+);
+
+CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp);
+CREATE INDEX idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX idx_audit_log_table ON audit_log(table_name, record_id);
 ```
+
+### Database Configuration and Optimization
+```sql
+-- Connection pooling configuration
+-- Set in postgresql.conf or via environment
+max_connections = 100
+shared_buffers = 256MB
+effective_cache_size = 1GB
+work_mem = 4MB
+maintenance_work_mem = 64MB
+
+-- For analytics workloads
+random_page_cost = 1.1
+effective_io_concurrency = 200
+
+-- Logging for audit compliance
+log_statement = 'mod'  -- Log all data-modifying statements
+log_min_duration_statement = 1000  -- Log slow queries
+```
+
+---
+
+## Reference Architecture Diagrams
+
+### Prototype Architecture (Solo Dev, Render)
+A simplified all-in-one setup for MVP development:
+
+```
+[ User Browser ] 
+     │ (HTTPS)
+     ▼ 
+[ **Next.js 14 App** – Render Web Service ]  – (node/Express under the hood)
+     │    • Serves React frontend and handles API routes
+     │    • Auth via email magic link (NextAuth.js Email provider)
+     │    • CSV upload endpoint (parses & validates files)
+     │    • In-memory or lightweight queue for background tasks
+     │    • Generates PDF (Puppeteer/ChartJS) on demand
+     │ 
+     ├─→ **PostgreSQL (Free Tier)** – e.g. Render Postgres or Supabase (shared DB)
+     │      • Stores users, clients, mappings, processed data, report stats
+     │ 
+     ├─→ **Object Storage (S3-Compatible)** – e.g. S3, R2, or B2 bucket
+     │      • Stores raw CSV files and generated PDF reports
+     │      • Access via signed URLs or through the app backend
+     │ 
+     └─→ **Email Service** – e.g. SMTP or API for sending magic links 
+            (Minimal auth service, no user passwords stored)
+```
+
+**Data Flow in Prototype:**
+- Users upload CSV via the web UI
+- Next.js API receives it, uses a CSV parser to read and validate data
+- Cleaned data is stored into Postgres tables
+- When a report is requested, the server gathers data, renders charts and tables
+- PDF is generated via Puppeteer and stored in object storage
+
+### Enterprise Architecture (Scalable & Secure Cloud Deployment)
+A modular, production-ready setup with full security and compliance:
+
+```
+                [ User Browser ]
+                     │  (HTTPS through corporate IdP/WAF)
+                     ▼ 
+    [ **Next.js Frontend** ]  (React app, served via CDN or Edge)
+    [ **Next.js Server** ]  (Node SSR + API, in AWS ECS/EKS)
+          │    (Stateless app instances, auto-scaled)
+          │
+          │─── OIDC/SAML ──> [ **SSO Identity Provider** ] (Okta/Azure AD) 
+          │           (Handles login, MFA; issues tokens for app)
+          │
+          ├── REST/API calls ─► [ **Backend API Services** ] (microservices or lambdas)
+          │    e.g., dedicated service for heavy CSV processing if separated
+          │
+          ├─── DB queries ──► [ **PostgreSQL (AWS RDS)** ] 
+          │         (Multi-AZ, encrypted, SG-restricted access)
+          │
+          ├─── File I/O ───► [ **Object Storage (AWS S3)** ] 
+          │         (Private bucket, KMS encryption, accessed via VPC endpoint)
+          │
+          ├─── Cache/Queue ─► [ **Redis (ElastiCache)** ] 
+          │         (Session cache, rate limiter, also used by workers)
+          │
+          └─── Enqueues job ─► [ **Worker Processes** ] 
+                   (e.g. AWS SQS + AWS Lambda or ECS Tasks for:
+                    - CSV ETL normalization
+                    - Chart rendering & PDF generation)
+                     │ 
+                     ├─ DB writes/reads (store processed data, read reference data)
+                     ├─ Store output PDF to S3
+                     └─ Notify via DB or websocket that job is done
+```
+
+**Enterprise Enhancements:**
+- **Frontend**: Split into static frontend + server-side APIs, scaled horizontally
+- **Background Processing**: Long-running tasks offloaded to workers via queues
+- **Security**: All traffic encrypted, VPC isolation, WAF protection
+- **Compliance**: HIPAA-ready with audit trails and data encryption
+- **Monitoring**: Comprehensive logging, metrics, and alerting
+
+### Data Model & Storage Design Rationale
+
+**Tenancy**: All key tables have a client_id foreign key to segregate data. This ensures that if the app supports multiple employer clients, their data stays logically isolated. The application will enforce filters by client (e.g. users can only query their client_id data).
+
+**Claims/Expenses Data**: The Claims table holds detailed expenditures. It includes medical claims and pharmacy claims, differentiated by claim_type. For reporting mostly on totals and categories, a unified table with nullable fields works well, with a type field to filter categories.
+
+**Budget and Targets**: The Budgets table stores expected costs (e.g. monthly budget for medical claims, pharmacy, etc.) and enables computing Budget vs Actual and loss ratio (loss ratio = claims / budget). Monthly granularity enables YTD calculations by summing.
+
+**Utilization & Enrollment**: The Enrollments table provides denominators (member count, employee count each month) to calculate PMPM (Per Member Per Month) and PEPM (Per Employee Per Month) metrics. This is important for normalized comparisons over time and across groups.
+
+**Rebates & Stop-Loss**: Separate tables for pharmacy rebates and stop-loss reimbursements offset costs. The report displays net spend or lists these as credits. Stop-loss reimbursements link back to specific high-cost claims via claim_id.
+
+**ReportRuns**: Each time a user generates the 2-page PDF report, we log a ReportRuns entry. This includes which client and time, who ran it, what period it covers, and references to the underlying data sources. This helps with traceability: if numbers are questioned, we know exactly which data and when were used to generate that report.
 
 ---
 

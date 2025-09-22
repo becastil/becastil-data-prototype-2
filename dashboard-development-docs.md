@@ -574,27 +574,237 @@ Due to persistent syntax errors and complexity issues, performed complete rewrit
 - **Security**: HIPAA compliance requirements not addressed
 - **Infrastructure**: No production deployment strategy
 
-#### Required Production Stack:
+---
+
+## Recommended Production Tech Stack
+
+### MVP Stack (Solo Developer, 10-20 users)
+
+#### Frontend Architecture
+```javascript
+const mvpFrontendStack = {
+  framework: "Next.js 14 (React + TypeScript)",
+  router: "App Router for modern routing and performance",
+  styling: "Tailwind CSS + shadcn/ui components",
+  stateManagement: "React Hooks + React Query for API state",
+  charts: "Chart.js with react-chartjs-2 wrapper",
+  forms: "React Hook Form with Zod validation",
+  buildTool: "Next.js built-in bundler",
+  deployment: "Render static hosting (free tier)"
+};
+```
+
+#### Backend Architecture
+```javascript
+const mvpBackendStack = {
+  runtime: "Node.js 18+ LTS",
+  framework: "Next.js API routes (unified stack)",
+  database: "PostgreSQL (Supabase free tier - 500MB)",
+  orm: "Prisma for type-safe database access",
+  authentication: "NextAuth.js with magic link email provider",
+  fileStorage: "S3-compatible (Cloudflare R2 - 10GB free)",
+  emailService: "SendGrid free tier (100 emails/day)",
+  backgroundJobs: "In-process queue or Redis (Upstash free tier)",
+  hosting: "Render web service (free tier with auto-sleep)"
+};
+```
+
+#### PDF Generation & Charts
+```javascript
+const reportingStack = {
+  pdfGeneration: "Puppeteer (headless Chrome) for high-fidelity reports",
+  chartRendering: "Chart.js for both web and server-side rendering",
+  chartLibraryServer: "chartjs-node-canvas for PDF chart generation",
+  reportLayout: "React components rendered via Puppeteer",
+  styling: "Consistent CSS between web UI and PDF output"
+};
+```
+
+### Enterprise Stack (100+ users, production-ready)
+
+#### Cloud Infrastructure
+```javascript
+const enterpriseStack = {
+  frontend: {
+    framework: "Next.js 14 with TypeScript",
+    deployment: "AWS ECS/EKS (Dockerized) behind ALB",
+    cdn: "CloudFront for static assets and PDFs",
+    buildTool: "Next.js with custom Webpack config",
+    stateManagement: "Zustand or Redux Toolkit",
+    monitoring: "Sentry for error tracking"
+  },
+  backend: {
+    runtime: "Node.js 18+ LTS in containers",
+    framework: "Next.js API routes or separate Express.js",
+    database: "AWS RDS PostgreSQL (Multi-AZ, encrypted)",
+    orm: "Prisma with connection pooling",
+    authentication: "SSO (Okta/Azure AD) via SAML/OIDC",
+    authorization: "RBAC with JWT tokens",
+    fileStorage: "AWS S3 with KMS encryption",
+    queue: "AWS SQS for background jobs",
+    workers: "AWS Lambda or ECS tasks",
+    cache: "AWS ElastiCache Redis"
+  },
+  infrastructure: {
+    vpc: "Private VPC with public/private subnets",
+    loadBalancer: "Application Load Balancer with WAF",
+    secrets: "AWS Secrets Manager with rotation",
+    monitoring: "CloudWatch + Datadog/New Relic",
+    cicd: "GitHub Actions with AWS deployment",
+    backup: "Automated RDS snapshots + S3 versioning",
+    security: "HIPAA-compliant configuration with BAA"
+  }
+};
+```
+
+---
+
+## Cost Estimates by Phase
+
+### Prototype Phase (Solo Dev, ~10-20 users): $0–$50/month
+```javascript
+const prototypeCosts = {
+  hosting: "Render free tier ($0)",
+  database: "Supabase free tier - 500MB ($0)",
+  objectStorage: "Cloudflare R2 - 10GB free ($0)",
+  emailService: "SendGrid free tier - 100 emails/day ($0)",
+  backgroundJobs: "Upstash Redis free - 500K ops/month ($0)",
+  domain: "Optional custom domain (~$10/year)",
+  total: "$0-10/month (within free tiers)"
+};
+```
+
+### Small Team Deployment (~50-100 users): $50–$200/month
+```javascript
+const smallTeamCosts = {
+  hosting: "Render standard instance ($25/month)",
+  database: "Managed PostgreSQL with storage (~$50/month)",
+  objectStorage: "S3 costs as data grows ($1-5/month)",
+  redis: "Small Redis instance if free tier exceeded (~$10-20/month)",
+  emailNotifications: "Higher volume email service (~$5-10/month)",
+  monitoring: "Sentry Team plan if needed (~$20/month)",
+  total: "$100-200/month range"
+};
+```
+
+### Enterprise Deployment (100+ users): $200-$500/month
+```javascript
+const enterpriseCosts = {
+  database: "AWS RDS with replicas ($200-500/month)",
+  compute: "Multiple app servers/containers (~$100-200/month)",
+  storage: "S3 with moderate data accumulation (~$50/month)",
+  networking: "Load balancer, VPC endpoints (~$25/month)",
+  monitoring: "Comprehensive APM solution (~$50-100/month)",
+  security: "WAF, secrets management (~$25/month)",
+  backup: "Enhanced backup and DR (~$25/month)",
+  total: "$200-500/month for robust enterprise setup"
+};
+```
+
+---
+
+## Migration Path: Prototype → Enterprise
+
+### Phase 1: MVP Foundation (Weeks 1-2)
+```javascript
+const phase1Deliverables = {
+  coreFeatures: [
+    "Email-based authentication with magic links",
+    "CSV upload with flexible column mapping",
+    "Basic data validation and error handling",
+    "Professional 2-page PDF report generation",
+    "Simple multi-client awareness"
+  ],
+  infrastructure: "Render hosting with free-tier services",
+  timeline: "2 weeks for functional MVP"
+};
+```
+
+### Phase 2: Production Hardening (Weeks 3-6)
+```javascript
+const phase2Enhancements = {
+  features: [
+    "Background job processing for large files",
+    "Comprehensive audit logging",
+    "Role-based access control",
+    "Enhanced data validation and mapping profiles",
+    "Improved error handling and user feedback"
+  ],
+  infrastructure: "Upgrade to paid tiers, implement monitoring",
+  timeline: "4 weeks for production readiness"
+};
+```
+
+### Phase 3: Enterprise Migration (Weeks 7-12)
+```javascript
+const phase3Migration = {
+  features: [
+    "SSO integration (Okta/Azure AD)",
+    "HIPAA compliance measures",
+    "Advanced security hardening",
+    "Horizontal scaling architecture",
+    "Comprehensive backup and DR"
+  ],
+  infrastructure: "AWS deployment with VPC and enterprise security",
+  timeline: "6 weeks for enterprise deployment"
+};
+```
+
+---
+
+## Technology Decision Rationale
+
+### Why Next.js for Full-Stack Development?
+1. **Unified Stack**: Single TypeScript codebase for frontend and backend
+2. **API Routes**: Built-in backend without separate server setup
+3. **Performance**: Server-side rendering and static generation
+4. **Deployment**: Easy deployment to multiple platforms
+5. **Ecosystem**: Rich ecosystem of React libraries and tools
+
+### Why PostgreSQL for Healthcare Data?
+1. **ACID Compliance**: Critical for financial and health data integrity
+2. **JSON Support**: Flexible storage for configuration and mappings
+3. **Enterprise Ready**: Proven at scale with strong security features
+4. **Free Tiers**: Available in Supabase and other managed services
+5. **Migration Path**: Easy upgrade to AWS RDS for enterprise
+
+### Why Puppeteer for PDF Generation?
+1. **High Fidelity**: Exact reproduction of web UI in PDF format
+2. **Chart Consistency**: Same React components for web and PDF
+3. **Vector Graphics**: Scalable charts and text in PDFs
+4. **Styling Control**: Full CSS control over layout and formatting
+5. **Reliability**: Mature headless Chrome technology
+
+### Why Magic Link Authentication?
+1. **User Experience**: No passwords to remember or manage
+2. **Security**: Single-use tokens with expiration
+3. **Simplicity**: Minimal authentication flow
+4. **Enterprise Path**: Easy migration to SSO later
+5. **Compliance**: Suitable for healthcare environments
+
+---
+
+## Required Production Stack:
 ```javascript
 const productionStack = {
   frontend: {
-    framework: "React 18 with TypeScript",
-    buildTool: "Vite or Webpack",
-    stateManagement: "Zustand or Redux Toolkit",
-    deployment: "CDN + Container orchestration"
+    framework: "Next.js 14 with TypeScript",
+    buildTool: "Next.js built-in bundler",
+    stateManagement: "React Query + Zustand",
+    deployment: "AWS ECS/EKS or Render"
   },
   backend: {
     runtime: "Node.js 18+ LTS",
-    framework: "Express.js or Fastify",
+    framework: "Next.js API routes",
     database: "PostgreSQL with Prisma ORM",
-    authentication: "JWT + OAuth2",
+    authentication: "NextAuth.js → SSO migration",
     security: "HIPAA compliance measures"
   },
   infrastructure: {
-    containerization: "Docker + Kubernetes",
-    monitoring: "Prometheus + Grafana",
+    containerization: "Docker + AWS ECS/EKS",
+    monitoring: "CloudWatch + Sentry",
     cicd: "GitHub Actions",
-    cloud: "AWS/Azure/GCP"
+    cloud: "AWS with VPC deployment"
   }
 };
 ```

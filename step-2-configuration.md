@@ -1582,8 +1582,857 @@ const processLargeCSV = async (csvData, lineItems) => {
 - CSV column detection accuracy > 85%
 - User satisfaction with hybrid approach > 4.5/5
 
+---
+
+## Advanced Budget & Enrollment Tables Schema
+
+### 🗄️ **Production Database Schema for Configuration**
+
+#### Budget Configuration Tables
+```sql
+-- Core budget configuration table
+CREATE TABLE budget_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    fiscal_year INTEGER NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    version INTEGER DEFAULT 1,
+    
+    UNIQUE(organization_id, name, fiscal_year)
+);
+
+-- Monthly budget allocations
+CREATE TABLE budget_allocations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    budget_configuration_id UUID NOT NULL REFERENCES budget_configurations(id) ON DELETE CASCADE,
+    month_year DATE NOT NULL, -- First day of month (e.g., '2024-01-01')
+    
+    -- Budget Categories
+    medical_budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+    pharmacy_budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+    dental_budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+    vision_budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+    administrative_budget DECIMAL(15,2) NOT NULL DEFAULT 0,
+    stop_loss_premium DECIMAL(15,2) NOT NULL DEFAULT 0,
+    
+    -- Calculated fields
+    total_budget DECIMAL(15,2) GENERATED ALWAYS AS (
+        medical_budget + pharmacy_budget + dental_budget + 
+        vision_budget + administrative_budget + stop_loss_premium
+    ) STORED,
+    
+    -- Metadata
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(budget_configuration_id, month_year)
+);
+
+-- Budget line items for flexible configuration
+CREATE TABLE budget_line_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    budget_configuration_id UUID NOT NULL REFERENCES budget_configurations(id) ON DELETE CASCADE,
+    
+    -- Line item identification
+    name VARCHAR(255) NOT NULL,
+    category budget_category_enum NOT NULL,
+    subcategory VARCHAR(100),
+    
+    -- Data source configuration
+    data_source data_source_enum NOT NULL DEFAULT 'manual',
+    
+    -- Manual configuration
+    manual_amount DECIMAL(15,2),
+    rate_basis rate_basis_enum,
+    application_type application_type_enum,
+    start_month DATE,
+    end_month DATE,
+    
+    -- CSV mapping configuration
+    csv_column VARCHAR(255),
+    csv_date_range_start DATE,
+    csv_date_range_end DATE,
+    csv_aggregation_method aggregation_method_enum DEFAULT 'sum',
+    
+    -- Processing results
+    processed_values JSONB, -- Monthly values array
+    annual_total DECIMAL(15,2),
+    
+    -- Metadata
+    display_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Enrollment Data Tables
+```sql
+-- Organization enrollment master table
+CREATE TABLE enrollment_configurations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    name VARCHAR(255) NOT NULL,
+    effective_date DATE NOT NULL,
+    termination_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(organization_id, name)
+);
+
+-- Monthly enrollment data
+CREATE TABLE monthly_enrollment (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    enrollment_configuration_id UUID NOT NULL REFERENCES enrollment_configurations(id) ON DELETE CASCADE,
+    month_year DATE NOT NULL, -- First day of month
+    
+    -- Employee counts by tier
+    employee_count_total INTEGER NOT NULL DEFAULT 0,
+    employee_count_single INTEGER NOT NULL DEFAULT 0,
+    employee_count_family INTEGER NOT NULL DEFAULT 0,
+    
+    -- Member counts (covered lives)
+    member_count_total INTEGER NOT NULL DEFAULT 0,
+    member_count_medical INTEGER NOT NULL DEFAULT 0,
+    member_count_pharmacy INTEGER NOT NULL DEFAULT 0,
+    member_count_dental INTEGER NOT NULL DEFAULT 0,
+    member_count_vision INTEGER NOT NULL DEFAULT 0,
+    
+    -- Demographic breakdowns
+    member_count_adult INTEGER NOT NULL DEFAULT 0,
+    member_count_child INTEGER NOT NULL DEFAULT 0,
+    member_count_male INTEGER NOT NULL DEFAULT 0,
+    member_count_female INTEGER NOT NULL DEFAULT 0,
+    
+    -- COBRA and retiree tracking
+    cobra_members INTEGER NOT NULL DEFAULT 0,
+    retiree_members INTEGER NOT NULL DEFAULT 0,
+    
+    -- Waived employees
+    employees_waived_coverage INTEGER NOT NULL DEFAULT 0,
+    
+    -- Calculated fields
+    average_family_size DECIMAL(4,2) GENERATED ALWAYS AS (
+        CASE 
+            WHEN employee_count_total > 0 
+            THEN ROUND(member_count_total::DECIMAL / employee_count_total, 2)
+            ELSE 0 
+        END
+    ) STORED,
+    
+    participation_rate DECIMAL(5,2) GENERATED ALWAYS AS (
+        CASE 
+            WHEN (employee_count_total + employees_waived_coverage) > 0
+            THEN ROUND((employee_count_total::DECIMAL / (employee_count_total + employees_waived_coverage)) * 100, 2)
+            ELSE 0
+        END
+    ) STORED,
+    
+    -- Metadata
+    data_source VARCHAR(100), -- 'manual', 'csv_upload', 'api_import'
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(enrollment_configuration_id, month_year)
+);
+
+-- Plan-specific enrollment details
+CREATE TABLE plan_enrollment (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    monthly_enrollment_id UUID NOT NULL REFERENCES monthly_enrollment(id) ON DELETE CASCADE,
+    
+    -- Plan identification
+    plan_code VARCHAR(50) NOT NULL,
+    plan_name VARCHAR(255) NOT NULL,
+    plan_type plan_type_enum NOT NULL,
+    
+    -- Enrollment counts for this plan
+    employee_count INTEGER NOT NULL DEFAULT 0,
+    member_count INTEGER NOT NULL DEFAULT 0,
+    
+    -- Premium information
+    employee_premium DECIMAL(10,2),
+    employer_premium DECIMAL(10,2),
+    total_premium DECIMAL(10,2) GENERATED ALWAYS AS (employee_premium + employer_premium) STORED,
+    
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Enums and Constraints
+```sql
+-- Create custom types for configuration
+CREATE TYPE budget_category_enum AS ENUM (
+    'medical',
+    'pharmacy', 
+    'dental',
+    'vision',
+    'administrative',
+    'stop_loss',
+    'fees',
+    'rebates',
+    'adjustments'
+);
+
+CREATE TYPE data_source_enum AS ENUM (
+    'manual',
+    'csv',
+    'api'
+);
+
+CREATE TYPE rate_basis_enum AS ENUM (
+    'pepm',        -- Per Employee Per Month
+    'pmpm',        -- Per Member Per Month  
+    'monthly',     -- Fixed monthly amount
+    'annual',      -- Annual amount (divided by 12)
+    'quarterly',   -- Quarterly amount
+    'percentage'   -- Percentage of other values
+);
+
+CREATE TYPE application_type_enum AS ENUM (
+    'all_months',
+    'specific_month',
+    'date_range',
+    'quarterly',
+    'custom'
+);
+
+CREATE TYPE aggregation_method_enum AS ENUM (
+    'sum',
+    'average',
+    'first',
+    'last',
+    'min',
+    'max'
+);
+
+CREATE TYPE plan_type_enum AS ENUM (
+    'medical',
+    'pharmacy',
+    'dental', 
+    'vision',
+    'life',
+    'disability',
+    'fsa',
+    'hsa'
+);
+
+-- Indexes for performance
+CREATE INDEX idx_budget_allocations_config_month ON budget_allocations(budget_configuration_id, month_year);
+CREATE INDEX idx_budget_line_items_config_category ON budget_line_items(budget_configuration_id, category);
+CREATE INDEX idx_monthly_enrollment_config_month ON monthly_enrollment(enrollment_configuration_id, month_year);
+CREATE INDEX idx_plan_enrollment_monthly_plan ON plan_enrollment(monthly_enrollment_id, plan_code);
+
+-- Triggers for updated_at timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_budget_configurations_updated_at 
+    BEFORE UPDATE ON budget_configurations 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_budget_line_items_updated_at 
+    BEFORE UPDATE ON budget_line_items 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_enrollment_configurations_updated_at 
+    BEFORE UPDATE ON enrollment_configurations 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_monthly_enrollment_updated_at 
+    BEFORE UPDATE ON monthly_enrollment 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 📊 **Advanced Enrollment Analytics Views**
+
+#### Enrollment Trends View
+```sql
+CREATE VIEW enrollment_trends AS
+SELECT 
+    ec.organization_id,
+    ec.name as enrollment_config_name,
+    me.month_year,
+    me.employee_count_total,
+    me.member_count_total,
+    me.average_family_size,
+    me.participation_rate,
+    
+    -- Month-over-month changes
+    LAG(me.employee_count_total) OVER (
+        PARTITION BY me.enrollment_configuration_id 
+        ORDER BY me.month_year
+    ) as prev_month_employees,
+    
+    LAG(me.member_count_total) OVER (
+        PARTITION BY me.enrollment_configuration_id 
+        ORDER BY me.month_year
+    ) as prev_month_members,
+    
+    -- Calculate growth rates
+    CASE 
+        WHEN LAG(me.employee_count_total) OVER (
+            PARTITION BY me.enrollment_configuration_id 
+            ORDER BY me.month_year
+        ) > 0 
+        THEN ROUND(
+            ((me.employee_count_total - LAG(me.employee_count_total) OVER (
+                PARTITION BY me.enrollment_configuration_id 
+                ORDER BY me.month_year
+            ))::DECIMAL / LAG(me.employee_count_total) OVER (
+                PARTITION BY me.enrollment_configuration_id 
+                ORDER BY me.month_year
+            )) * 100, 2
+        )
+        ELSE NULL
+    END as employee_growth_rate,
+    
+    -- Year-over-year comparisons
+    LAG(me.employee_count_total, 12) OVER (
+        PARTITION BY me.enrollment_configuration_id 
+        ORDER BY me.month_year
+    ) as year_ago_employees,
+    
+    LAG(me.member_count_total, 12) OVER (
+        PARTITION BY me.enrollment_configuration_id 
+        ORDER BY me.month_year
+    ) as year_ago_members
+
+FROM enrollment_configurations ec
+JOIN monthly_enrollment me ON ec.id = me.enrollment_configuration_id
+ORDER BY ec.organization_id, me.month_year;
+```
+
+#### Budget Utilization View
+```sql
+CREATE VIEW budget_utilization AS
+SELECT 
+    bc.organization_id,
+    bc.name as budget_config_name,
+    ba.month_year,
+    
+    -- Budget amounts
+    ba.medical_budget,
+    ba.pharmacy_budget,
+    ba.dental_budget,
+    ba.vision_budget,
+    ba.administrative_budget,
+    ba.total_budget,
+    
+    -- Enrollment context
+    me.employee_count_total,
+    me.member_count_total,
+    
+    -- Per-member calculations
+    CASE 
+        WHEN me.member_count_total > 0 
+        THEN ROUND(ba.total_budget / me.member_count_total, 2)
+        ELSE NULL 
+    END as budget_pmpm,
+    
+    CASE 
+        WHEN me.employee_count_total > 0 
+        THEN ROUND(ba.total_budget / me.employee_count_total, 2)
+        ELSE NULL 
+    END as budget_pepm,
+    
+    -- Budget trends
+    LAG(ba.total_budget) OVER (
+        PARTITION BY ba.budget_configuration_id 
+        ORDER BY ba.month_year
+    ) as prev_month_budget,
+    
+    -- Quarterly totals
+    SUM(ba.total_budget) OVER (
+        PARTITION BY ba.budget_configuration_id, 
+        DATE_TRUNC('quarter', ba.month_year)
+    ) as quarterly_budget
+
+FROM budget_configurations bc
+JOIN budget_allocations ba ON bc.id = ba.budget_configuration_id
+LEFT JOIN enrollment_configurations ec ON bc.organization_id = ec.organization_id
+LEFT JOIN monthly_enrollment me ON ec.id = me.enrollment_configuration_id 
+    AND ba.month_year = me.month_year
+ORDER BY bc.organization_id, ba.month_year;
+```
+
+### 🔧 **Configuration Management API Endpoints**
+
+#### Budget Configuration Endpoints
+```javascript
+// POST /api/v1/budget-configurations
+const createBudgetConfiguration = {
+  method: 'POST',
+  path: '/api/v1/budget-configurations',
+  authentication: 'Bearer JWT token required',
+  
+  request: {
+    organizationId: 'UUID - Organization identifier',
+    name: 'string - Configuration name',
+    description: 'string - Optional description',
+    fiscalYear: 'integer - Fiscal year (e.g., 2024)',
+    lineItems: [
+      {
+        name: 'string - Line item name',
+        category: 'enum - Budget category',
+        dataSource: 'enum - manual|csv|api',
+        manualConfig: {
+          amount: 'number - Dollar amount',
+          rateBasis: 'enum - pepm|pmpm|monthly|annual',
+          applicationType: 'enum - Application type',
+          startMonth: 'date - Start month if applicable',
+          endMonth: 'date - End month if applicable'
+        },
+        csvConfig: {
+          column: 'string - CSV column name',
+          dateRangeStart: 'date - Start of date range',
+          dateRangeEnd: 'date - End of date range',
+          aggregationMethod: 'enum - Aggregation method'
+        }
+      }
+    ]
+  },
+  
+  response: {
+    success: {
+      budgetConfigurationId: 'UUID - Created configuration ID',
+      processedLineItems: 'Array of processed line items with calculated values',
+      monthlyAllocations: 'Array of monthly budget allocations',
+      validationResults: 'Validation warnings and recommendations'
+    }
+  }
+};
+
+// GET /api/v1/budget-configurations/:id/allocations
+const getBudgetAllocations = {
+  method: 'GET',
+  path: '/api/v1/budget-configurations/:id/allocations',
+  
+  query: {
+    startMonth: 'date - Optional start month filter',
+    endMonth: 'date - Optional end month filter',
+    includeProjections: 'boolean - Include forward projections'
+  },
+  
+  response: {
+    allocations: [
+      {
+        monthYear: 'date - Month/year',
+        medicalBudget: 'number - Medical budget',
+        pharmacyBudget: 'number - Pharmacy budget',
+        dentalBudget: 'number - Dental budget',
+        visionBudget: 'number - Vision budget',
+        administrativeBudget: 'number - Administrative budget',
+        totalBudget: 'number - Total monthly budget',
+        notes: 'string - Optional notes'
+      }
+    ],
+    summary: {
+      totalBudget: 'number - Total across all months',
+      averageMonthlyBudget: 'number - Average monthly amount',
+      projectedAnnualBudget: 'number - Projected annual total'
+    }
+  }
+};
+```
+
+#### Enrollment Management Endpoints
+```javascript
+// POST /api/v1/enrollment-configurations
+const createEnrollmentConfiguration = {
+  method: 'POST',
+  path: '/api/v1/enrollment-configurations',
+  
+  request: {
+    organizationId: 'UUID - Organization identifier',
+    name: 'string - Configuration name',
+    effectiveDate: 'date - Effective start date',
+    monthlyData: [
+      {
+        monthYear: 'date - Month/year',
+        employeeCountTotal: 'integer - Total employees',
+        employeeCountSingle: 'integer - Single coverage employees',
+        employeeCountFamily: 'integer - Family coverage employees',
+        memberCountTotal: 'integer - Total covered members',
+        memberCountMedical: 'integer - Members with medical coverage',
+        memberCountPharmacy: 'integer - Members with pharmacy coverage',
+        memberCountDental: 'integer - Members with dental coverage',
+        memberCountVision: 'integer - Members with vision coverage',
+        cobraMembers: 'integer - COBRA participants',
+        retireeMembers: 'integer - Retiree participants',
+        employeesWaivedCoverage: 'integer - Employees who waived coverage'
+      }
+    ]
+  },
+  
+  response: {
+    enrollmentConfigurationId: 'UUID - Created configuration ID',
+    processedMonths: 'integer - Number of months processed',
+    calculatedMetrics: {
+      averageFamilySize: 'number - Calculated average family size',
+      participationRate: 'number - Overall participation rate',
+      totalMemberMonths: 'integer - Total member months'
+    }
+  }
+};
+
+// GET /api/v1/enrollment-configurations/:id/trends
+const getEnrollmentTrends = {
+  method: 'GET',
+  path: '/api/v1/enrollment-configurations/:id/trends',
+  
+  query: {
+    startMonth: 'date - Start month for trends',
+    endMonth: 'date - End month for trends',
+    includePredictions: 'boolean - Include trend predictions'
+  },
+  
+  response: {
+    trends: [
+      {
+        monthYear: 'date - Month/year',
+        employeeCount: 'integer - Employee count',
+        memberCount: 'integer - Member count',
+        growthRate: 'number - Month-over-month growth rate',
+        seasonalityIndex: 'number - Seasonal adjustment factor'
+      }
+    ],
+    predictions: [
+      {
+        monthYear: 'date - Future month/year',
+        predictedEmployees: 'integer - Predicted employee count',
+        predictedMembers: 'integer - Predicted member count',
+        confidenceInterval: 'object - Upper and lower bounds'
+      }
+    ]
+  }
+};
+```
+
+### 📈 **Advanced Configuration Analytics**
+
+#### Configuration Impact Analysis
+```javascript
+// Analyze impact of configuration changes
+const analyzeConfigurationImpact = (currentConfig, proposedConfig, historicalData) => {
+  const impact = {
+    budgetImpact: calculateBudgetImpact(currentConfig, proposedConfig),
+    enrollmentSensitivity: analyzeEnrollmentSensitivity(proposedConfig, historicalData),
+    riskFactors: identifyRiskFactors(proposedConfig),
+    recommendations: generateRecommendations(proposedConfig, historicalData)
+  };
+  
+  return impact;
+};
+
+const calculateBudgetImpact = (current, proposed) => {
+  const currentAnnual = current.lineItems.reduce((sum, item) => sum + item.annualTotal, 0);
+  const proposedAnnual = proposed.lineItems.reduce((sum, item) => sum + item.annualTotal, 0);
+  
+  return {
+    absoluteChange: proposedAnnual - currentAnnual,
+    percentageChange: ((proposedAnnual - currentAnnual) / currentAnnual) * 100,
+    monthlyImpact: (proposedAnnual - currentAnnual) / 12,
+    breakdownByCategory: analyzeByCategory(current, proposed)
+  };
+};
+
+const analyzeEnrollmentSensitivity = (config, historicalData) => {
+  // Calculate how sensitive the budget is to enrollment changes
+  const pepmItems = config.lineItems.filter(item => item.rateBasis === 'pepm');
+  const pmpmItems = config.lineItems.filter(item => item.rateBasis === 'pmpm');
+  
+  const enrollmentVolatility = calculateEnrollmentVolatility(historicalData);
+  
+  return {
+    pepmSensitivity: {
+      totalAmount: pepmItems.reduce((sum, item) => sum + item.annualTotal, 0),
+      riskFactor: enrollmentVolatility.employeeVolatility,
+      potentialVariance: calculatePotentialVariance(pepmItems, enrollmentVolatility.employeeVolatility)
+    },
+    pmpmSensitivity: {
+      totalAmount: pmpmItems.reduce((sum, item) => sum + item.annualTotal, 0),
+      riskFactor: enrollmentVolatility.memberVolatility,
+      potentialVariance: calculatePotentialVariance(pmpmItems, enrollmentVolatility.memberVolatility)
+    }
+  };
+};
+```
+
+#### Configuration Validation Engine
+```javascript
+const validateConfigurationComprehensively = (configuration, enrollmentData, claimsData) => {
+  const validationResults = {
+    errors: [],
+    warnings: [],
+    recommendations: [],
+    dataQualityScore: 100
+  };
+  
+  // Validate budget reasonableness
+  const budgetValidation = validateBudgetReasonableness(configuration, claimsData);
+  if (!budgetValidation.isValid) {
+    validationResults.errors.push(...budgetValidation.errors);
+    validationResults.warnings.push(...budgetValidation.warnings);
+  }
+  
+  // Validate enrollment alignment
+  const enrollmentValidation = validateEnrollmentAlignment(configuration, enrollmentData);
+  if (!enrollmentValidation.isValid) {
+    validationResults.warnings.push(...enrollmentValidation.warnings);
+  }
+  
+  // Validate rate basis calculations
+  const rateBasisValidation = validateRateBasisCalculations(configuration, enrollmentData);
+  if (!rateBasisValidation.isValid) {
+    validationResults.errors.push(...rateBasisValidation.errors);
+  }
+  
+  // Generate recommendations
+  validationResults.recommendations = generateConfigurationRecommendations(
+    configuration, 
+    enrollmentData, 
+    claimsData
+  );
+  
+  // Calculate overall data quality score
+  validationResults.dataQualityScore = calculateDataQualityScore(validationResults);
+  
+  return validationResults;
+};
+
+const validateBudgetReasonableness = (config, claimsData) => {
+  const errors = [];
+  const warnings = [];
+  
+  const totalBudget = config.lineItems.reduce((sum, item) => sum + item.annualTotal, 0);
+  const totalClaims = claimsData.reduce((sum, claim) => sum + claim.Total, 0);
+  
+  // Check if budget is reasonable compared to claims
+  if (totalBudget < totalClaims * 0.8) {
+    warnings.push('Budget appears low compared to historical claims data');
+  }
+  
+  if (totalBudget > totalClaims * 3) {
+    warnings.push('Budget appears unusually high compared to claims data');
+  }
+  
+  // Check individual line item reasonableness
+  config.lineItems.forEach(item => {
+    if (item.category === 'administrative' && item.annualTotal > totalBudget * 0.3) {
+      warnings.push(`Administrative costs (${item.name}) exceed 30% of total budget`);
+    }
+    
+    if (item.rateBasis === 'pepm' && item.manualAmount > 1000) {
+      warnings.push(`PEPM amount for ${item.name} ($${item.manualAmount}) seems high`);
+    }
+    
+    if (item.rateBasis === 'pmpm' && item.manualAmount > 500) {
+      warnings.push(`PMPM amount for ${item.name} ($${item.manualAmount}) seems high`);
+    }
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  };
+};
+```
+
+### 📋 **Configuration Templates System**
+
+#### Predefined Configuration Templates
+```javascript
+const configurationTemplates = {
+  smallGroup: {
+    name: "Small Group (< 50 employees)",
+    description: "Optimized for small organizations with basic benefits",
+    lineItems: [
+      {
+        name: "Medical Claims",
+        category: "medical",
+        dataSource: "csv",
+        csvConfig: { aggregationMethod: "sum" }
+      },
+      {
+        name: "Pharmacy Claims",
+        category: "pharmacy", 
+        dataSource: "csv",
+        csvConfig: { aggregationMethod: "sum" }
+      },
+      {
+        name: "Administrative Fees",
+        category: "administrative",
+        dataSource: "manual",
+        manualConfig: { amount: 25, rateBasis: "pepm", applicationType: "all_months" }
+      },
+      {
+        name: "Stop Loss Premium",
+        category: "stop_loss",
+        dataSource: "manual", 
+        manualConfig: { amount: 15, rateBasis: "pmpm", applicationType: "all_months" }
+      }
+    ]
+  },
+  
+  midMarket: {
+    name: "Mid-Market (50-500 employees)",
+    description: "Comprehensive benefits with detailed tracking",
+    lineItems: [
+      {
+        name: "Domestic Medical Facility",
+        category: "medical",
+        dataSource: "csv",
+        csvConfig: { aggregationMethod: "sum" }
+      },
+      {
+        name: "Non-Domestic Medical",
+        category: "medical", 
+        dataSource: "csv",
+        csvConfig: { aggregationMethod: "sum" }
+      },
+      {
+        name: "Pharmacy Claims",
+        category: "pharmacy",
+        dataSource: "csv", 
+        csvConfig: { aggregationMethod: "sum" }
+      },
+      {
+        name: "Pharmacy Rebates",
+        category: "rebates",
+        dataSource: "manual",
+        manualConfig: { amount: 5000, rateBasis: "monthly", applicationType: "all_months" }
+      },
+      {
+        name: "TPA Administrative Fees",
+        category: "administrative",
+        dataSource: "manual",
+        manualConfig: { amount: 35, rateBasis: "pepm", applicationType: "all_months" }
+      },
+      {
+        name: "Network Access Fees", 
+        category: "administrative",
+        dataSource: "manual",
+        manualConfig: { amount: 8, rateBasis: "pmpm", applicationType: "all_months" }
+      },
+      {
+        name: "Stop Loss Premium",
+        category: "stop_loss",
+        dataSource: "manual",
+        manualConfig: { amount: 12, rateBasis: "pmpm", applicationType: "all_months" }
+      }
+    ]
+  },
+  
+  enterprise: {
+    name: "Enterprise (500+ employees)",
+    description: "Full-featured configuration with all benefit types",
+    lineItems: [
+      // Medical
+      {
+        name: "Domestic Medical Facility",
+        category: "medical",
+        dataSource: "csv"
+      },
+      {
+        name: "Non-Domestic Medical Facility", 
+        category: "medical",
+        dataSource: "csv"
+      },
+      {
+        name: "Non-Hospital Medical",
+        category: "medical",
+        dataSource: "csv"
+      },
+      // Pharmacy
+      {
+        name: "Retail Pharmacy",
+        category: "pharmacy",
+        dataSource: "csv"
+      },
+      {
+        name: "Specialty Pharmacy",
+        category: "pharmacy", 
+        dataSource: "csv"
+      },
+      {
+        name: "Pharmacy Rebates",
+        category: "rebates",
+        dataSource: "manual",
+        manualConfig: { amount: 15000, rateBasis: "monthly" }
+      },
+      // Ancillary Benefits
+      {
+        name: "Dental Claims",
+        category: "dental",
+        dataSource: "csv"
+      },
+      {
+        name: "Vision Claims", 
+        category: "vision",
+        dataSource: "csv"
+      },
+      // Administrative
+      {
+        name: "TPA Administrative Fees",
+        category: "administrative",
+        dataSource: "manual",
+        manualConfig: { amount: 25, rateBasis: "pepm" }
+      },
+      {
+        name: "Network Access Fees",
+        category: "administrative", 
+        dataSource: "manual",
+        manualConfig: { amount: 6, rateBasis: "pmpm" }
+      },
+      {
+        name: "Wellness Program Fees",
+        category: "administrative",
+        dataSource: "manual", 
+        manualConfig: { amount: 2, rateBasis: "pepm" }
+      },
+      // Stop Loss
+      {
+        name: "Specific Stop Loss Premium",
+        category: "stop_loss",
+        dataSource: "manual",
+        manualConfig: { amount: 8, rateBasis: "pmpm" }
+      },
+      {
+        name: "Aggregate Stop Loss Premium", 
+        category: "stop_loss",
+        dataSource: "manual",
+        manualConfig: { amount: 25000, rateBasis: "monthly" }
+      }
+    ]
+  }
+};
+```
+
 ## Conclusion
 
-Step 2 transforms traditional configuration from static forms into a dynamic, Excel-like intake system. The hybrid approach combining CSV data extraction with manual calculations provides maximum flexibility while maintaining the structure needed for comprehensive financial reporting.
+Step 2 transforms traditional configuration from static forms into a dynamic, Excel-like intake system. The enhanced system includes:
 
-The intelligent column detection and survey-style interface significantly reduces setup time while ensuring accuracy in financial modeling. Upon completion, the system generates a complete financial framework that drives all subsequent analysis, reporting, and decision-making processes.
+- **Production Database Schema**: Comprehensive table structure for budget configurations, enrollment data, and plan-specific details
+- **Advanced Analytics Views**: Built-in database views for enrollment trends and budget utilization analysis
+- **Configuration Templates**: Predefined templates for different organization sizes and complexity levels
+- **Comprehensive Validation**: Multi-layer validation engine with business rule checking and data quality scoring
+- **API Endpoints**: RESTful API design for configuration management and analytics
+- **Impact Analysis**: Advanced analytics to understand the financial impact of configuration changes
+
+The hybrid approach combining CSV data extraction with manual calculations provides maximum flexibility while maintaining the structure needed for comprehensive financial reporting. The intelligent column detection and survey-style interface significantly reduces setup time while ensuring accuracy in financial modeling.
+
+Upon completion, the system generates a complete financial framework that drives all subsequent analysis, reporting, and decision-making processes, with full database persistence and enterprise-grade configuration management capabilities.
