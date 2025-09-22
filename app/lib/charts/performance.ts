@@ -1,6 +1,6 @@
 // Performance optimization utilities for healthcare chart rendering
 
-import { ChartConfig, ChartRenderOptions } from '@/types/charts'
+import { ChartConfig, ChartRenderOptions } from '@/app/types/charts'
 
 // Cache interface for chart configurations and rendered images
 interface ChartCache {

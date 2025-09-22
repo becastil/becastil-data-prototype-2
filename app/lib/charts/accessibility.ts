@@ -1,6 +1,6 @@
 // Accessibility utilities for healthcare charts following WCAG 2.2 AA guidelines
 
-import { ChartConfig } from '@/types/charts'
+import { ChartConfig } from '@/app/types/charts'
 
 // Color contrast ratios for WCAG 2.2 AA compliance
 export const WCAG_CONTRAST_RATIOS = {

@@ -1,4 +1,4 @@
-import { ChartConfig, ChartTheme } from '@/types/charts'
+import { ChartConfig, ChartTheme } from '@/app/types/charts'
 
 // Healthcare-specific color palettes (WCAG 2.2 AA compliant)
 export const HEALTHCARE_THEMES: Record<string, ChartTheme> = {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ChartExportOptions } from '@/types/charts'
+import { ChartExportOptions } from '@/app/types/charts'
 
 interface ChartContainerProps {
   title: string

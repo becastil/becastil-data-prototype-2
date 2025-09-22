@@ -1,4 +1,4 @@
-import { ReportTemplate } from '@/types/charts'
+import { ReportTemplate } from '@/app/types/charts'
 
 // Healthcare report template for executive dashboards
 export const EXECUTIVE_REPORT_TEMPLATE: ReportTemplate = {

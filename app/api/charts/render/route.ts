@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
-import { createChartBuilder, transformStatsToChartData } from '@/lib/charts/chart-builder'
-import { ChartRenderOptions } from '@/types/charts'
+import { createServerSupabaseClient } from '@/app/lib/supabase-client'
+import { createChartBuilder, transformStatsToChartData } from '@/app/lib/charts/chart-builder'
+import { ChartRenderOptions } from '@/app/types/charts'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {

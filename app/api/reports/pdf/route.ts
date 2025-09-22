@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-client'
-import { createChartBuilder, transformStatsToChartData } from '@/lib/charts/chart-builder'
-import { PDFOptions } from '@/types/charts'
+import { createServerSupabaseClient } from '@/app/lib/supabase-client'
+import { createChartBuilder, transformStatsToChartData } from '@/app/lib/charts/chart-builder'
+import { PDFOptions } from '@/app/types/charts'
 
 // PDF template HTML structure
 function createPDFTemplate(charts: any[], organizationName: string, generatedDate: string): string {
@@ -434,7 +434,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       })
     )
 
-    return new Response(htmlContent, {
+    return new NextResponse(htmlContent, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
       },

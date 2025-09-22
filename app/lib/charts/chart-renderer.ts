@@ -1,7 +1,7 @@
 // This file will be implemented once Chart.js dependencies are installed
 // Server-side chart rendering using Chart.js and canvas
 
-import { ChartRenderOptions } from '@/types/charts'
+import { ChartRenderOptions } from '@/app/types/charts'
 
 // Placeholder implementation - will be completed after dependency installation
 export class ServerChartRenderer {

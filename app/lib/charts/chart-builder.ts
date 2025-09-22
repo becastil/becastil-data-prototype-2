@@ -4,7 +4,7 @@ import {
   KPIData, 
   ChartConfig,
   ChartTheme
-} from '@/types/charts'
+} from '@/app/types/charts'
 import {
   HEALTHCARE_THEMES,
   CLAIMS_TREND_CONFIG,

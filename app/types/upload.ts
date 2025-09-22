@@ -64,3 +64,16 @@ export interface StreamingResponse {
   done: boolean
   error?: string
 }
+
+export interface ProcessingResult {
+  success: boolean
+  recordsProcessed: number
+  totalRecords: number
+  errors: Array<{
+    row: number
+    message: string
+    severity: 'error' | 'warning'
+  }>
+  carrier?: string
+  jobId?: string
+}

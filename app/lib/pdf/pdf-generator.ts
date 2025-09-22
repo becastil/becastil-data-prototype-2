@@ -1,7 +1,7 @@
 // Server-side PDF generation using Puppeteer
 // This file will be implemented once Puppeteer dependencies are installed
 
-import { PDFOptions } from '@/types/charts'
+import { PDFOptions } from '@/app/types/charts'
 
 // Placeholder implementation - will be completed after dependency installation
 export class PDFGenerator {

@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import ClaimsTrendChart from '@/components/charts/ClaimsTrendChart'
-import CostBreakdownChart from '@/components/charts/CostBreakdownChart'
-import TopClaimantsChart from '@/components/charts/TopClaimantsChart'
-import KPICard from '@/components/charts/KPICard'
+import ClaimsTrendChart from '@/app/components/charts/ClaimsTrendChart'
+import CostBreakdownChart from '@/app/components/charts/CostBreakdownChart'
+import TopClaimantsChart from '@/app/components/charts/TopClaimantsChart'
+import KPICard from '@/app/components/charts/KPICard'
 
 export const metadata: Metadata = {
   title: 'Chart System Test - Healthcare Analytics',
