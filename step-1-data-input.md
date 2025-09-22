@@ -16,14 +16,40 @@ The Data Input Layer is the foundation of the Healthcare Analytics Dashboard, re
 
 ## Data Format Support
 
-### Two-Format CSV Upload System
+### Data Granularity & Format Selection System
 
-The Data Input Layer supports two distinct CSV formats to accommodate different organizational reporting structures:
+The Data Input Layer supports multiple data granularities and CSV formats to accommodate different organizational reporting structures and data availability:
 
-#### **Format 1: Financial Summary Report**
+#### **Data Granularity Options**
+
+**Option 1: Claim Line Detail** - Individual claim line items with full transaction details
+- Use case: Organizations with detailed claims processing data
+- Benefits: Maximum flexibility, drill-down capabilities, comprehensive analytics
+- Data volume: Higher (one row per claim line)
+
+**Option 2: Aggregated Summary** - Pre-summarized data by category/time period  
+- Use case: Organizations with pre-processed financial summaries
+- Benefits: Smaller file sizes, faster processing, simplified data management
+- Data volume: Lower (summarized totals)
+
+#### **Format 1: Claim Line Detail**
+```
+Structure: One row per claim line item
+Use Case: Detailed transaction-level data for comprehensive analytics
+Data Granularity: Line-level detail
+Example:
+ClaimID | ClaimantID | ServiceDate | ProviderID | ProcedureCode | Amount | ClaimType
+--------|------------|-------------|------------|---------------|--------|----------
+C001    | M12345     | 2024-01-15  | P789       | 99213         | 250.00 | Medical
+C002    | M12345     | 2024-01-15  | P456       | J1100         | 85.50  | Pharmacy
+C003    | M12346     | 2024-01-16  | P789       | 99214         | 350.00 | Medical
+```
+
+#### **Format 2: Financial Summary Report** (Aggregated)
 ```
 Structure: Row-based categories, Monthly columns
 Use Case: Comprehensive financial reports with hierarchical data
+Data Granularity: Aggregated by category and time period
 Example:
 Category                           | Jan-24  | Feb-24  | Mar-24  | ...
 -----------------------------------|---------|---------|---------|----
@@ -31,10 +57,11 @@ Domestic Medical Facility Claims   | 1250000 | 1180000 | 1320000 | ...
 Total Adjusted Medical Claims      | 1730000 | 1645000 | 1815000 | ...
 ```
 
-#### **Format 2: Monthly Time Series**
+#### **Format 3: Monthly Time Series** (Aggregated)
 ```
 Structure: Column-based categories, Time-series rows
 Use Case: Simple monthly summaries with flat structure
+Data Granularity: Aggregated by time period
 Example:
 month    | medicalClaims | rxClaims | adminFees | totalExpenses
 ---------|---------------|----------|-----------|---------------
@@ -42,94 +69,208 @@ Jan '25  | 70330         | 57561    | 1050000   | 1267943
 Feb '25  | 58612         | 76826    | 1050000   | 1275688
 ```
 
-### Format Detection and Selection
+### Data Granularity & Format Selection
 
 ```jsx
-const DataFormatSelector = ({ onFormatChange, detectedFormat }) => {
+const DataGranularityAndFormatSelector = ({ onSelectionChange, detectedFormat, detectedGranularity }) => {
+  const [selectedGranularity, setSelectedGranularity] = useState(detectedGranularity || 'aggregated');
   const [selectedFormat, setSelectedFormat] = useState(detectedFormat || 'auto');
   
-  const formats = [
+  const granularityOptions = [
     {
-      id: 'financial-report',
-      name: 'Financial Summary Report',
-      description: 'Row-based categories with monthly columns',
-      icon: '📊',
-      examples: ['Comprehensive P&L format', 'Hierarchical cost categories', 'Monthly breakdown columns'],
-      recommended: 'Large organizations with detailed reporting'
+      id: 'line-detail',
+      name: 'Claim Line Detail',
+      description: 'Individual claim line items with full transaction details',
+      icon: '🔍',
+      benefits: ['Maximum flexibility', 'Drill-down capabilities', 'Comprehensive analytics'],
+      considerations: ['Larger file sizes', 'Longer processing time'],
+      recommended: 'Organizations with detailed claims processing systems'
     },
     {
-      id: 'time-series',
-      name: 'Monthly Time Series',
-      description: 'Simple monthly totals in columns',
-      icon: '📈',
-      examples: ['Monthly summary data', 'Flat cost structure', 'Time-based rows'],
-      recommended: 'Small to medium organizations'
+      id: 'aggregated',
+      name: 'Aggregated Summary',
+      description: 'Pre-summarized data by category and time period',
+      icon: '📋',
+      benefits: ['Faster processing', 'Smaller file sizes', 'Simplified management'],
+      considerations: ['Less granular insights', 'Limited drill-down'],
+      recommended: 'Organizations with financial summary reports'
     }
   ];
+  
+  const getFormatsForGranularity = (granularity) => {
+    if (granularity === 'line-detail') {
+      return [
+        {
+          id: 'claim-line-detail',
+          name: 'Claim Line Detail',
+          description: 'One row per claim line item',
+          icon: '🔍',
+          examples: ['ClaimID, ClaimantID, ServiceDate', 'ProviderID, ProcedureCode, Amount', 'Detailed transaction records'],
+          recommended: 'Detailed claims data from processing systems'
+        }
+      ];
+    } else {
+      return [
+        {
+          id: 'financial-report',
+          name: 'Financial Summary Report',
+          description: 'Row-based categories with monthly columns',
+          icon: '📊',
+          examples: ['Comprehensive P&L format', 'Hierarchical cost categories', 'Monthly breakdown columns'],
+          recommended: 'Large organizations with detailed reporting'
+        },
+        {
+          id: 'time-series',
+          name: 'Monthly Time Series',
+          description: 'Simple monthly totals in columns',
+          icon: '📈',
+          examples: ['Monthly summary data', 'Flat cost structure', 'Time-based rows'],
+          recommended: 'Small to medium organizations'
+        }
+      ];
+    }
+  };
+  
+  const availableFormats = getFormatsForGranularity(selectedGranularity);
+
+  const handleGranularityChange = (granularity) => {
+    setSelectedGranularity(granularity);
+    // Reset format selection when granularity changes
+    setSelectedFormat('auto');
+    onSelectionChange({ granularity, format: 'auto' });
+  };
+
+  const handleFormatChange = (format) => {
+    setSelectedFormat(format);
+    onSelectionChange({ granularity: selectedGranularity, format });
+  };
 
   return (
-    <div className="format-selector-container">
+    <div className="granularity-format-selector-container">
+      {/* Auto-Detection Banner */}
       <div className="auto-detection-banner">
-        {detectedFormat && (
+        {(detectedGranularity || detectedFormat) && (
           <div className="detection-result">
             <span className="detection-icon">🔍</span>
-            <span>Auto-detected format: <strong>{formats.find(f => f.id === detectedFormat)?.name}</strong></span>
+            <span>Auto-detected: 
+              {detectedGranularity && <strong> {granularityOptions.find(g => g.id === detectedGranularity)?.name}</strong>}
+              {detectedFormat && <strong> • {availableFormats.find(f => f.id === detectedFormat)?.name}</strong>}
+            </span>
             <span className="confidence">Confidence: High</span>
           </div>
         )}
       </div>
       
-      <h3>Select Your Data Format</h3>
-      <p className="format-help">Choose the format that matches your CSV structure, or let us auto-detect it.</p>
-      
-      <div className="format-cards">
-        {formats.map(format => (
-          <div 
-            key={format.id}
-            className={`format-card ${selectedFormat === format.id ? 'selected' : ''}`}
-            onClick={() => {
-              setSelectedFormat(format.id);
-              onFormatChange(format.id);
-            }}
-          >
-            <div className="format-header">
-              <span className="format-icon">{format.icon}</span>
-              <h4>{format.name}</h4>
-            </div>
-            <p className="format-description">{format.description}</p>
-            
-            <div className="format-examples">
-              <h5>Examples:</h5>
-              <ul>
-                {format.examples.map((example, idx) => (
-                  <li key={idx}>{example}</li>
-                ))}
-              </ul>
-            </div>
-            
-            <div className="format-recommendation">
-              <strong>Best for:</strong> {format.recommended}
-            </div>
-            
-            {selectedFormat === format.id && (
-              <div className="selection-indicator">
-                <span className="checkmark">✓</span>
-                <span>Selected</span>
+      {/* Step 1: Data Granularity Selection */}
+      <div className="granularity-selection-section">
+        <h3>Step 1: Select Data Granularity</h3>
+        <p className="granularity-help">Choose the level of detail in your CSV data.</p>
+        
+        <div className="granularity-cards">
+          {granularityOptions.map(option => (
+            <div 
+              key={option.id}
+              className={`granularity-card ${selectedGranularity === option.id ? 'selected' : ''}`}
+              onClick={() => handleGranularityChange(option.id)}
+            >
+              <div className="granularity-header">
+                <span className="granularity-icon">{option.icon}</span>
+                <h4>{option.name}</h4>
               </div>
-            )}
-          </div>
-        ))}
+              <p className="granularity-description">{option.description}</p>
+              
+              <div className="granularity-benefits">
+                <h5>Benefits:</h5>
+                <ul>
+                  {option.benefits.map((benefit, idx) => (
+                    <li key={idx}>✓ {benefit}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="granularity-considerations">
+                <h5>Considerations:</h5>
+                <ul>
+                  {option.considerations.map((consideration, idx) => (
+                    <li key={idx}>• {consideration}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="granularity-recommendation">
+                <strong>Best for:</strong> {option.recommended}
+              </div>
+              
+              {selectedGranularity === option.id && (
+                <div className="selection-indicator">
+                  <span className="checkmark">✓</span>
+                  <span>Selected</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Step 2: Format Selection (appears after granularity is selected) */}
+      {selectedGranularity && selectedGranularity !== 'auto' && (
+        <div className="format-selection-section">
+          <h3>Step 2: Select Data Format</h3>
+          <p className="format-help">Choose the CSV structure that matches your data layout.</p>
+          
+          <div className="format-cards">
+            {availableFormats.map(format => (
+              <div 
+                key={format.id}
+                className={`format-card ${selectedFormat === format.id ? 'selected' : ''}`}
+                onClick={() => handleFormatChange(format.id)}
+              >
+                <div className="format-header">
+                  <span className="format-icon">{format.icon}</span>
+                  <h4>{format.name}</h4>
+                </div>
+                <p className="format-description">{format.description}</p>
+                
+                <div className="format-examples">
+                  <h5>Examples:</h5>
+                  <ul>
+                    {format.examples.map((example, idx) => (
+                      <li key={idx}>{example}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="format-recommendation">
+                  <strong>Best for:</strong> {format.recommended}
+                </div>
+                
+                {selectedFormat === format.id && (
+                  <div className="selection-indicator">
+                    <span className="checkmark">✓</span>
+                    <span>Selected</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
-      <div className="format-actions">
-        <button className="btn-secondary" onClick={() => setSelectedFormat('auto')}>
-          Auto-Detect Format
+      {/* Action Buttons */}
+      <div className="selection-actions">
+        <button className="btn-secondary" onClick={() => {
+          setSelectedGranularity('auto');
+          setSelectedFormat('auto');
+          onSelectionChange({ granularity: 'auto', format: 'auto' });
+        }}>
+          Auto-Detect Both
         </button>
         <button 
           className="btn-primary"
-          disabled={!selectedFormat || selectedFormat === 'auto'}
+          disabled={!selectedGranularity || selectedGranularity === 'auto' || !selectedFormat || selectedFormat === 'auto'}
         >
-          Continue with {formats.find(f => f.id === selectedFormat)?.name}
+          Continue with {selectedGranularity !== 'auto' ? granularityOptions.find(g => g.id === selectedGranularity)?.name : 'Auto-Detection'}
+          {selectedFormat !== 'auto' && ` • ${availableFormats.find(f => f.id === selectedFormat)?.name}`}
         </button>
       </div>
     </div>
@@ -183,10 +324,83 @@ flowchart TD
 - **Size Limit**: 10MB maximum
 - **Row Limit**: 10,000 claims maximum
 
-### Required Data Columns
+### Required Data Columns by Granularity
+
+#### **Claim Line Detail Format Requirements**
 ```javascript
-// Minimum required data structure
-const requiredFields = {
+// Required fields for line-level detail data
+const claimLineDetailFields = {
+  claimId: {
+    aliases: ['ClaimID', 'ClaimNumber', 'ClaimRef', 'ClaimReference'],
+    type: 'string',
+    required: true,
+    description: 'Unique identifier for each claim line'
+  },
+  claimantId: {
+    aliases: ['ClaimantID', 'MemberID', 'PatientID', 'SubscriberID'],
+    type: 'string',
+    required: true,
+    description: 'Unique identifier for the claimant/member'
+  },
+  serviceDate: {
+    aliases: ['ServiceDate', 'ClaimDate', 'TreatmentDate', 'DOS'],
+    type: 'date',
+    required: true,
+    description: 'Date of service or treatment'
+  },
+  amount: {
+    aliases: ['Amount', 'ClaimAmount', 'ChargeAmount', 'BilledAmount'],
+    type: 'number',
+    required: true,
+    description: 'Monetary amount for this claim line'
+  },
+  claimType: {
+    aliases: ['ClaimType', 'ServiceType', 'LineType', 'Category'],
+    type: 'string',
+    required: true,
+    description: 'Type of claim (Medical, Pharmacy, etc.)'
+  }
+};
+
+// Optional enhancement fields for claim line detail
+const claimLineDetailOptionalFields = {
+  providerId: {
+    aliases: ['ProviderID', 'ProviderNPI', 'Provider', 'ProviderNumber'],
+    type: 'string',
+    description: 'Healthcare provider identifier'
+  },
+  procedureCode: {
+    aliases: ['ProcedureCode', 'CPTCode', 'HCPCS', 'ServiceCode'],
+    type: 'string',
+    description: 'Medical procedure or service code'
+  },
+  diagnosisCode: {
+    aliases: ['DiagnosisCode', 'ICDCode', 'ICD10', 'DxCode'],
+    type: 'string',
+    description: 'Diagnosis code (ICD-10, etc.)'
+  },
+  description: {
+    aliases: ['Description', 'ServiceDescription', 'ProcedureDescription'],
+    type: 'string',
+    description: 'Human-readable description of service'
+  },
+  units: {
+    aliases: ['Units', 'Quantity', 'ServiceUnits'],
+    type: 'number',
+    description: 'Number of units/services provided'
+  },
+  placeOfService: {
+    aliases: ['PlaceOfService', 'POS', 'ServiceLocation'],
+    type: 'string',
+    description: 'Where the service was provided'
+  }
+};
+```
+
+#### **Aggregated Summary Format Requirements**
+```javascript
+// Minimum required data structure for aggregated data
+const aggregatedRequiredFields = {
   claimantIdentifier: {
     aliases: ['ClaimantNumber', 'MemberID', 'ID', 'PatientID'],
     type: 'string',
@@ -206,8 +420,8 @@ const requiredFields = {
   }
 };
 
-// Optional enhancement fields
-const optionalFields = {
+// Optional enhancement fields for aggregated data
+const aggregatedOptionalFields = {
   serviceType: {
     aliases: ['ServiceType', 'ClaimType', 'Service'],
     type: 'string',
@@ -593,9 +807,40 @@ const validateDataQuality = (data) => {
 };
 ```
 
-## Sample CSV Formats
+## Sample CSV Formats by Granularity
 
-### Format 1: Standard Claims File
+### **Claim Line Detail Format Examples**
+
+#### Example 1: Comprehensive Claim Line Detail
+```csv
+ClaimID,ClaimantID,ServiceDate,ProviderID,ProcedureCode,Amount,ClaimType,DiagnosisCode,Description,Units
+C001,M12345,2024-01-15,P789,99213,250.00,Medical,Z51.11,Office visit - established patient,1
+C002,M12345,2024-01-15,P456,J1100,85.50,Pharmacy,Z51.11,Dexamethasone injection,1
+C003,M12346,2024-01-16,P789,99214,350.00,Medical,M54.5,Office visit - comprehensive,1
+C004,M12346,2024-01-16,P123,71020,125.00,Medical,M54.5,X-ray lumbar spine,2
+C005,M12347,2024-01-17,P456,NDC123,75.25,Pharmacy,E11.9,Metformin 500mg,30
+```
+
+#### Example 2: Minimal Claim Line Detail
+```csv
+ClaimID,ClaimantID,ServiceDate,Amount,ClaimType
+C001,M12345,2024-01-15,250.00,Medical
+C002,M12345,2024-01-15,85.50,Pharmacy  
+C003,M12346,2024-01-16,350.00,Medical
+C004,M12347,2024-01-17,75.25,Pharmacy
+```
+
+#### Example 3: Alternative Column Names for Claim Lines
+```csv
+ClaimNumber,MemberID,DOS,ChargeAmount,ServiceType,CPTCode,ICDCode
+CLM001,12345,01/15/2024,250.00,Medical,99213,Z51.11
+CLM002,12345,01/15/2024,85.50,Rx,J1100,Z51.11
+CLM003,12346,01/16/2024,350.00,Medical,99214,M54.5
+```
+
+### **Aggregated Summary Format Examples**
+
+#### Example 1: Standard Aggregated Claims File
 ```csv
 ClaimantNumber,Medical,Rx,ServiceType,ICDCode,MedicalDesc
 12345,1500.00,250.00,Inpatient,Z51.11,Encounter for antineoplastic chemotherapy
@@ -603,7 +848,7 @@ ClaimantNumber,Medical,Rx,ServiceType,ICDCode,MedicalDesc
 12347,0.00,125.50,Pharmacy,E11.9,Type 2 diabetes mellitus
 ```
 
-### Format 2: Alternative Column Names
+#### Example 2: Alternative Aggregated Column Names
 ```csv
 MemberID,MedicalClaims,PharmacyCost,ClaimType,DiagnosisCode,Description
 M001,2500.00,300.00,Emergency,S72.001A,Fracture of unspecified part of neck
@@ -611,7 +856,7 @@ M002,450.00,75.00,Outpatient,H25.9,Unspecified age-related cataract
 M003,0.00,200.00,Pharmacy,F32.9,Major depressive disorder
 ```
 
-### Format 3: Minimal Required Fields
+#### Example 3: Minimal Aggregated Required Fields
 ```csv
 ID,Medical,Rx
 1001,850.00,125.00
@@ -776,24 +1021,71 @@ class CSVFormatDetector {
     const contentAnalysis = this.analyzeContent(csvData);
     const patternAnalysis = this.analyzePatterns(headers);
 
-    // Format 1: Financial Summary Report Detection
+    // Format Detection: Check all three format types
+    const claimLineIndicators = this.checkClaimLineDetailFormat(structureAnalysis, contentAnalysis, patternAnalysis);
     const reportIndicators = this.checkFinancialReportFormat(structureAnalysis, contentAnalysis, patternAnalysis);
-    
-    // Format 2: Time Series Detection  
     const timeSeriesIndicators = this.checkTimeSeriesFormat(structureAnalysis, contentAnalysis, patternAnalysis);
 
-    // Determine best match
-    if (reportIndicators.score > timeSeriesIndicators.score) {
-      detection.format = 'financial-report';
-      detection.confidence = reportIndicators.score;
-      detection.indicators = reportIndicators.indicators;
-    } else {
-      detection.format = 'time-series';
-      detection.confidence = timeSeriesIndicators.score;
-      detection.indicators = timeSeriesIndicators.indicators;
-    }
+    // Determine best match based on highest score
+    const allFormats = [
+      { format: 'claim-line-detail', ...claimLineIndicators, granularity: 'line-detail' },
+      { format: 'financial-report', ...reportIndicators, granularity: 'aggregated' },
+      { format: 'time-series', ...timeSeriesIndicators, granularity: 'aggregated' }
+    ];
+
+    const bestMatch = allFormats.reduce((best, current) => 
+      current.score > best.score ? current : best
+    );
+
+    detection.format = bestMatch.format;
+    detection.granularity = bestMatch.granularity;
+    detection.confidence = bestMatch.score;
+    detection.indicators = bestMatch.indicators;
 
     return detection;
+  }
+
+  static checkClaimLineDetailFormat(structure, content, patterns) {
+    let score = 0;
+    const indicators = [];
+
+    // Check for claim ID column
+    if (patterns.hasClaimIdColumn) {
+      score += 35;
+      indicators.push('Claim ID column detected');
+    }
+
+    // Check for service date column
+    if (patterns.hasServiceDateColumn) {
+      score += 30;
+      indicators.push('Service date column found');
+    }
+
+    // Check for individual amount column (not aggregated)
+    if (patterns.hasIndividualAmountColumn) {
+      score += 25;
+      indicators.push('Individual amount column detected');
+    }
+
+    // Check for line-level structure (many rows, detailed data)
+    if (structure.rowCount > 100 && structure.columnCount >= 5) {
+      score += 15;
+      indicators.push('Line-level data structure detected');
+    }
+
+    // Check for procedure/service codes
+    if (patterns.hasProcedureCodeColumn) {
+      score += 10;
+      indicators.push('Procedure/service codes found');
+    }
+
+    // Check for provider information
+    if (patterns.hasProviderColumn) {
+      score += 5;
+      indicators.push('Provider information detected');
+    }
+
+    return { score, indicators };
   }
 
   static checkFinancialReportFormat(structure, content, patterns) {
@@ -892,10 +1184,19 @@ class CSVFormatDetector {
 
   static analyzePatterns(headers) {
     return {
+      // Existing patterns for aggregated formats
       hasCategoryColumn: this.detectCategoryColumn(headers),
       hasTimeColumn: this.detectTimeColumn(headers),
       monthColumnsCount: this.countMonthColumns(headers),
       numericColumnCount: this.countNumericColumns(headers),
+      
+      // New patterns for claim line detail format
+      hasClaimIdColumn: this.detectClaimIdColumn(headers),
+      hasServiceDateColumn: this.detectServiceDateColumn(headers),
+      hasIndividualAmountColumn: this.detectIndividualAmountColumn(headers),
+      hasProcedureCodeColumn: this.detectProcedureCodeColumn(headers),
+      hasProviderColumn: this.detectProviderColumn(headers),
+      
       headers
     };
   }
@@ -938,6 +1239,54 @@ class CSVFormatDetector {
     
     const allText = categoryNames.join(' ').toLowerCase();
     return financialTerms.some(term => allText.includes(term));
+  }
+
+  // New detection methods for claim line detail format
+  static detectClaimIdColumn(headers) {
+    const claimIdIndicators = ['claimid', 'claimnumber', 'claimref', 'claimreference', 'clm'];
+    return headers.some(header => 
+      claimIdIndicators.some(indicator => 
+        header.toLowerCase().replace(/[^a-z]/g, '').includes(indicator)
+      )
+    );
+  }
+
+  static detectServiceDateColumn(headers) {
+    const serviceDateIndicators = ['servicedate', 'claimdate', 'treatmentdate', 'dos', 'dateofservice'];
+    return headers.some(header => 
+      serviceDateIndicators.some(indicator => 
+        header.toLowerCase().replace(/[^a-z]/g, '').includes(indicator)
+      )
+    );
+  }
+
+  static detectIndividualAmountColumn(headers) {
+    const amountIndicators = ['amount', 'chargeamount', 'billedamount', 'cost', 'charge'];
+    // Look for singular amount columns (not medical/rx specific)
+    return headers.some(header => {
+      const cleanHeader = header.toLowerCase().replace(/[^a-z]/g, '');
+      return amountIndicators.some(indicator => 
+        cleanHeader === indicator || cleanHeader.includes(indicator)
+      ) && !cleanHeader.includes('medical') && !cleanHeader.includes('rx') && !cleanHeader.includes('pharmacy');
+    });
+  }
+
+  static detectProcedureCodeColumn(headers) {
+    const procedureIndicators = ['procedurecode', 'cptcode', 'hcpcs', 'servicecode', 'cpt', 'procedure'];
+    return headers.some(header => 
+      procedureIndicators.some(indicator => 
+        header.toLowerCase().replace(/[^a-z]/g, '').includes(indicator)
+      )
+    );
+  }
+
+  static detectProviderColumn(headers) {
+    const providerIndicators = ['providerid', 'providernpi', 'provider', 'providernumber', 'npi'];
+    return headers.some(header => 
+      providerIndicators.some(indicator => 
+        header.toLowerCase().replace(/[^a-z]/g, '').includes(indicator)
+      )
+    );
   }
 }
 ```
@@ -1324,6 +1673,295 @@ class TimeSeriesParser {
     }
   }
 }
+
+class ClaimLineDetailParser {
+  static parse(csvData, headers) {
+    const result = {
+      format: 'claim-line-detail',
+      granularity: 'line-detail',
+      data: {},
+      metadata: {
+        claimLines: [],
+        claimants: new Set(),
+        dateRange: { earliest: null, latest: null },
+        claimTypes: new Set(),
+        providers: new Set(),
+        totalLines: 0
+      },
+      validation: {
+        missingData: [],
+        invalidDates: [],
+        duplicateLines: [],
+        dataQualityIssues: []
+      }
+    };
+
+    // Identify column mappings
+    result.metadata.columnMappings = this.identifyClaimLineColumns(headers);
+    
+    // Parse claim line data
+    const claimLineData = this.parseClaimLineData(csvData, headers, result.metadata);
+    result.data = claimLineData.aggregatedData;
+    result.metadata.claimLines = claimLineData.rawLines;
+    result.metadata.totalLines = claimLineData.rawLines.length;
+
+    // Generate summary statistics
+    this.generateSummaryStatistics(result);
+
+    // Validate data consistency
+    this.validateClaimLineData(result);
+
+    return result;
+  }
+
+  static identifyClaimLineColumns(headers) {
+    const mappings = {};
+    
+    // Required field mappings
+    mappings.claimId = this.findColumnMatch(headers, ['claimid', 'claimnumber', 'claimref', 'claimreference']);
+    mappings.claimantId = this.findColumnMatch(headers, ['claimantid', 'memberid', 'patientid', 'subscriberid']);
+    mappings.serviceDate = this.findColumnMatch(headers, ['servicedate', 'claimdate', 'treatmentdate', 'dos']);
+    mappings.amount = this.findColumnMatch(headers, ['amount', 'chargeamount', 'billedamount', 'cost']);
+    mappings.claimType = this.findColumnMatch(headers, ['claimtype', 'servicetype', 'linetype', 'category']);
+
+    // Optional field mappings
+    mappings.providerId = this.findColumnMatch(headers, ['providerid', 'providernpi', 'provider']);
+    mappings.procedureCode = this.findColumnMatch(headers, ['procedurecode', 'cptcode', 'hcpcs', 'servicecode']);
+    mappings.diagnosisCode = this.findColumnMatch(headers, ['diagnosiscode', 'icdcode', 'icd10', 'dxcode']);
+    mappings.description = this.findColumnMatch(headers, ['description', 'servicedescription', 'proceduredescription']);
+    mappings.units = this.findColumnMatch(headers, ['units', 'quantity', 'serviceunits']);
+    mappings.placeOfService = this.findColumnMatch(headers, ['placeofservice', 'pos', 'servicelocation']);
+
+    return mappings;
+  }
+
+  static findColumnMatch(headers, indicators) {
+    return headers.find(header => 
+      indicators.some(indicator => 
+        header.toLowerCase().replace(/[^a-z]/g, '').includes(indicator)
+      )
+    );
+  }
+
+  static parseClaimLineData(csvData, headers, metadata) {
+    const rawLines = [];
+    const aggregatedData = {};
+    const claimantTotals = new Map();
+
+    csvData.forEach((row, index) => {
+      try {
+        const claimLine = this.parseClaimLine(row, metadata.columnMappings, index + 2);
+        if (claimLine) {
+          rawLines.push(claimLine);
+          
+          // Update metadata tracking
+          metadata.claimants.add(claimLine.claimantId);
+          metadata.claimTypes.add(claimLine.claimType);
+          if (claimLine.providerId) metadata.providers.add(claimLine.providerId);
+          
+          // Track date range
+          if (claimLine.serviceDate) {
+            if (!metadata.dateRange.earliest || claimLine.serviceDate < metadata.dateRange.earliest) {
+              metadata.dateRange.earliest = claimLine.serviceDate;
+            }
+            if (!metadata.dateRange.latest || claimLine.serviceDate > metadata.dateRange.latest) {
+              metadata.dateRange.latest = claimLine.serviceDate;
+            }
+          }
+
+          // Aggregate by claimant for dashboard compatibility
+          const claimantKey = claimLine.claimantId;
+          if (!claimantTotals.has(claimantKey)) {
+            claimantTotals.set(claimantKey, {
+              ClaimantNumber: claimantKey,
+              Medical: 0,
+              Rx: 0,
+              Total: 0,
+              claimCount: 0,
+              lastServiceDate: null
+            });
+          }
+
+          const claimantData = claimantTotals.get(claimantKey);
+          
+          // Categorize amounts by claim type
+          if (claimLine.claimType.toLowerCase().includes('medical') || 
+              claimLine.claimType.toLowerCase().includes('inpatient') ||
+              claimLine.claimType.toLowerCase().includes('outpatient')) {
+            claimantData.Medical += claimLine.amount;
+          } else if (claimLine.claimType.toLowerCase().includes('pharmacy') ||
+                     claimLine.claimType.toLowerCase().includes('rx') ||
+                     claimLine.claimType.toLowerCase().includes('drug')) {
+            claimantData.Rx += claimLine.amount;
+          } else {
+            // Default to medical for unknown types
+            claimantData.Medical += claimLine.amount;
+          }
+
+          claimantData.Total = claimantData.Medical + claimantData.Rx;
+          claimantData.claimCount++;
+          
+          if (claimLine.serviceDate && (!claimantData.lastServiceDate || claimLine.serviceDate > claimantData.lastServiceDate)) {
+            claimantData.lastServiceDate = claimLine.serviceDate;
+          }
+        }
+      } catch (error) {
+        metadata.validation = metadata.validation || { errors: [] };
+        metadata.validation.errors.push({
+          row: index + 2,
+          error: error.message
+        });
+      }
+    });
+
+    // Convert aggregated data to array format for dashboard compatibility
+    aggregatedData.claimants = Array.from(claimantTotals.values());
+
+    return { rawLines, aggregatedData };
+  }
+
+  static parseClaimLine(row, mappings, rowNumber) {
+    const claimLine = {};
+
+    // Required fields
+    claimLine.claimId = row[mappings.claimId];
+    if (!claimLine.claimId) {
+      throw new Error('Missing claim ID');
+    }
+
+    claimLine.claimantId = row[mappings.claimantId];
+    if (!claimLine.claimantId) {
+      throw new Error('Missing claimant ID');
+    }
+
+    claimLine.amount = parseFloat(row[mappings.amount] || 0);
+    if (isNaN(claimLine.amount)) {
+      throw new Error('Invalid amount value');
+    }
+
+    claimLine.claimType = row[mappings.claimType] || 'Medical';
+
+    // Parse service date
+    if (mappings.serviceDate && row[mappings.serviceDate]) {
+      try {
+        claimLine.serviceDate = new Date(row[mappings.serviceDate]);
+        if (isNaN(claimLine.serviceDate.getTime())) {
+          claimLine.serviceDate = null;
+        }
+      } catch {
+        claimLine.serviceDate = null;
+      }
+    }
+
+    // Optional fields
+    claimLine.providerId = row[mappings.providerId] || '';
+    claimLine.procedureCode = row[mappings.procedureCode] || '';
+    claimLine.diagnosisCode = row[mappings.diagnosisCode] || '';
+    claimLine.description = row[mappings.description] || '';
+    claimLine.units = parseFloat(row[mappings.units] || 1);
+    claimLine.placeOfService = row[mappings.placeOfService] || '';
+
+    // Add metadata
+    claimLine.rowNumber = rowNumber;
+    claimLine.processedAt = new Date();
+
+    return claimLine;
+  }
+
+  static generateSummaryStatistics(result) {
+    const { claimLines } = result.metadata;
+    const { claimants } = result.data;
+
+    result.metadata.summary = {
+      totalClaimLines: claimLines.length,
+      uniqueClaimants: result.metadata.claimants.size,
+      uniqueProviders: result.metadata.providers.size,
+      claimTypes: Array.from(result.metadata.claimTypes),
+      totalAmount: claimLines.reduce((sum, line) => sum + line.amount, 0),
+      averageLineAmount: claimLines.length > 0 ? claimLines.reduce((sum, line) => sum + line.amount, 0) / claimLines.length : 0,
+      dateRange: {
+        earliest: result.metadata.dateRange.earliest,
+        latest: result.metadata.dateRange.latest,
+        daysSpanned: result.metadata.dateRange.earliest && result.metadata.dateRange.latest ? 
+          Math.ceil((result.metadata.dateRange.latest - result.metadata.dateRange.earliest) / (1000 * 60 * 60 * 24)) : 0
+      }
+    };
+
+    // Per-claimant statistics
+    result.metadata.claimantStats = {
+      averageClaimsPerMember: claimants.length > 0 ? claimLines.length / claimants.length : 0,
+      averageAmountPerMember: claimants.length > 0 ? claimants.reduce((sum, c) => sum + c.Total, 0) / claimants.length : 0,
+      medicalVsRxRatio: {
+        totalMedical: claimants.reduce((sum, c) => sum + c.Medical, 0),
+        totalRx: claimants.reduce((sum, c) => sum + c.Rx, 0)
+      }
+    };
+  }
+
+  static validateClaimLineData(result) {
+    const { claimLines } = result.metadata;
+    const validation = result.validation;
+
+    // Check for duplicate claim lines
+    const claimLineIds = new Map();
+    claimLines.forEach(line => {
+      const key = `${line.claimId}-${line.claimantId}-${line.serviceDate}-${line.amount}`;
+      if (claimLineIds.has(key)) {
+        validation.duplicateLines.push({
+          claimId: line.claimId,
+          claimantId: line.claimantId,
+          originalRow: claimLineIds.get(key).rowNumber,
+          duplicateRow: line.rowNumber
+        });
+      } else {
+        claimLineIds.set(key, line);
+      }
+    });
+
+    // Check for missing service dates
+    const missingDates = claimLines.filter(line => !line.serviceDate);
+    if (missingDates.length > 0) {
+      validation.missingData.push({
+        field: 'serviceDate',
+        count: missingDates.length,
+        percentage: (missingDates.length / claimLines.length) * 100,
+        examples: missingDates.slice(0, 5).map(line => line.rowNumber)
+      });
+    }
+
+    // Check for zero or negative amounts
+    const invalidAmounts = claimLines.filter(line => line.amount <= 0);
+    if (invalidAmounts.length > 0) {
+      validation.dataQualityIssues.push({
+        issue: 'Zero or negative amounts',
+        count: invalidAmounts.length,
+        percentage: (invalidAmounts.length / claimLines.length) * 100,
+        severity: 'warning'
+      });
+    }
+
+    // Check for unusually high amounts (outliers)
+    const amounts = claimLines.map(line => line.amount);
+    const mean = amounts.reduce((sum, amt) => sum + amt, 0) / amounts.length;
+    const stdDev = Math.sqrt(amounts.reduce((sum, amt) => sum + Math.pow(amt - mean, 2), 0) / amounts.length);
+    const outlierThreshold = mean + (3 * stdDev);
+    
+    const outliers = claimLines.filter(line => line.amount > outlierThreshold);
+    if (outliers.length > 0) {
+      validation.dataQualityIssues.push({
+        issue: 'Potential outlier amounts',
+        count: outliers.length,
+        threshold: outlierThreshold,
+        severity: 'info',
+        examples: outliers.slice(0, 3).map(line => ({
+          claimId: line.claimId,
+          amount: line.amount,
+          rowNumber: line.rowNumber
+        }))
+      });
+    }
+  }
+}
 ```
 
 #### Format Detection Integration
@@ -1364,7 +2002,9 @@ const CSVUploadWithFormatDetection = () => {
   const parseWithFormat = async (csvData, headers, format) => {
     let result;
     
-    if (format === 'financial-report') {
+    if (format === 'claim-line-detail') {
+      result = ClaimLineDetailParser.parse(csvData, headers);
+    } else if (format === 'financial-report') {
       result = FinancialReportParser.parse(csvData, headers);
     } else {
       result = TimeSeriesParser.parse(csvData, headers);
@@ -1501,7 +2141,9 @@ const ParseResultsPreview = ({ result, validation }) => {
       </div>
       
       {/* Format-specific preview */}
-      {result.format === 'financial-report' ? (
+      {result.format === 'claim-line-detail' ? (
+        <ClaimLineDetailPreview result={result} />
+      ) : result.format === 'financial-report' ? (
         <FinancialReportPreview result={result} />
       ) : (
         <TimeSeriesPreview result={result} />
@@ -1631,6 +2273,172 @@ const TimeSeriesPreview = ({ result }) => {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+};
+
+const ClaimLineDetailPreview = ({ result }) => {
+  const { data, metadata } = result;
+  const { summary, claimantStats } = metadata;
+  const sampleClaimLines = metadata.claimLines.slice(0, 5);
+  
+  return (
+    <div className="claim-line-detail-preview">
+      <div className="preview-stats">
+        <div className="stat">
+          <span className="stat-label">Total Claim Lines:</span>
+          <span className="stat-value">{summary.totalClaimLines}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Unique Claimants:</span>
+          <span className="stat-value">{summary.uniqueClaimants}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Date Range:</span>
+          <span className="stat-value">
+            {summary.dateRange.daysSpanned} days
+            {summary.dateRange.earliest && summary.dateRange.latest && (
+              <span className="date-details">
+                ({summary.dateRange.earliest.toLocaleDateString()} - {summary.dateRange.latest.toLocaleDateString()})
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Total Amount:</span>
+          <span className="stat-value">{formatCurrency(summary.totalAmount)}</span>
+        </div>
+      </div>
+
+      <div className="aggregation-summary">
+        <h5>Aggregated Summary (Dashboard View)</h5>
+        <div className="aggregation-stats">
+          <div className="agg-stat">
+            <span className="agg-label">Avg Claims/Member:</span>
+            <span className="agg-value">{claimantStats.averageClaimsPerMember.toFixed(1)}</span>
+          </div>
+          <div className="agg-stat">
+            <span className="agg-label">Avg Amount/Member:</span>
+            <span className="agg-value">{formatCurrency(claimantStats.averageAmountPerMember)}</span>
+          </div>
+          <div className="agg-stat">
+            <span className="agg-label">Medical vs Rx:</span>
+            <span className="agg-value">
+              {formatCurrency(claimantStats.medicalVsRxRatio.totalMedical)} / {formatCurrency(claimantStats.medicalVsRxRatio.totalRx)}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="preview-tables">
+        {/* Sample Claim Lines */}
+        <div className="sample-lines-table">
+          <h5>Sample Claim Lines (Raw Data)</h5>
+          <table>
+            <thead>
+              <tr>
+                <th>Claim ID</th>
+                <th>Claimant ID</th>
+                <th>Service Date</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Provider</th>
+                <th>Procedure</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sampleClaimLines.map((line, index) => (
+                <tr key={index}>
+                  <td>{line.claimId}</td>
+                  <td>{line.claimantId}</td>
+                  <td>{line.serviceDate ? line.serviceDate.toLocaleDateString() : 'N/A'}</td>
+                  <td>{formatCurrency(line.amount)}</td>
+                  <td>
+                    <span className={`type-badge ${line.claimType.toLowerCase()}`}>
+                      {line.claimType}
+                    </span>
+                  </td>
+                  <td>{line.providerId || 'N/A'}</td>
+                  <td>{line.procedureCode || 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {metadata.claimLines.length > 5 && (
+            <div className="preview-more">
+              And {metadata.claimLines.length - 5} more claim lines...
+            </div>
+          )}
+        </div>
+
+        {/* Aggregated Claimant Summary */}
+        <div className="aggregated-claimants-table">
+          <h5>Aggregated by Claimant (Dashboard Format)</h5>
+          <table>
+            <thead>
+              <tr>
+                <th>Claimant ID</th>
+                <th>Medical Total</th>
+                <th>Rx Total</th>
+                <th>Grand Total</th>
+                <th>Claim Count</th>
+                <th>Last Service</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.claimants.slice(0, 5).map((claimant, index) => (
+                <tr key={index}>
+                  <td>{claimant.ClaimantNumber}</td>
+                  <td>{formatCurrency(claimant.Medical)}</td>
+                  <td>{formatCurrency(claimant.Rx)}</td>
+                  <td>
+                    <strong>{formatCurrency(claimant.Total)}</strong>
+                  </td>
+                  <td>{claimant.claimCount}</td>
+                  <td>{claimant.lastServiceDate ? claimant.lastServiceDate.toLocaleDateString() : 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {data.claimants.length > 5 && (
+            <div className="preview-more">
+              And {data.claimants.length - 5} more claimants...
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="data-insights">
+        <h5>Data Insights</h5>
+        <div className="insights-grid">
+          <div className="insight-card">
+            <h6>Claim Types Distribution</h6>
+            <ul>
+              {summary.claimTypes.map((type, index) => (
+                <li key={index}>{type}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="insight-card">
+            <h6>Processing Summary</h6>
+            <ul>
+              <li>Lines processed: {summary.totalClaimLines}</li>
+              <li>Average line amount: {formatCurrency(summary.averageLineAmount)}</li>
+              <li>Unique providers: {summary.uniqueProviders}</li>
+            </ul>
+          </div>
+          <div className="insight-card">
+            <h6>Data Quality</h6>
+            <ul>
+              <li className="quality-good">✓ Line-level detail preserved</li>
+              <li className="quality-good">✓ Aggregated for dashboard compatibility</li>
+              <li className="quality-info">ℹ Full drill-down capabilities available</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
