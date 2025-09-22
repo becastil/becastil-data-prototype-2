@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: healthcare-dashboard
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+    healthCheckPath: /
+    regions:
+      - oregon
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 70
+      targetCPUPercent: 70
+    disk:
+      name: healthcare-dashboard-disk
+      mountPath: /opt/render/project/.next/cache
+      sizeGB: 1
+    headers:
+      - path: /*
+        name: X-Robots-Tag
+        value: noindex
+      - path: /api/*
+        name: Access-Control-Allow-Origin
+        value: "*"
+      - path: /api/*
+        name: Access-Control-Allow-Methods
+        value: "GET, POST, PUT, DELETE, OPTIONS"
+      - path: /api/*
+        name: Access-Control-Allow-Headers
+        value: "Content-Type, Authorization"

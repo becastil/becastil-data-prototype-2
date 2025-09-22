@@ -1,0 +1,29 @@
+import { Configuration } from '../utils/finance';
+
+export const defaultConfig: Configuration = {
+  memberCount: 1250,
+  medicalBudget: 1200000,
+  rxBudget: 450000,
+  adminFeeMonthly: 87500,
+  rxRebatesMonthly: 5000,
+  stopLossThreshold: 100000,
+  stopLossReimbursementRate: 0.9,
+  lineItems: [
+    {
+      id: 'adminStopLossPremium',
+      label: 'Stop Loss Premium',
+      type: 'expense',
+      source: 'fixed',
+      basis: 'monthly',
+      amount: 12500,
+    },
+    {
+      id: 'wellnessProgram',
+      label: 'Wellness Program Investment',
+      type: 'expense',
+      source: 'fixed',
+      basis: 'pepm',
+      amount: 12,
+    },
+  ],
+};
