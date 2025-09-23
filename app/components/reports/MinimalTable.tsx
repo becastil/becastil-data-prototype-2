@@ -1,7 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-
 interface FixedCost {
   id: string
   name: string
@@ -13,13 +11,12 @@ interface MinimalTableProps {
 }
 
 export default function MinimalTable({ className = '' }: MinimalTableProps) {
-  const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([
+  // Static fixed costs - no user interaction
+  const fixedCosts: FixedCost[] = [
     { id: '1', name: 'Office Rent', amount: 12500 },
-    { id: '2', name: 'IT Infrastructure', amount: 8200 }
-  ])
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newCostName, setNewCostName] = useState('')
-  const [newCostAmount, setNewCostAmount] = useState('')
+    { id: '2', name: 'IT Infrastructure', amount: 8200 },
+    { id: '3', name: 'Insurance', amount: 6400 }
+  ]
 
   // Healthcare cost data
   const healthcareData = {
@@ -67,24 +64,6 @@ export default function MinimalTable({ className = '' }: MinimalTableProps) {
   const formatChange = (change: number) => {
     const sign = change > 0 ? '+' : ''
     return `${sign}${change.toFixed(1)}%`
-  }
-
-  const addFixedCost = () => {
-    if (newCostName && newCostAmount) {
-      const newCost: FixedCost = {
-        id: Date.now().toString(),
-        name: newCostName,
-        amount: parseFloat(newCostAmount)
-      }
-      setFixedCosts([...fixedCosts, newCost])
-      setNewCostName('')
-      setNewCostAmount('')
-      setShowAddForm(false)
-    }
-  }
-
-  const removeFixedCost = (id: string) => {
-    setFixedCosts(fixedCosts.filter(cost => cost.id !== id))
   }
 
   return (
@@ -270,59 +249,13 @@ export default function MinimalTable({ className = '' }: MinimalTableProps) {
         <h2 className="text-sm font-medium text-gray-500 mb-6">Administrative Costs</h2>
         <div className="space-y-3">
           {fixedCosts.map((cost) => (
-            <div key={cost.id} className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors group">
+            <div key={cost.id} className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
               <span className="text-gray-900">{cost.name}</span>
-              <div className="flex items-center gap-4">
-                <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                  {formatCurrency(cost.amount)}
-                </span>
-                <button
-                  onClick={() => removeFixedCost(cost.id)}
-                  className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 text-sm transition-opacity"
-                >
-                  Remove
-                </button>
-              </div>
+              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
+                {formatCurrency(cost.amount)}
+              </span>
             </div>
           ))}
-          
-          {showAddForm ? (
-            <div className="flex gap-3 py-2">
-              <input
-                type="text"
-                value={newCostName}
-                onChange={(e) => setNewCostName(e.target.value)}
-                placeholder="Cost category name"
-                className="flex-1 px-3 py-1 text-sm border border-gray-200 rounded"
-              />
-              <input
-                type="number"
-                value={newCostAmount}
-                onChange={(e) => setNewCostAmount(e.target.value)}
-                placeholder="Amount"
-                className="w-24 px-3 py-1 text-sm border border-gray-200 rounded"
-              />
-              <button
-                onClick={addFixedCost}
-                className="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors"
-              >
-                Add
-              </button>
-              <button
-                onClick={() => setShowAddForm(false)}
-                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="text-sm text-gray-600 hover:text-gray-900 py-2 transition-colors"
-            >
-              + Add category
-            </button>
-          )}
         </div>
         <div className="border-t border-gray-100 mt-4 pt-3">
           <div className="flex justify-between items-center text-sm text-gray-600">

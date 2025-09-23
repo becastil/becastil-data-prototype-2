@@ -223,38 +223,6 @@ export default function MinimalCharts() {
           <ReactECharts option={comparisonOption} style={{ height: '100%' }} />
         </div>
       </div>
-
-      {/* Top Cost Drivers */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-500 mb-8">Top Cost Drivers</h2>
-        <div className="space-y-3">
-          {topDrivers.map((driver, index) => (
-            <div key={driver.name} className="flex justify-between items-center py-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-6 text-center">{index + 1}</span>
-                <span className="text-gray-900">{driver.name}</span>
-              </div>
-              <div className="flex items-center gap-6">
-                <span className="text-xs text-gray-500">{driver.visits} visits</span>
-                <span className="tabular-nums text-gray-900 min-w-[80px] text-right">
-                  ${driver.amount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Key Insights */}
-      <div className="border-t border-gray-100 pt-8">
-        <h2 className="text-sm font-medium text-gray-500 mb-6">Key Insights</h2>
-        <div className="space-y-4 text-sm text-gray-700">
-          <p>• Claims volume increased 8.2% over the prior period, driven primarily by specialty care</p>
-          <p>• Pharmacy costs represent 30% of total expenses, with specialty drugs showing highest growth</p>
-          <p>• Five members account for 12% of total costs, indicating concentration risk</p>
-          <p>• PEPM trending above budget by $3.21, requiring attention to cost management</p>
-        </div>
-      </div>
     </div>
   )
 }
