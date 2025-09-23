@@ -1,310 +1,54 @@
 'use client'
 
-interface FixedCost {
-  id: string
-  name: string
-  amount: number
-}
-
-interface MinimalTableProps {
-  className?: string
-}
-
-export default function MinimalTable({ className = '' }: MinimalTableProps) {
-  // Static fixed costs - no user interaction
-  const fixedCosts: FixedCost[] = [
-    { id: '1', name: 'Office Rent', amount: 12500 },
-    { id: '2', name: 'IT Infrastructure', amount: 8200 },
-    { id: '3', name: 'Insurance', amount: 6400 }
+export default function MinimalTable() {
+  // Static healthcare data - ultra simplified
+  const data = [
+    { category: 'Medical', items: [
+      { name: 'Inpatient', amount: 425600 },
+      { name: 'Outpatient', amount: 318900 },
+      { name: 'Emergency', amount: 142300 },
+      { name: 'Specialty', amount: 89400 }
+    ]},
+    { category: 'Pharmacy', items: [
+      { name: 'Brand', amount: 186500 },
+      { name: 'Generic', amount: 94200 },
+      { name: 'Specialty', amount: 156800 }
+    ]},
+    { category: 'Administrative', items: [
+      { name: 'Office Rent', amount: 12500 },
+      { name: 'IT Infrastructure', amount: 8200 },
+      { name: 'Insurance', amount: 6400 }
+    ]}
   ]
 
-  // Healthcare cost data
-  const healthcareData = {
-    medicalClaims: {
-      inpatient: { current: 425600, prior: 398200, variance: 27400, change: 6.9 },
-      outpatient: { current: 318900, prior: 305100, variance: 13800, change: 4.5 },
-      emergency: { current: 142300, prior: 148500, variance: -6200, change: -4.2 },
-      specialty: { current: 89400, prior: 82100, variance: 7300, change: 8.9 },
-      preventive: { current: 56200, prior: 52800, variance: 3400, change: 6.4 }
-    },
-    pharmacyClaims: {
-      brand: { current: 186500, prior: 172300, variance: 14200, change: 8.2 },
-      generic: { current: 94200, prior: 89100, variance: 5100, change: 5.7 },
-      specialty: { current: 156800, prior: 142600, variance: 14200, change: 10.0 }
-    },
-    stopLoss: {
-      specific: { current: 45000, prior: 38000, variance: 7000, change: 18.4 },
-      aggregate: { current: 22000, prior: 20000, variance: 2000, change: 10.0 }
-    },
-    enrollment: {
-      totalMembers: { current: 12450, prior: 11890, variance: 560, change: 4.7 },
-      memberMonths: { current: 149400, prior: 142680, variance: 6720, change: 4.7 }
-    }
-  }
-
-  // Calculate totals
-  const medicalTotal = Object.values(healthcareData.medicalClaims).reduce((sum, item) => sum + item.current, 0)
-  const pharmacyTotal = Object.values(healthcareData.pharmacyClaims).reduce((sum, item) => sum + item.current, 0)
-  const stopLossTotal = Object.values(healthcareData.stopLoss).reduce((sum, item) => sum + item.current, 0)
-  const fixedCostsTotal = fixedCosts.reduce((sum, cost) => sum + cost.amount, 0)
-  const grandTotal = medicalTotal + pharmacyTotal + stopLossTotal + fixedCostsTotal
-
-  // Calculate PEPM
-  const totalPEPM = grandTotal / healthcareData.enrollment.memberMonths.current
+  const grandTotal = data.reduce((total, category) => 
+    total + category.items.reduce((sum, item) => sum + item.amount, 0), 0
+  )
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
-
-  const formatChange = (change: number) => {
-    const sign = change > 0 ? '+' : ''
-    return `${sign}${change.toFixed(1)}%`
+    return amount.toLocaleString()
   }
 
   return (
-    <div className={`space-y-12 ${className}`}>
-      {/* Medical Claims */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-500 mb-6">Medical Claims</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Inpatient</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.medicalClaims.inpatient.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.medicalClaims.inpatient.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.medicalClaims.inpatient.change)}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Outpatient</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.medicalClaims.outpatient.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.medicalClaims.outpatient.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.medicalClaims.outpatient.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Emergency</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.medicalClaims.emergency.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.medicalClaims.emergency.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.medicalClaims.emergency.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Specialty</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.medicalClaims.specialty.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.medicalClaims.specialty.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.medicalClaims.specialty.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Preventive</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.medicalClaims.preventive.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.medicalClaims.preventive.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.medicalClaims.preventive.change)}
-              </span>
-            </div>
+    <div className="space-y-12 text-left">
+      {data.map((category) => (
+        <div key={category.category}>
+          <div className="mb-6 text-sm text-gray-600">{category.category}</div>
+          <div className="space-y-4">
+            {category.items.map((item) => (
+              <div key={item.name} className="flex justify-between">
+                <span>{item.name}</span>
+                <span className="tabular-nums">{formatCurrency(item.amount)}</span>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="border-t border-gray-100 mt-4 pt-3">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(medicalTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Pharmacy Claims */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-500 mb-6">Pharmacy Claims</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Brand Drugs</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.pharmacyClaims.brand.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.pharmacyClaims.brand.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.pharmacyClaims.brand.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Generic Drugs</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.pharmacyClaims.generic.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.pharmacyClaims.generic.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.pharmacyClaims.generic.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Specialty Drugs</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.pharmacyClaims.specialty.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.pharmacyClaims.specialty.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.pharmacyClaims.specialty.change)}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-100 mt-4 pt-3">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(pharmacyTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Stop Loss */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-500 mb-6">Stop Loss</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Specific</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.stopLoss.specific.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.stopLoss.specific.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.stopLoss.specific.change)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-            <span className="text-gray-900">Aggregate</span>
-            <div className="flex items-center gap-6">
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(healthcareData.stopLoss.aggregate.current)}
-              </span>
-              <span className={`text-sm min-w-[50px] text-right ${
-                healthcareData.stopLoss.aggregate.change > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatChange(healthcareData.stopLoss.aggregate.change)}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-100 mt-4 pt-3">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(stopLossTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Administrative Costs */}
-      <div>
-        <h2 className="text-sm font-medium text-gray-500 mb-6">Administrative Costs</h2>
-        <div className="space-y-3">
-          {fixedCosts.map((cost) => (
-            <div key={cost.id} className="flex justify-between items-center py-2 hover:bg-gray-50 transition-colors">
-              <span className="text-gray-900">{cost.name}</span>
-              <span className="tabular-nums text-gray-900 min-w-[100px] text-right">
-                {formatCurrency(cost.amount)}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="border-t border-gray-100 mt-4 pt-3">
-          <div className="flex justify-between items-center text-sm text-gray-600">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(fixedCostsTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Totals */}
-      <div className="border-t border-gray-200 pt-6">
-        <div className="flex justify-between items-center text-xl font-light mb-8">
-          <span>Total Costs</span>
+      ))}
+      
+      <div className="pt-8">
+        <div className="flex justify-between text-lg">
+          <span>Total</span>
           <span className="tabular-nums">{formatCurrency(grandTotal)}</span>
-        </div>
-
-        {/* Enrollment & PEPM */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-4">Enrollment</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Total Members</span>
-                <span className="tabular-nums">{healthcareData.enrollment.totalMembers.current.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Member Months</span>
-                <span className="tabular-nums">{healthcareData.enrollment.memberMonths.current.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-4">PEPM Metrics</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Total PEPM</span>
-                <span className="tabular-nums">{formatCurrency(totalPEPM)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Medical PEPM</span>
-                <span className="tabular-nums">{formatCurrency(medicalTotal / healthcareData.enrollment.memberMonths.current)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Pharmacy PEPM</span>
-                <span className="tabular-nums">{formatCurrency(pharmacyTotal / healthcareData.enrollment.memberMonths.current)}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

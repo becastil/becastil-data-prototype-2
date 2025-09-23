@@ -9,36 +9,24 @@ export default function HealthcareReport() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Minimal header */}
-      <header className="border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 py-6 text-center">
-          <h1 className="text-lg font-normal mb-6">Healthcare Report</h1>
-          <nav className="flex justify-center gap-8 text-sm text-gray-600">
-            <button 
-              onClick={() => setCurrentView('table')}
-              className={`transition-colors ${
-                currentView === 'table' ? 'text-black' : 'hover:text-gray-900'
-              }`}
-            >
-              Table
-            </button>
-            <button 
-              onClick={() => setCurrentView('charts')}
-              className={`transition-colors ${
-                currentView === 'charts' ? 'text-black' : 'hover:text-gray-900'
-              }`}
-            >
-              Charts
-            </button>
-          </nav>
-        </div>
-      </header>
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <nav className="flex justify-center gap-12 mb-16">
+          <button 
+            onClick={() => setCurrentView('table')}
+            className={currentView === 'table' ? 'text-black' : 'text-gray-400'}
+          >
+            Table
+          </button>
+          <button 
+            onClick={() => setCurrentView('charts')}
+            className={currentView === 'charts' ? 'text-black' : 'text-gray-400'}
+          >
+            Charts
+          </button>
+        </nav>
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        {/* Table or Charts */}
         {currentView === 'table' ? <MinimalTable /> : <MinimalCharts />}
-      </main>
+      </div>
     </div>
   )
 }

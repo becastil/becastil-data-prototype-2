@@ -31,22 +31,18 @@ body {
 /* Ultra-minimalist styles */
 * {
   box-shadow: none !important;
+  transition: none !important;
 }
 
-/* Minimal hover states */
-.hover\:bg-gray-50:hover {
-  background-color: #fafafa !important;
-  transition: background-color 0.15s ease;
+/* Remove ALL hover states and focus states */
+*:hover {
+  background-color: inherit !important;
+  color: inherit !important;
 }
 
-/* Clean focus states */
-.focus\:outline-none:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-}
-
-.focus\:ring-1:focus {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Tabular numbers for consistency */
