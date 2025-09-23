@@ -1,6 +1,6 @@
 'use client'
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import ReactECharts from 'echarts-for-react'
 
 interface CostBreakdownData {
   name: string
@@ -30,46 +30,6 @@ const COLORS = {
   dark: ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#22d3ee']
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-          {data.name}
-        </p>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          <div>Amount: <span className="font-medium">${data.value.toLocaleString()}</span></div>
-          <div>Percentage: <span className="font-medium">{data.percentage}%</span></div>
-        </div>
-      </div>
-    )
-  }
-  return null
-}
-
-const CustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  if (percent < 0.05) return null // Don't show labels for slices smaller than 5%
-  
-  const RADIAN = Math.PI / 180
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
-  const x = cx + radius * Math.cos(-midAngle * RADIAN)
-  const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="white" 
-      textAnchor={x > cx ? 'start' : 'end'} 
-      dominantBaseline="central"
-      className="text-xs font-medium"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  )
-}
-
 export default function InteractiveCostBreakdownChart({
   data = mockData,
   height = 400,
@@ -77,6 +37,78 @@ export default function InteractiveCostBreakdownChart({
   theme = 'professional'
 }: InteractiveCostBreakdownChartProps) {
   const colors = COLORS[theme]
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e5e7eb',
+      textStyle: {
+        color: '#374151'
+      },
+      formatter: function (params: any) {
+        return `
+          <div style="font-weight: 600; margin-bottom: 8px;">${params.name}</div>
+          <div style="margin: 4px 0;">
+            <span style="color: #6b7280;">Amount:</span>
+            <span style="font-weight: 500; color: #1f2937; margin-left: 8px;">$${params.value.toLocaleString()}</span>
+          </div>
+          <div style="margin: 4px 0;">
+            <span style="color: #6b7280;">Percentage:</span>
+            <span style="font-weight: 500; color: #1f2937; margin-left: 8px;">${params.percent.toFixed(1)}%</span>
+          </div>
+        `
+      }
+    },
+    legend: {
+      orient: 'horizontal',
+      bottom: 10,
+      textStyle: {
+        color: '#6b7280',
+        fontSize: 12
+      }
+    },
+    series: [
+      {
+        name: 'Cost Breakdown',
+        type: 'pie',
+        radius: ['0%', '70%'],
+        center: ['50%', '45%'],
+        data: data.map((item, index) => ({
+          value: item.value,
+          name: item.name,
+          itemStyle: {
+            color: colors[index % colors.length],
+            borderRadius: 4,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            position: 'inside',
+            formatter: function (params: any) {
+              return params.percent >= 5 ? `${params.percent.toFixed(0)}%` : ''
+            },
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 12
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.3)'
+            }
+          }
+        })),
+        animationType: 'scale',
+        animationEasing: 'elasticOut',
+        animationDelay: function (idx: number) {
+          return Math.random() * 200
+        }
+      }
+    ]
+  }
 
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
@@ -89,42 +121,7 @@ export default function InteractiveCostBreakdownChart({
         </p>
       </div>
       
-      <ResponsiveContainer width="100%" height={height}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={CustomLabel}
-            outerRadius={Math.min(height * 0.35, 120)}
-            fill="#8884d8"
-            dataKey="value"
-            stroke="none"
-          >
-            {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={colors[index % colors.length]}
-                style={{
-                  filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))',
-                  cursor: 'pointer'
-                }}
-              />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            verticalAlign="bottom" 
-            height={36}
-            formatter={(value, entry: any) => (
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                {value}
-              </span>
-            )}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+      <ReactECharts option={option} style={{ height: `${height}px` }} />
     </div>
   )
 }

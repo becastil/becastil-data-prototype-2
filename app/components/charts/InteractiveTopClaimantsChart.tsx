@@ -1,6 +1,6 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import ReactECharts from 'echarts-for-react'
 
 interface TopClaimantsData {
   claimant: string
@@ -26,40 +26,6 @@ const mockData: TopClaimantsData[] = [
   { claimant: 'Patient H', amount: 18600, claims: 5 }
 ]
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-          {label}
-        </p>
-        <div className="space-y-1 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full" />
-            <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              ${data.amount.toLocaleString()}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-gray-400 rounded-full" />
-            <span className="text-gray-600 dark:text-gray-400">Claims:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              {data.claims}
-            </span>
-          </div>
-          <div className="pt-1 border-t border-gray-200 dark:border-gray-600">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Avg per claim: ${(data.amount / data.claims).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-  return null
-}
 
 export default function InteractiveTopClaimantsChart({
   data = mockData,
@@ -75,6 +41,101 @@ export default function InteractiveTopClaimantsChart({
 
   const barColor = colors[theme]
 
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e5e7eb',
+      textStyle: {
+        color: '#374151'
+      },
+      formatter: function (params: any) {
+        const data = params[0]
+        const item = mockData.find(d => d.claimant === data.name)
+        return `
+          <div style="font-weight: 600; margin-bottom: 8px;">${data.name}</div>
+          <div style="margin: 4px 0;">
+            <div style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; margin-right: 8px;"></div>
+            <span style="color: #6b7280;">Total Cost:</span>
+            <span style="font-weight: 500; color: #1f2937; margin-left: 8px;">$${data.value.toLocaleString()}</span>
+          </div>
+          <div style="margin: 4px 0;">
+            <div style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #9ca3af; margin-right: 8px;"></div>
+            <span style="color: #6b7280;">Claims:</span>
+            <span style="font-weight: 500; color: #1f2937; margin-left: 8px;">${item?.claims || 0}</span>
+          </div>
+          <div style="padding-top: 8px; border-top: 1px solid #e5e7eb; margin-top: 8px;">
+            <span style="color: #6b7280; font-size: 12px;">Avg per claim: $${item ? (item.amount / item.claims).toLocaleString(undefined, { maximumFractionDigits: 0 }) : 0}</span>
+          </div>
+        `
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: data.map(item => item.claimant),
+      axisLabel: {
+        color: '#6b7280',
+        fontSize: 12,
+        rotate: -45
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#e5e7eb'
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        color: '#6b7280',
+        fontSize: 12,
+        formatter: (value: number) => `$${(value / 1000).toFixed(0)}k`
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#e5e7eb',
+          type: 'dashed'
+        }
+      }
+    },
+    series: [
+      {
+        data: data.map(item => ({
+          value: item.amount,
+          name: item.claimant,
+          itemStyle: {
+            color: barColor,
+            borderRadius: [4, 4, 0, 0],
+            shadowBlur: 4,
+            shadowColor: 'rgba(0, 0, 0, 0.1)',
+            shadowOffsetY: 2
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 8,
+              shadowColor: 'rgba(0, 0, 0, 0.2)'
+            }
+          }
+        })),
+        type: 'bar',
+        barWidth: '60%',
+        animationDelay: function (idx: number) {
+          return idx * 100
+        }
+      }
+    ],
+    animationEasing: 'elasticOut',
+    animationDelayUpdate: function (idx: number) {
+      return idx * 50
+    }
+  }
+
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
       <div className="mb-4">
@@ -86,37 +147,7 @@ export default function InteractiveTopClaimantsChart({
         </p>
       </div>
       
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart
-          data={data}
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="claimant" 
-            stroke="#6b7280"
-            fontSize={12}
-            angle={-45}
-            textAnchor="end"
-            height={80}
-          />
-          <YAxis 
-            stroke="#6b7280"
-            fontSize={12}
-            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Bar 
-            dataKey="amount" 
-            fill={barColor}
-            radius={[4, 4, 0, 0]}
-            style={{
-              filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))',
-              cursor: 'pointer'
-            }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      <ReactECharts option={option} style={{ height: `${height}px` }} />
     </div>
   )
 }

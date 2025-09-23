@@ -1,6 +1,6 @@
 'use client'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import ReactECharts from 'echarts-for-react'
 
 interface ClaimsTrendData {
   month: string
@@ -30,31 +30,6 @@ const mockData: ClaimsTrendData[] = [
   { month: 'Dec', claims: 980, amount: 268400 }
 ]
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">{`${label} 2024`}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-gray-600 dark:text-gray-400">{entry.name}:</span>
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              {entry.name === 'Claims' 
-                ? entry.value.toLocaleString()
-                : `$${(entry.value / 1000).toFixed(0)}k`
-              }
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
 
 export default function InteractiveClaimsTrendChart({
   data = mockData,
@@ -65,22 +40,130 @@ export default function InteractiveClaimsTrendChart({
   const colors = {
     professional: {
       claims: '#3b82f6',
-      amount: '#10b981',
-      grid: '#e5e7eb'
+      amount: '#10b981'
     },
     accessible: {
       claims: '#2563eb',
-      amount: '#059669',
-      grid: '#d1d5db'
+      amount: '#059669'
     },
     dark: {
       claims: '#60a5fa',
-      amount: '#34d399',
-      grid: '#374151'
+      amount: '#34d399'
     }
   }
 
   const themeColors = colors[theme]
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e5e7eb',
+      textStyle: {
+        color: '#374151'
+      },
+      formatter: function (params: any) {
+        const month = params[0].axisValue
+        let content = `<div style="font-weight: 600; margin-bottom: 8px;">${month} 2024</div>`
+        params.forEach((param: any) => {
+          const value = param.seriesName === 'Claims' 
+            ? param.value.toLocaleString()
+            : `$${(param.value / 1000).toFixed(0)}k`
+          content += `
+            <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${param.color};"></div>
+              <span style="color: #6b7280;">${param.seriesName}:</span>
+              <span style="font-weight: 500; color: #1f2937;">${value}</span>
+            </div>
+          `
+        })
+        return content
+      }
+    },
+    legend: {
+      data: ['Claims', 'Amount'],
+      top: 10
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: data.map(item => item.month),
+      axisLine: {
+        lineStyle: {
+          color: '#6b7280'
+        }
+      }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: 'Claims',
+        position: 'left',
+        axisLine: {
+          lineStyle: {
+            color: themeColors.claims
+          }
+        },
+        axisLabel: {
+          color: '#6b7280'
+        }
+      },
+      {
+        type: 'value',
+        name: 'Amount ($)',
+        position: 'right',
+        axisLine: {
+          lineStyle: {
+            color: themeColors.amount
+          }
+        },
+        axisLabel: {
+          color: '#6b7280',
+          formatter: (value: number) => `$${(value / 1000).toFixed(0)}k`
+        }
+      }
+    ],
+    series: [
+      {
+        name: 'Claims',
+        type: 'line',
+        yAxisIndex: 0,
+        data: data.map(item => item.claims),
+        lineStyle: {
+          color: themeColors.claims,
+          width: 2
+        },
+        itemStyle: {
+          color: themeColors.claims
+        },
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6
+      },
+      {
+        name: 'Amount',
+        type: 'line',
+        yAxisIndex: 1,
+        data: data.map(item => item.amount),
+        lineStyle: {
+          color: themeColors.amount,
+          width: 2
+        },
+        itemStyle: {
+          color: themeColors.amount
+        },
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6
+      }
+    ]
+  }
 
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
@@ -93,53 +176,7 @@ export default function InteractiveClaimsTrendChart({
         </p>
       </div>
       
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart
-          data={data}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={themeColors.grid} />
-          <XAxis 
-            dataKey="month" 
-            stroke="#6b7280"
-            fontSize={12}
-          />
-          <YAxis 
-            yAxisId="claims"
-            orientation="left"
-            stroke={themeColors.claims}
-            fontSize={12}
-          />
-          <YAxis 
-            yAxisId="amount"
-            orientation="right"
-            stroke={themeColors.amount}
-            fontSize={12}
-            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            yAxisId="claims"
-            type="monotone"
-            dataKey="claims"
-            stroke={themeColors.claims}
-            strokeWidth={2}
-            dot={{ fill: themeColors.claims, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: themeColors.claims, strokeWidth: 2 }}
-            name="Claims"
-          />
-          <Line
-            yAxisId="amount"
-            type="monotone"
-            dataKey="amount"
-            stroke={themeColors.amount}
-            strokeWidth={2}
-            dot={{ fill: themeColors.amount, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: themeColors.amount, strokeWidth: 2 }}
-            name="Amount"
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      <ReactECharts option={option} style={{ height: `${height}px` }} />
     </div>
   )
 }
