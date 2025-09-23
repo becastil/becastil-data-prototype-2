@@ -4,25 +4,25 @@ import { useState, useCallback } from 'react'
 import FileUpload from '@/app/components/FileUpload'
 import ProgressTracker from '@/app/components/ProgressTracker'
 import DataReview from '@/app/components/DataReview'
+import { useNotifications } from '@/components/NotificationProvider'
 import { UploadFile } from '@/app/types/upload'
-import { ClaimRecord, ValidationError, FieldMapping, ProcessingResult } from '@/app/types/claims'
+import { ProcessingResult } from '@/app/types/claims'
 
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const { addNotification, removeNotification } = useNotifications()
 
-  const handleFilesSelected = useCallback(async (newFiles: UploadFile[]) => {
-    setFiles(prev => [...prev, ...newFiles])
-    
-    // Auto-upload files
-    for (const file of newFiles) {
-      await uploadFile(file)
-    }
-  }, [])
-
-  const uploadFile = async (uploadFile: UploadFile) => {
+  const uploadFile = useCallback(async (uploadFile: UploadFile) => {
     try {
+      const fileName = uploadFile.file.name
+      addNotification({
+        title: 'Upload started',
+        message: `Uploading ${fileName}`,
+        variant: 'info',
+        autoDismissMs: 4000,
+      })
       // Update file status
       setFiles(prev => prev.map(f => 
         f.id === uploadFile.id 
@@ -41,6 +41,7 @@ export default function UploadPage() {
       const result = await response.json()
 
       if (result.success) {
+        const recordCount = result.recordCount ?? 0
         setFiles(prev => prev.map(f => 
           f.id === uploadFile.id 
             ? { 
@@ -48,17 +49,28 @@ export default function UploadPage() {
                 status: 'completed', 
                 progress: 100,
                 carrier: result.carrier,
-                recordCount: result.recordCount,
+                recordCount,
                 previewData: result.previewData
               }
             : f
         ))
+        addNotification({
+          title: 'Upload complete',
+          message: `${fileName} • ${recordCount.toLocaleString()} records processed`,
+          variant: 'success',
+        })
       } else {
         setFiles(prev => prev.map(f => 
           f.id === uploadFile.id 
             ? { ...f, status: 'failed', error: result.message }
             : f
         ))
+        addNotification({
+          title: 'Upload failed',
+          message: result.message || `Unable to process ${fileName}`,
+          variant: 'error',
+          autoDismissMs: 8000,
+        })
       }
     } catch (error) {
       setFiles(prev => prev.map(f => 
@@ -70,8 +82,22 @@ export default function UploadPage() {
             }
           : f
       ))
+      addNotification({
+        title: 'Upload error',
+        message: error instanceof Error ? error.message : 'Unexpected upload error',
+        variant: 'error',
+        autoDismissMs: 8000,
+      })
     }
-  }
+  }, [addNotification])
+
+  const handleFilesSelected = useCallback(async (newFiles: UploadFile[]) => {
+    setFiles(prev => [...prev, ...newFiles])
+
+    for (const file of newFiles) {
+      await uploadFile(file)
+    }
+  }, [uploadFile])
 
   const handleFileUpdate = useCallback((fileId: string, updates: Partial<UploadFile>) => {
     setFiles(prev => prev.map(f => 
@@ -82,6 +108,14 @@ export default function UploadPage() {
   const processFiles = async () => {
     const completedFiles = files.filter(f => f.status === 'completed')
     if (completedFiles.length === 0) return
+
+    const processingNoticeId = addNotification({
+      title: 'Processing queued',
+      message: `Normalizing ${completedFiles[0].name} and generating insights`,
+      variant: 'info',
+      persistent: true,
+      autoDismissMs: 0,
+    })
 
     setIsProcessing(true)
     
@@ -115,15 +149,36 @@ export default function UploadPage() {
 
       if (result.success) {
         setProcessingResult(result.result)
+        removeNotification(processingNoticeId)
+        addNotification({
+          title: 'Processing complete',
+          message: `${file.name} • ${result.result.claims.length.toLocaleString()} claims ready for review`,
+          variant: 'success',
+        })
       } else {
         console.error('Processing failed:', result.message)
         // Handle error - show notification
+        removeNotification(processingNoticeId)
+        addNotification({
+          title: 'Processing failed',
+          message: result.message || `Unable to process ${file.name}`,
+          variant: 'error',
+          autoDismissMs: 8000,
+        })
       }
     } catch (error) {
       console.error('Processing error:', error)
       // Handle error - show notification
+      removeNotification(processingNoticeId)
+      addNotification({
+        title: 'Processing error',
+        message: error instanceof Error ? error.message : 'Unexpected processing error',
+        variant: 'error',
+        autoDismissMs: 8000,
+      })
     } finally {
       setIsProcessing(false)
+      removeNotification(processingNoticeId)
     }
   }
 
@@ -177,7 +232,14 @@ export default function UploadPage() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-  }, [processingResult])
+
+    addNotification({
+      title: `Exported ${format.toUpperCase()}`,
+      message: `Downloaded ${filename}`,
+      variant: 'success',
+      autoDismissMs: 5000,
+    })
+  }, [processingResult, addNotification])
 
   const completedFilesCount = files.filter(f => f.status === 'completed').length
   const hasProcessedData = processingResult !== null
@@ -269,6 +331,7 @@ export default function UploadPage() {
               claims={processingResult.claims}
               errors={processingResult.errors}
               mapping={processingResult.mapping}
+              stats={processingResult.stats}
               onExport={handleExport}
             />
           </div>

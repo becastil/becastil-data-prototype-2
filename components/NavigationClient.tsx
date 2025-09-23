@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import LogoutButton from './LogoutButton'
+import NotificationBell from './NotificationBell'
+import QuickActions from './QuickActions'
+import PreferencesTrigger from './PreferencesTrigger'
 
 interface NavigationClientProps {
   user: User | null
@@ -14,6 +17,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/upload', label: 'Upload' },
+  { href: '/help', label: 'Help' },
 ]
 
 export default function NavigationClient({ user }: NavigationClientProps) {
@@ -77,6 +81,9 @@ export default function NavigationClient({ user }: NavigationClientProps) {
         </div>
 
         <div className="hidden items-center gap-6 md:flex">
+          <QuickActions />
+          <NotificationBell />
+          <PreferencesTrigger />
           {user ? (
             <div className="relative" ref={userMenuRef}>
               <button
@@ -101,6 +108,9 @@ export default function NavigationClient({ user }: NavigationClientProps) {
                     >
                       View Dashboard
                     </Link>
+                    <div className="mt-1">
+                      <PreferencesTrigger />
+                    </div>
                     <LogoutButton className="mt-2 w-full rounded-md px-2 py-2 text-left text-sm text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-slate-800" />
                   </div>
                 </div>
@@ -138,7 +148,15 @@ export default function NavigationClient({ user }: NavigationClientProps) {
 
       {menuOpen && (
         <div className="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 md:hidden">
-          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
+            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Activity</p>
+                <NotificationBell />
+              </div>
+              <QuickActions />
+              <PreferencesTrigger />
+            </div>
             {renderLinks('text-sm font-medium text-slate-700 hover:text-blue-500 dark:text-slate-200')}
             {user ? (
                 <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900">

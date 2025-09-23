@@ -98,6 +98,16 @@ export default async function DashboardPage() {
             </svg>
             View Research Summary
           </Link>
+          <Link
+            href="/help"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-6 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.879a3 3 0 014.242 0 3 3 0 010 4.242c-.393.393-.88.686-1.415.879a1 1 0 00-.706.954V15" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19h.01" />
+            </svg>
+            Help & Resources
+          </Link>
         </div>
 
         {showGuestBanner && (
