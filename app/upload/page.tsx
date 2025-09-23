@@ -4,100 +4,165 @@ import { useState, useCallback } from 'react'
 import FileUpload from '@/app/components/FileUpload'
 import ProgressTracker from '@/app/components/ProgressTracker'
 import DataReview from '@/app/components/DataReview'
+import ColumnMapper from '@/app/components/ColumnMapper'
+import ValidationPanel from '@/app/components/ValidationPanel'
 import { useNotifications } from '@/components/NotificationProvider'
 import { UploadFile } from '@/app/types/upload'
 import { ProcessingResult } from '@/app/types/claims'
+import { CSVParser } from '@/app/lib/csv-parser'
+import { ColumnMapper as MapperService } from '@/app/lib/csv/column-mapper'
+import { 
+  CSVSchemaType, 
+  ColumnMapping, 
+  SchemaValidationResult,
+  HEALTHCARE_COST_EXPECTED_COLUMNS,
+  HIGH_COST_CLAIMANT_EXPECTED_COLUMNS
+} from '@/app/lib/csv/schemas'
+import { FileText, Download, ArrowRight } from 'lucide-react'
+
+interface ParsedCSV {
+  file: File
+  data: any[]
+  headers: string[]
+  schemaType: CSVSchemaType
+  preview: any[]
+}
 
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [parsedCSVs, setParsedCSVs] = useState<ParsedCSV[]>([])
+  const [currentMappings, setCurrentMappings] = useState<Record<string, ColumnMapping[]>>({})
+  const [validationResults, setValidationResults] = useState<Record<string, SchemaValidationResult>>({})
+  const [currentStep, setCurrentStep] = useState<'upload' | 'map' | 'process' | 'review'>('upload')
   const { addNotification, removeNotification } = useNotifications()
 
-  const uploadFile = useCallback(async (uploadFile: UploadFile) => {
+  const parseCSVFile = useCallback(async (uploadFile: UploadFile) => {
     try {
       const fileName = uploadFile.file.name
       addNotification({
-        title: 'Upload started',
-        message: `Uploading ${fileName}`,
+        title: 'Parsing CSV',
+        message: `Analyzing ${fileName}`,
         variant: 'info',
         autoDismissMs: 4000,
       })
+
       // Update file status
       setFiles(prev => prev.map(f => 
         f.id === uploadFile.id 
-          ? { ...f, status: 'uploading', progress: 0 }
+          ? { ...f, status: 'uploading', progress: 25 }
           : f
       ))
 
-      const formData = new FormData()
-      formData.append('file', uploadFile.file)
+      // Parse CSV file
+      const result = await CSVParser.parseFile(uploadFile.file)
+      
+      // Detect schema type
+      const schemaType = MapperService.detectSchemaType(result.headers)
+      
+      // Get preview data
+      const preview = result.data.slice(0, 5)
+      
+      // Create parsed CSV object
+      const parsedCSV: ParsedCSV = {
+        file: uploadFile.file,
+        data: result.data,
+        headers: result.headers,
+        schemaType,
+        preview
+      }
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+      setParsedCSVs(prev => [...prev, parsedCSV])
+
+      // Update file status
+      setFiles(prev => prev.map(f => 
+        f.id === uploadFile.id 
+          ? { 
+              ...f, 
+              status: 'completed', 
+              progress: 100,
+              recordCount: result.data.length,
+              previewData: preview
+            }
+          : f
+      ))
+
+      addNotification({
+        title: 'CSV parsed successfully',
+        message: `${fileName} • ${result.data.length.toLocaleString()} rows • Schema: ${schemaType}`,
+        variant: 'success',
       })
 
-      const result = await response.json()
-
-      if (result.success) {
-        const recordCount = result.recordCount ?? 0
-        setFiles(prev => prev.map(f => 
-          f.id === uploadFile.id 
-            ? { 
-                ...f, 
-                status: 'completed', 
-                progress: 100,
-                carrier: result.carrier,
-                recordCount,
-                previewData: result.previewData
-              }
-            : f
-        ))
-        addNotification({
-          title: 'Upload complete',
-          message: `${fileName} • ${recordCount.toLocaleString()} records processed`,
-          variant: 'success',
-        })
-      } else {
-        setFiles(prev => prev.map(f => 
-          f.id === uploadFile.id 
-            ? { ...f, status: 'failed', error: result.message }
-            : f
-        ))
-        addNotification({
-          title: 'Upload failed',
-          message: result.message || `Unable to process ${fileName}`,
-          variant: 'error',
-          autoDismissMs: 8000,
-        })
+      // Auto-advance to mapping step if this is the first file
+      if (parsedCSVs.length === 0) {
+        setCurrentStep('map')
       }
+
     } catch (error) {
       setFiles(prev => prev.map(f => 
         f.id === uploadFile.id 
           ? { 
               ...f, 
               status: 'failed', 
-              error: error instanceof Error ? error.message : 'Upload failed' 
+              error: error instanceof Error ? error.message : 'Parse failed' 
             }
           : f
       ))
       addNotification({
-        title: 'Upload error',
-        message: error instanceof Error ? error.message : 'Unexpected upload error',
+        title: 'Parse error',
+        message: error instanceof Error ? error.message : 'Failed to parse CSV',
         variant: 'error',
         autoDismissMs: 8000,
       })
     }
-  }, [addNotification])
+  }, [addNotification, parsedCSVs.length])
 
   const handleFilesSelected = useCallback(async (newFiles: UploadFile[]) => {
     setFiles(prev => [...prev, ...newFiles])
 
     for (const file of newFiles) {
-      await uploadFile(file)
+      await parseCSVFile(file)
     }
-  }, [uploadFile])
+  }, [parseCSVFile])
+
+  const handleMappingChange = useCallback((fileName: string, mappings: ColumnMapping[]) => {
+    setCurrentMappings(prev => ({
+      ...prev,
+      [fileName]: mappings
+    }))
+  }, [])
+
+  const validateMappings = useCallback(() => {
+    const results: Record<string, SchemaValidationResult> = {}
+    
+    parsedCSVs.forEach(csv => {
+      const mappings = currentMappings[csv.file.name] || []
+      const validation = MapperService.validateMappings(mappings, csv.schemaType)
+      
+      results[csv.file.name] = {
+        schemaType: csv.schemaType,
+        isValid: validation.isValid,
+        validRows: csv.data.length,
+        totalRows: csv.data.length,
+        errors: validation.missingRequired.map(field => ({
+          row: 0,
+          field,
+          message: 'Required field not mapped',
+          value: null
+        })),
+        warnings: [],
+        missingColumns: validation.missingRequired,
+        extraColumns: csv.headers.filter(h => 
+          !mappings.some(m => m.source === h)
+        ),
+        suggestions: MapperService.getSuggestions(csv.headers, csv.schemaType)
+      }
+    })
+    
+    setValidationResults(results)
+    setCurrentStep('process')
+  }, [parsedCSVs, currentMappings])
 
   const handleFileUpdate = useCallback((fileId: string, updates: Partial<UploadFile>) => {
     setFiles(prev => prev.map(f => 
@@ -244,16 +309,38 @@ export default function UploadPage() {
   const completedFilesCount = files.filter(f => f.status === 'completed').length
   const hasProcessedData = processingResult !== null
 
+  const getSchemaTypeLabel = (type: CSVSchemaType) => {
+    switch (type) {
+      case CSVSchemaType.HEALTHCARE_COSTS:
+        return 'Healthcare Costs'
+      case CSVSchemaType.HIGH_COST_CLAIMANTS:
+        return 'High Cost Claimants'
+      default:
+        return 'Unknown'
+    }
+  }
+
+  const getExpectedColumns = (type: CSVSchemaType) => {
+    switch (type) {
+      case CSVSchemaType.HEALTHCARE_COSTS:
+        return HEALTHCARE_COST_EXPECTED_COLUMNS
+      case CSVSchemaType.HIGH_COST_CLAIMANTS:
+        return HIGH_COST_CLAIMANT_EXPECTED_COLUMNS
+      default:
+        return []
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Healthcare Claims Data Processing
+          <h1 className="text-3xl font-bold text-gray-900">
+            CSV-Driven Analytics
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Upload CSV files for automatic format detection, validation, and normalization
+          <p className="mt-2 text-gray-600">
+            Upload CSVs, map columns, and generate instant analytics dashboards
           </p>
         </div>
 
@@ -266,106 +353,222 @@ export default function UploadPage() {
               }`}>
                 1
               </div>
-              <span className="ml-2 text-sm font-medium">Upload Files</span>
+              <span className="ml-2 text-sm font-medium">Upload & Parse</span>
             </div>
             
-            <div className={`flex-1 h-1 mx-4 ${completedFilesCount > 0 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex-1 h-1 mx-4 ${currentStep !== 'upload' ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
             
-            <div className={`flex items-center ${completedFilesCount > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${currentStep !== 'upload' ? 'text-blue-600' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                completedFilesCount > 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                currentStep !== 'upload' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
               }`}>
                 2
               </div>
-              <span className="ml-2 text-sm font-medium">Process Data</span>
+              <span className="ml-2 text-sm font-medium">Map Columns</span>
             </div>
             
-            <div className={`flex-1 h-1 mx-4 ${hasProcessedData ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+            <div className={`flex-1 h-1 mx-4 ${currentStep === 'process' || currentStep === 'review' ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
             
-            <div className={`flex items-center ${hasProcessedData ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${currentStep === 'process' || currentStep === 'review' ? 'text-blue-600' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                hasProcessedData ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                currentStep === 'process' || currentStep === 'review' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
               }`}>
                 3
               </div>
-              <span className="ml-2 text-sm font-medium">Review & Export</span>
+              <span className="ml-2 text-sm font-medium">Generate Dashboards</span>
             </div>
           </div>
         </div>
 
-        {/* File Upload Section */}
-        <div className="mb-8">
-          <FileUpload 
-            onFilesSelected={handleFilesSelected}
-            maxFiles={5}
-            maxSize={100 * 1024 * 1024} // 100MB
-            disabled={isProcessing}
-          />
-        </div>
+        {/* Upload Step */}
+        {currentStep === 'upload' && (
+          <div className="space-y-8">
+            {/* Schema Previews */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-medium text-gray-900">Healthcare Costs Schema</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Monthly cost data with categories like medical claims, pharmacy, stop loss
+                </p>
+                <div className="text-xs space-y-1">
+                  <div className="font-medium text-gray-700">Expected columns:</div>
+                  <div className="text-gray-600">Category, Jan-2024, Feb-2024, Mar-2024...</div>
+                </div>
+              </div>
 
-        {/* Progress Tracking */}
-        {files.length > 0 && (
-          <ProgressTracker 
-            files={files}
-            onFileUpdate={handleFileUpdate}
-          />
-        )}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  <h3 className="font-medium text-gray-900">High Cost Claimants Schema</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Individual claimant data with monthly spend, risk scores, and demographics
+                </p>
+                <div className="text-xs space-y-1">
+                  <div className="font-medium text-gray-700">Expected columns:</div>
+                  <div className="text-gray-600">Claimant_ID, Total_Paid_YTD, Jan_2024, Feb_2024...</div>
+                </div>
+              </div>
+            </div>
 
-        {/* Process Button */}
-        {completedFilesCount > 0 && !hasProcessedData && (
-          <div className="mt-8 text-center">
-            <button
-              onClick={processFiles}
+            <FileUpload 
+              onFilesSelected={handleFilesSelected}
+              maxFiles={5}
+              maxSize={100 * 1024 * 1024} // 100MB
               disabled={isProcessing}
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isProcessing ? 'Processing...' : `Process ${completedFilesCount} File${completedFilesCount > 1 ? 's' : ''}`}
-            </button>
-          </div>
-        )}
-
-        {/* Data Review */}
-        {hasProcessedData && processingResult && (
-          <div className="mt-8">
-            <DataReview
-              claims={processingResult.claims}
-              errors={processingResult.errors}
-              mapping={processingResult.mapping}
-              stats={processingResult.stats}
-              onExport={handleExport}
             />
+
+            {files.length > 0 && (
+              <ProgressTracker 
+                files={files}
+                onFileUpdate={handleFileUpdate}
+              />
+            )}
+
+            {parsedCSVs.length > 0 && (
+              <div className="text-center">
+                <button
+                  onClick={() => setCurrentStep('map')}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+                >
+                  Continue to Column Mapping
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Processing Summary */}
-        {hasProcessedData && processingResult && (
-          <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-              Processing Summary
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">Detected Carrier:</span>
-                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                  {processingResult.carrier || 'Unknown'} 
-                  {processingResult.confidence && (
-                    <span className="text-green-600 dark:text-green-400">
-                      ({processingResult.confidence}% confidence)
-                    </span>
-                  )}
-                </span>
+        {/* Mapping Step */}
+        {currentStep === 'map' && (
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Column Mapping</h2>
+              <p className="text-gray-600">
+                Review and adjust how your CSV columns map to our expected schema
+              </p>
+            </div>
+
+            {parsedCSVs.map((csv, index) => (
+              <div key={index} className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">{csv.file.name}</h3>
+                    <p className="text-sm text-gray-600">
+                      {csv.data.length.toLocaleString()} rows • Schema: {getSchemaTypeLabel(csv.schemaType)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Expected columns: {getExpectedColumns(csv.schemaType).length}</div>
+                    <div className="text-sm text-gray-600">Your columns: {csv.headers.length}</div>
+                  </div>
+                </div>
+
+                <ColumnMapper
+                  sourceColumns={csv.headers}
+                  schemaType={csv.schemaType}
+                  onMappingChange={(mappings) => handleMappingChange(csv.file.name, mappings)}
+                />
+
+                {/* Data Preview */}
+                <div className="mt-6">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Data Preview</h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          {csv.headers.map((header, i) => (
+                            <th key={i} className="text-left py-2 px-3 font-medium text-gray-700 bg-gray-50">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csv.preview.map((row, i) => (
+                          <tr key={i} className="border-b border-gray-100">
+                            {csv.headers.map((header, j) => (
+                              <td key={j} className="py-2 px-3 text-gray-600">
+                                {String(row[header] || '').slice(0, 50)}
+                                {String(row[header] || '').length > 50 && '...'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">Data Quality:</span>
-                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                  {processingResult.stats.dataCompleteness}% complete
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">Processing Time:</span>
-                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                  {new Date().toLocaleTimeString()}
-                </span>
+            ))}
+
+            <div className="flex justify-between">
+              <button
+                onClick={() => setCurrentStep('upload')}
+                className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+              >
+                Back
+              </button>
+              <button
+                onClick={validateMappings}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+              >
+                Validate & Continue
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Process Step */}
+        {currentStep === 'process' && (
+          <div className="space-y-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Validation Results</h2>
+              <p className="text-gray-600">
+                Review validation results and generate your analytics dashboards
+              </p>
+            </div>
+
+            {Object.entries(validationResults).map(([fileName, result]) => (
+              <ValidationPanel
+                key={fileName}
+                validationResult={result}
+                onRetry={() => setCurrentStep('map')}
+              />
+            ))}
+
+            <div className="flex justify-between">
+              <button
+                onClick={() => setCurrentStep('map')}
+                className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+              >
+                Back to Mapping
+              </button>
+              
+              <div className="space-x-4">
+                {parsedCSVs.some(csv => csv.schemaType === CSVSchemaType.HEALTHCARE_COSTS) && (
+                  <a
+                    href="/dashboards/healthcare-costs"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700"
+                  >
+                    Healthcare Costs Dashboard
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                )}
+                
+                {parsedCSVs.some(csv => csv.schemaType === CSVSchemaType.HIGH_COST_CLAIMANTS) && (
+                  <a
+                    href="/dashboards/high-cost-claimants"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700"
+                  >
+                    High Cost Claimants Dashboard
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

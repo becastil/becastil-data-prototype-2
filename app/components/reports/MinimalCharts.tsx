@@ -1,6 +1,7 @@
 'use client'
 
 import ReactECharts from 'echarts-for-react'
+import BudgetVsClaimsChart from './BudgetVsClaimsChart'
 
 export default function MinimalCharts() {
   // Trend data
@@ -66,6 +67,11 @@ export default function MinimalCharts() {
 
   return (
     <div className="space-y-16 text-left">
+      <div>
+        <div className="mb-8 text-sm text-gray-600">Budget vs Claims and Expenses</div>
+        <BudgetVsClaimsChart />
+      </div>
+
       <div>
         <div className="mb-8 text-sm text-gray-600">Trend</div>
         <div className="h-48">
