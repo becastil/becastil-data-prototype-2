@@ -1,4 +1,3 @@
-import Fuse from 'fuse.js'
 import {
   CSVSchemaType,
   ColumnMapping,
@@ -8,6 +7,45 @@ import {
   HIGH_COST_CLAIMANT_REQUIRED_COLUMNS,
   COLUMN_ALIASES
 } from './schemas'
+
+const normalize = (value: string) => value.toLowerCase().trim()
+
+const levenshteinDistance = (a: string, b: string) => {
+  if (a === b) return 0
+  if (!a.length) return b.length
+  if (!b.length) return a.length
+
+  const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0))
+
+  for (let i = 0; i <= a.length; i++) {
+    matrix[i][0] = i
+  }
+  for (let j = 0; j <= b.length; j++) {
+    matrix[0][j] = j
+  }
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      )
+    }
+  }
+
+  return matrix[a.length][b.length]
+}
+
+const similarity = (a: string, b: string) => {
+  const normalizedA = normalize(a)
+  const normalizedB = normalize(b)
+  if (!normalizedA.length && !normalizedB.length) return 1
+  const distance = levenshteinDistance(normalizedA, normalizedB)
+  const maxLength = Math.max(normalizedA.length, normalizedB.length)
+  return maxLength === 0 ? 1 : 1 - distance / maxLength
+}
 
 export interface ColumnMapperOptions {
   threshold: number // 0-1, lower = more strict matching
@@ -90,14 +128,7 @@ export class ColumnMapper {
 
     // Create search corpus including aliases
     const searchCorpus = this.buildSearchCorpus(targetColumns, opts.includeAliases)
-    
-    // Initialize Fuse for fuzzy matching
-    const fuse = new Fuse(searchCorpus, {
-      keys: ['column', 'aliases'],
-      threshold: opts.threshold,
-      includeScore: true,
-      includeMatches: true
-    })
+    const minConfidence = Math.max(0, Math.min(1, 1 - opts.threshold))
 
     const mappings: ColumnMapping[] = []
     const mappedTargets = new Set<string>()
@@ -126,24 +157,17 @@ export class ColumnMapper {
     )
 
     for (const sourceCol of unmappedSources) {
-      const results = fuse.search(sourceCol)
-      
-      if (results.length > 0) {
-        const bestMatch = results[0]
-        const targetColumn = bestMatch.item.column
-        
-        if (!mappedTargets.has(targetColumn)) {
-          const confidence = 1 - (bestMatch.score || 0)
-          
-          mappings.push({
-            source: sourceCol,
-            target: targetColumn,
-            confidence,
-            isRequired: requiredColumns.includes(targetColumn),
-            isPerfectMatch: false
-          })
-          mappedTargets.add(targetColumn)
-        }
+      const bestMatch = this.findBestMatch(sourceCol, searchCorpus, minConfidence)
+
+      if (bestMatch && !mappedTargets.has(bestMatch.column)) {
+        mappings.push({
+          source: sourceCol,
+          target: bestMatch.column,
+          confidence: bestMatch.confidence,
+          isRequired: requiredColumns.includes(bestMatch.column),
+          isPerfectMatch: false
+        })
+        mappedTargets.add(bestMatch.column)
       }
     }
 
@@ -179,6 +203,31 @@ export class ColumnMapper {
       default:
         return []
     }
+  }
+
+  private static findBestMatch(
+    sourceColumn: string,
+    corpus: Array<{ column: string; aliases: string[] }>,
+    minConfidence: number
+  ): { column: string; confidence: number } | null {
+    let bestMatch: { column: string; confidence: number } | null = null
+
+    for (const entry of corpus) {
+      const primaryScore = similarity(sourceColumn, entry.column)
+      const aliasScore = entry.aliases.reduce((score, alias) => {
+        return Math.max(score, similarity(sourceColumn, alias))
+      }, 0)
+      const confidence = Math.max(primaryScore, aliasScore)
+
+      if (confidence >= minConfidence && (!bestMatch || confidence > bestMatch.confidence)) {
+        bestMatch = {
+          column: entry.column,
+          confidence
+        }
+      }
+    }
+
+    return bestMatch
   }
 
   private static getRequiredColumns(schemaType: CSVSchemaType): string[] {

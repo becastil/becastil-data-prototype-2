@@ -18,7 +18,7 @@ import {
   HEALTHCARE_COST_EXPECTED_COLUMNS,
   HIGH_COST_CLAIMANT_EXPECTED_COLUMNS
 } from '@/app/lib/csv/schemas'
-import { FileText, Download, ArrowRight } from 'lucide-react'
+import { FileText, Download, ArrowRight } from '@/app/components/icons'
 
 interface ParsedCSV {
   file: File

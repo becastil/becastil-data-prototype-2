@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { SchemaValidationResult, CSVSchemaType } from '@/app/lib/csv/schemas'
-import { ChevronDown, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react'
+import { ChevronDown, AlertTriangle, Info, CheckCircle, XCircle } from '@/app/components/icons'
 
 interface ValidationPanelProps {
   validationResult: SchemaValidationResult | null

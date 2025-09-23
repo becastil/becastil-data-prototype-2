@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ColumnMapping, CSVSchemaType } from '@/app/lib/csv/schemas'
 import { ColumnMapper as MapperService } from '@/app/lib/csv/column-mapper'
-import { ChevronDown, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { ChevronDown, CheckCircle, AlertCircle, Info } from '@/app/components/icons'
 
 interface ColumnMapperProps {
   sourceColumns: string[]

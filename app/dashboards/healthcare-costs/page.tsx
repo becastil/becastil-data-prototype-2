@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, ArrowLeft, TrendingUp, DollarSign, Calendar, AlertCircle } from 'lucide-react'
+import { Download, ArrowLeft, TrendingUp, DollarSign, Calendar, AlertCircle } from '@/app/components/icons'
 import BudgetVsClaimsChart from '@/app/components/reports/BudgetVsClaimsChart'
 
 // Sample healthcare cost data - in production this would come from your CSV processing
