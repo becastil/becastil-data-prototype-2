@@ -54,21 +54,14 @@ export class HealthcareChartBuilder {
       ]
     }
 
-    // Add second y-axis for claim count
-    chartConfig.scales = {
-      ...chartConfig.scales,
-      y1: {
-        type: 'linear',
+    // Configure y-axis for currency formatting
+    if (chartConfig.scales?.y) {
+      chartConfig.scales.y = {
+        ...chartConfig.scales.y,
         display: true,
-        position: 'right',
-        grid: {
-          drawOnChartArea: false,
-        },
         ticks: {
-          color: this.theme.colors.text,
-          callback: function(value: any) {
-            return formatNumber(value, true)
-          }
+          ...chartConfig.scales.y.ticks,
+          callback: (value: any) => formatCurrency(value)
         }
       }
     }

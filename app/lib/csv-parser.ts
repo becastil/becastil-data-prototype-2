@@ -114,9 +114,7 @@ export class CSVParser {
         skipEmptyLines: options.skipEmptyLines !== false,
         transformHeader: (header: string) => header.trim(),
         transform: (value: string) => value.trim(),
-        dynamicTyping: false, // Keep as strings for validation
-        complete: () => {},
-        error: () => {}
+        dynamicTyping: false // Keep as strings for validation
       })
 
       return {

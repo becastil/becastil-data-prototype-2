@@ -24,7 +24,11 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Bash(npx next build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__render__list_services",
+      "mcp__render__list_workspaces",
+      "Bash(yarn build:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

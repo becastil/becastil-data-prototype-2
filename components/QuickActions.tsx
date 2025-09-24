@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 
 interface QuickActionItem {
   label: string
   description: string
   href: string
-  icon: JSX.Element
+  icon: React.JSX.Element
 }
 
 const items: QuickActionItem[] = [

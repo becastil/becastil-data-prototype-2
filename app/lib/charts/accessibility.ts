@@ -71,32 +71,14 @@ export function createAccessibleChartConfig(
       legend: {
         ...baseConfig.plugins?.legend,
         display: true,
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            size: highContrast ? 16 : 14,
-            weight: 'bold'
-          },
-          color: highContrast ? ACCESSIBLE_COLORS.text.onLight : undefined
-        }
+        position: 'top' as const
       },
       tooltip: {
         ...baseConfig.plugins?.tooltip,
         enabled: true,
         backgroundColor: highContrast ? '#000000' : 'rgba(0, 0, 0, 0.8)',
         titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: highContrast ? ACCESSIBLE_COLORS.primary[0] : undefined,
-        borderWidth: highContrast ? 2 : 1,
-        titleFont: {
-          size: highContrast ? 16 : 14,
-          weight: 'bold'
-        },
-        bodyFont: {
-          size: highContrast ? 14 : 12
-        },
-        padding: highContrast ? 12 : 8
+        bodyColor: '#ffffff'
       }
     }
   }
@@ -108,24 +90,15 @@ export function createAccessibleChartConfig(
         ...accessibleConfig.scales.x,
         title: {
           display: true,
-          text: getAxisTitle(chartType, 'x'),
-          color: highContrast ? ACCESSIBLE_COLORS.text.onLight : ACCESSIBLE_COLORS.text.muted,
-          font: {
-            size: highContrast ? 16 : 14,
-            weight: 'bold'
-          }
+          text: getAxisTitle(chartType, 'x')
         },
         ticks: {
           ...accessibleConfig.scales.x.ticks,
-          color: highContrast ? ACCESSIBLE_COLORS.text.onLight : ACCESSIBLE_COLORS.text.muted,
-          font: {
-            size: highContrast ? 14 : 12
-          }
+          color: highContrast ? ACCESSIBLE_COLORS.text.onLight : ACCESSIBLE_COLORS.text.muted
         },
         grid: {
-          ...accessibleConfig.scales.x.grid,
-          color: highContrast ? ACCESSIBLE_COLORS.text.muted : '#e5e7eb',
-          lineWidth: highContrast ? 2 : 1
+          display: true,
+          color: highContrast ? ACCESSIBLE_COLORS.text.muted : '#e5e7eb'
         }
       }
     }
@@ -135,24 +108,16 @@ export function createAccessibleChartConfig(
         ...accessibleConfig.scales.y,
         title: {
           display: true,
-          text: getAxisTitle(chartType, 'y'),
-          color: highContrast ? ACCESSIBLE_COLORS.text.onLight : ACCESSIBLE_COLORS.text.muted,
-          font: {
-            size: highContrast ? 16 : 14,
-            weight: 'bold'
-          }
+          text: getAxisTitle(chartType, 'y')
         },
         ticks: {
           ...accessibleConfig.scales.y.ticks,
           color: highContrast ? ACCESSIBLE_COLORS.text.onLight : ACCESSIBLE_COLORS.text.muted,
-          font: {
-            size: highContrast ? 14 : 12
-          }
+          callback: (value: any) => `$${value.toLocaleString()}`
         },
         grid: {
-          ...accessibleConfig.scales.y.grid,
-          color: highContrast ? ACCESSIBLE_COLORS.text.muted : '#e5e7eb',
-          lineWidth: highContrast ? 2 : 1
+          display: true,
+          color: highContrast ? ACCESSIBLE_COLORS.text.muted : '#e5e7eb'
         }
       }
     }

@@ -80,7 +80,7 @@ export const normalizeClaims = (rows: RawClaimRow[] = [], mapping: Record<string
         originalRow: row,
       };
     })
-    .filter((claim): claim is NormalizedClaim => claim !== null);
+    .filter((claim): claim is NonNullable<typeof claim> => claim !== null) as NormalizedClaim[];
 };
 
 export const computeDataQuality = (rows: RawClaimRow[] = [], mapping: Record<string, string> = {}): DataQualityStats => {

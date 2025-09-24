@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import NavigationClient from './NavigationClient'
 
 export default async function Navigation() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
