@@ -21,7 +21,7 @@ export default function SidebarItem({ item, isCollapsed = false }: SidebarItemPr
         group relative flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200
         ${isActive 
           ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' 
-          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
+          : 'text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
         }
         ${isCollapsed ? 'justify-center' : ''}
       `}
