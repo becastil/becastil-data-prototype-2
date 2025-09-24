@@ -289,7 +289,7 @@ function NavigationGroup({
             >
               <ChevronRight className={`h-3 w-3 transform transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </button>
-          )
+          )}
         </div>
       )}
       
