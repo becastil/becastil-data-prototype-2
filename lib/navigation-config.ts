@@ -1,19 +1,26 @@
 /**
- * Navigation configuration for the application
+ * Enhanced navigation configuration for comprehensive site navigation
  * Central place to manage all routes and their organization
  */
 
 import { 
+  Home,
   LayoutDashboard, 
   FileBarChart, 
   FileText, 
-  Wrench, 
   Upload, 
   Shield, 
   LineChart, 
   HelpCircle,
   BarChart3,
   Settings,
+  LogIn,
+  UserPlus,
+  Lock,
+  Heart,
+  Lightbulb,
+  Table,
+  TrendingUp,
   type LucideIcon
 } from 'lucide-react'
 
@@ -23,23 +30,32 @@ export interface NavigationItem {
   href: string
   icon: LucideIcon
   description?: string
-  badge?: string
+  badge?: string | number
+  isExternal?: boolean
 }
 
 export interface NavigationGroup {
   id: string
   label: string
   items: NavigationItem[]
+  isCollapsible?: boolean
 }
 
 export const navigationConfig: NavigationGroup[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'main',
+    label: 'Main',
     items: [
       {
-        id: 'overview',
-        label: 'Overview',
+        id: 'home',
+        label: 'Home',
+        href: '/',
+        icon: Home,
+        description: 'Welcome page and getting started'
+      },
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
         description: 'Main dashboard with key metrics and insights'
@@ -47,14 +63,22 @@ export const navigationConfig: NavigationGroup[] = [
     ]
   },
   {
-    id: 'reports',
-    label: 'Reports & Analytics', 
+    id: 'analytics',
+    label: 'Analytics & Reports',
+    isCollapsible: true,
     items: [
+      {
+        id: 'reports',
+        label: 'Reports',
+        href: '/reports',
+        icon: FileText,
+        description: 'Main reports page with table and chart views'
+      },
       {
         id: 'claims-analysis',
         label: 'Claims Analysis',
         href: '/reports/claims-analysis',
-        icon: FileText,
+        icon: TrendingUp,
         description: 'Analyze healthcare claims data with interactive tables'
       },
       {
@@ -68,20 +92,41 @@ export const navigationConfig: NavigationGroup[] = [
         id: 'healthcare-costs',
         label: 'Healthcare Costs',
         href: '/dashboards/healthcare-costs',
-        icon: BarChart3,
+        icon: Heart,
         description: 'Healthcare cost analysis and trends'
+      },
+      {
+        id: 'chart-testing',
+        label: 'Chart Testing',
+        href: '/charts/test',
+        icon: BarChart3,
+        description: 'Interactive chart testing and development'
+      },
+      {
+        id: 'business-insights',
+        label: 'Business Insights',
+        href: '/insights/data-dashboards-for-business-success',
+        icon: Lightbulb,
+        description: 'Data dashboards for business success insights'
       }
     ]
   },
   {
     id: 'tools',
-    label: 'Tools',
+    label: 'Data Tools',
     items: [
+      {
+        id: 'upload-center',
+        label: 'Upload Center',
+        href: '/upload',
+        icon: Upload,
+        description: 'Central hub for all data uploads and processing'
+      },
       {
         id: 'csv-visualizer',
         label: 'CSV Visualizer',
         href: '/tools/csv-visualizer',
-        icon: LineChart,
+        icon: Table,
         description: 'Upload and visualize CSV data with AI insights'
       },
       {
@@ -94,21 +139,28 @@ export const navigationConfig: NavigationGroup[] = [
     ]
   },
   {
-    id: 'data',
-    label: 'Data Management',
+    id: 'account',
+    label: 'Account',
     items: [
       {
-        id: 'upload-center',
-        label: 'Upload Center',
-        href: '/upload',
-        icon: Upload,
-        description: 'Central hub for all data uploads and processing'
+        id: 'login',
+        label: 'Login',
+        href: '/auth/login',
+        icon: LogIn,
+        description: 'Sign in to your account'
+      },
+      {
+        id: 'signup',
+        label: 'Sign Up',
+        href: '/auth/signup',
+        icon: UserPlus,
+        description: 'Create a new account'
       }
     ]
   },
   {
     id: 'support',
-    label: 'Support',
+    label: 'Support & Legal',
     items: [
       {
         id: 'help',
@@ -116,6 +168,27 @@ export const navigationConfig: NavigationGroup[] = [
         href: '/help',
         icon: HelpCircle,
         description: 'Documentation and support resources'
+      },
+      {
+        id: 'privacy',
+        label: 'Privacy Policy',
+        href: '/privacy',
+        icon: Lock,
+        description: 'Privacy policy and data protection'
+      },
+      {
+        id: 'terms',
+        label: 'Terms of Service',
+        href: '/terms',
+        icon: FileText,
+        description: 'Terms and conditions'
+      },
+      {
+        id: 'security',
+        label: 'Security',
+        href: '/security',
+        icon: Shield,
+        description: 'Security information and guidelines'
       }
     ]
   }

@@ -28,21 +28,51 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ultra-minimalist styles */
+/* Ultra-minimalist styles with navigation exceptions */
 * {
   box-shadow: none !important;
   transition: none !important;
 }
 
-/* Remove ALL hover states and focus states */
-*:hover {
+/* Allow transitions and interactions for navigation components */
+[role="navigation"] *,
+[role="navigation"] *:hover,
+[role="navigation"] *:focus,
+.sidebar-transition {
+  box-shadow: revert !important;
+  transition: revert !important;
+}
+
+/* Remove ALL hover states and focus states except navigation */
+*:hover:not([role="navigation"] *) {
   background-color: inherit !important;
   color: inherit !important;
 }
 
-*:focus {
+*:focus:not([role="navigation"] *) {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Navigation specific styles */
+[role="navigation"] {
+  /* Ensure navigation has proper z-index and positioning */
+  isolation: isolate;
+}
+
+/* Focus visible for accessibility */
+@media (prefers-reduced-motion: no-preference) {
+  [role="navigation"] .sidebar-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+}
+
+/* Respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+  [role="navigation"] * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* Tabular numbers for consistency */

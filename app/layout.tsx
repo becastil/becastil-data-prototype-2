@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
+import EnhancedSidebar from '@/components/EnhancedSidebar'
 import Navigation from '@/components/Navigation'
-import Sidebar from '@/components/Sidebar'
 import NotificationProvider from '@/components/NotificationProvider'
 import { PreferencesProvider } from '@/components/PreferencesProvider'
 import './globals.css'
@@ -21,21 +23,47 @@ export const metadata: Metadata = {
   description: 'HIPAA-compliant healthcare claims analysis platform',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Get user data for the sidebar
+  const cookieStore = await cookies()
+  let user = null
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (supabaseUrl && supabaseAnonKey) {
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const {
+      data: { user: userData },
+    } = await supabase.auth.getUser()
+    user = userData
+  }
+
   return (
     <html lang="en" className="bg-gray-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased` }>
         <PreferencesProvider>
           <NotificationProvider>
             <div className="flex min-h-screen">
-              <Sidebar />
-              <div className="flex min-h-screen flex-1 flex-col lg:ml-64">
+              <EnhancedSidebar user={user} />
+              <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
                 <Navigation />
-                <main className="flex-1 bg-gray-50 dark:bg-slate-950">
+                <main className="flex-1 bg-gray-50 dark:bg-slate-950 px-4 py-6 lg:px-6">
                   {children}
                 </main>
               </div>
