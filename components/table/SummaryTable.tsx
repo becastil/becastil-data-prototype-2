@@ -182,7 +182,7 @@ export default function SummaryTable({ onExport }: SummaryTableProps) {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded"></div>
-            <span>Concern (>100%)</span>
+            <span>Concern (&gt;100%)</span>
           </div>
         </div>
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">

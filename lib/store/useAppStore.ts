@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Simple store implementation using React Context and localStorage
  * TODO: Replace with Zustand once dependency is installed
