@@ -29,7 +29,8 @@
       "mcp__render__list_workspaces",
       "Bash(yarn build:*)",
       "Bash(grep:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
