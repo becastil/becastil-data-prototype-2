@@ -383,33 +383,81 @@ export default function UploadPage() {
         {/* Upload Step */}
         {currentStep === 'upload' && (
           <div className="space-y-8">
-            {/* Schema Previews */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-medium text-gray-900">Healthcare Costs Schema</h3>
+            {/* Upload Limits Info */}
+            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-900 mb-3">Upload Requirements</h3>
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-blue-800"><strong>Max 5 files</strong> at once</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">
-                  Monthly cost data with categories like medical claims, pharmacy, stop loss
-                </p>
-                <div className="text-xs space-y-1">
-                  <div className="font-medium text-gray-700">Expected columns:</div>
-                  <div className="text-gray-600">Category, Jan-2024, Feb-2024, Mar-2024...</div>
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-blue-800"><strong>Max 100MB</strong> per file</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-blue-800"><strong>CSV format</strong> only</span>
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  <h3 className="font-medium text-gray-900">High Cost Claimants Schema</h3>
+            {/* Template Downloads */}
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Download CSV Templates</h3>
+              <p className="text-gray-600 mb-6">
+                Use these templates to ensure your data has the correct format and column headers.
+              </p>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-medium text-gray-900">Healthcare Costs Template</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Monthly cost data by category (medical claims, pharmacy, stop loss, etc.)
+                  </p>
+                  <div className="text-xs text-gray-500 mb-4 space-y-1">
+                    <div><strong>Required columns:</strong> Category + 12 monthly columns</div>
+                    <div><strong>Format:</strong> Category, Jan-2024, Feb-2024, Mar-2024...</div>
+                  </div>
+                  <a
+                    href="/templates/healthcare-costs-template.csv"
+                    download="healthcare-costs-template.csv"
+                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Template
+                  </a>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">
-                  Individual claimant data with monthly spend, risk scores, and demographics
-                </p>
-                <div className="text-xs space-y-1">
-                  <div className="font-medium text-gray-700">Expected columns:</div>
-                  <div className="text-gray-600">Claimant_ID, Total_Paid_YTD, Jan_2024, Feb_2024...</div>
+
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    <h4 className="font-medium text-gray-900">High Cost Claimants Template</h4>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Individual claimant data with demographics, costs, and monthly trends
+                  </p>
+                  <div className="text-xs text-gray-500 mb-4 space-y-1">
+                    <div><strong>Required columns:</strong> Claimant_ID, Total_Paid_YTD, Jan_2024...</div>
+                    <div><strong>Format:</strong> Mix of text, numbers, and monthly data columns</div>
+                  </div>
+                  <a
+                    href="/templates/high-cost-claimants-template.csv"
+                    download="high-cost-claimants-template.csv"
+                    className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Template
+                  </a>
                 </div>
               </div>
             </div>
