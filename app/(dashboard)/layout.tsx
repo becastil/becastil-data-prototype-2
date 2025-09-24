@@ -1,6 +1,6 @@
 'use client'
 
-import { AppStoreProvider } from '@/lib/store/useAppStore'
+import { AppStoreProvider } from '@/lib/store/AppStoreProvider'
 import StepNav from '@/components/nav/StepNav'
 
 export default function DashboardLayout({

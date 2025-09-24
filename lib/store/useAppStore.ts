@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * Simple store implementation using React Context and localStorage
  * TODO: Replace with Zustand once dependency is installed
@@ -101,7 +99,7 @@ function computeDerivedState(baseState: AppState): AppState {
   }
 }
 
-export function AppStoreProvider({ children }: { children: ReactNode }) {
+export function AppStoreProviderInternal({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const stored = loadFromStorage()
     return computeDerivedState({ ...initialState, ...stored })
