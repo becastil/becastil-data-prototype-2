@@ -12,7 +12,7 @@ import {
   MonthKey, 
   SECTION_GROUPS,
   MISSING_VALUE_DISPLAY 
-} from '../schema';
+} from './schema';
 
 /**
  * Format value for export
