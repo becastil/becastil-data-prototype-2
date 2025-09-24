@@ -30,7 +30,16 @@
       "Bash(yarn build:*)",
       "Bash(grep:*)",
       "Bash(mkdir:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(yarn add:*)",
+      "Bash(yarn templates)",
+      "Bash(yarn dlx:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(timeout:*)",
+      "Bash(npx tsx:*)",
+      "Bash(yarn test:*)",
+      "Bash(npx jest:*)",
+      "Bash(yarn templates:*)"
     ],
     "deny": [],
     "ask": []

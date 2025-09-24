@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Link from 'next/link'
 import FileUpload from '@/app/components/FileUpload'
 import ProgressTracker from '@/app/components/ProgressTracker'
 import DataReview from '@/app/components/DataReview'
@@ -18,7 +19,7 @@ import {
   HEALTHCARE_COST_EXPECTED_COLUMNS,
   HIGH_COST_CLAIMANT_EXPECTED_COLUMNS
 } from '@/app/lib/csv/schemas'
-import { FileText, Download, ArrowRight } from '@/app/components/icons'
+import { FileText, Download, ArrowRight, Shield, LineChart, BarChart3, Upload as UploadIcon } from '@/app/components/icons'
 
 interface ParsedCSV {
   file: File
@@ -28,6 +29,49 @@ interface ParsedCSV {
   preview: any[]
 }
 
+const uploadOptions = [
+  {
+    id: 'claims-analysis',
+    title: 'Healthcare Claims Analysis',
+    description: 'Upload claims data for comprehensive analysis with interactive tables and export capabilities',
+    href: '/reports/claims-analysis',
+    icon: FileText,
+    color: 'blue',
+    features: ['Interactive data tables', 'Monthly trend analysis', 'CSV/XLSX export', 'Validation checks'],
+    sampleFile: 'claims-sample.csv'
+  },
+  {
+    id: 'hcc-analysis',
+    title: 'HCC Risk Analysis',
+    description: 'Analyze Hierarchical Condition Category data for risk assessment and compliance',
+    href: '/hcc',
+    icon: Shield,
+    color: 'green',
+    features: ['Risk score calculation', 'Compliance validation', 'Member analytics', 'Detailed reporting'],
+    sampleFile: 'hcc-sample.csv'
+  },
+  {
+    id: 'csv-visualizer',
+    title: 'CSV Data Visualizer',
+    description: 'Upload any CSV file and generate automated insights with AI-powered analysis',
+    href: '/tools/csv-visualizer',
+    icon: LineChart,
+    color: 'purple',
+    features: ['AI-generated insights', 'Dynamic charts', 'Statistical analysis', 'Custom visualizations'],
+    sampleFile: 'general-data.csv'
+  },
+  {
+    id: 'healthcare-costs',
+    title: 'Healthcare Cost Analysis',
+    description: 'Analyze healthcare cost trends and patterns with detailed breakdowns',
+    href: '/dashboards/healthcare-costs',
+    icon: BarChart3,
+    color: 'orange',
+    features: ['Cost trend analysis', 'Budget comparisons', 'Predictive modeling', 'ROI calculations'],
+    sampleFile: 'costs-sample.csv'
+  }
+]
+
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null)
@@ -36,6 +80,7 @@ export default function UploadPage() {
   const [currentMappings, setCurrentMappings] = useState<Record<string, ColumnMapping[]>>({})
   const [validationResults, setValidationResults] = useState<Record<string, SchemaValidationResult>>({})
   const [currentStep, setCurrentStep] = useState<'upload' | 'map' | 'process' | 'review'>('upload')
+  const [showUploadCenter, setShowUploadCenter] = useState(true)
   const { addNotification, removeNotification } = useNotifications()
 
   const parseCSVFile = useCallback(async (uploadFile: UploadFile) => {
@@ -331,13 +376,153 @@ export default function UploadPage() {
     }
   }
 
+  const getColorClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700'
+      case 'green':
+        return 'border-green-200 bg-green-50 hover:bg-green-100 text-green-700'
+      case 'purple':
+        return 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700'
+      case 'orange':
+        return 'border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700'
+      default:
+        return 'border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700'
+    }
+  }
+
+  if (showUploadCenter) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Data Upload Center
+            </h1>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Choose the type of analysis you'd like to perform. Each option provides specialized tools 
+              and insights tailored to your data type.
+            </p>
+          </div>
+
+          {/* Upload Options Grid */}
+          <div className="grid lg:grid-cols-2 gap-8 mb-12">
+            {uploadOptions.map((option) => {
+              const Icon = option.icon
+              const colorClasses = getColorClasses(option.color)
+              
+              return (
+                <div
+                  key={option.id}
+                  className={`rounded-xl border-2 p-8 transition-all duration-200 hover:shadow-lg ${colorClasses}`}
+                >
+                  <div className="flex items-start gap-6">
+                    {/* Icon */}
+                    <div className={`flex-shrink-0 rounded-lg p-3 ${option.color === 'blue' ? 'bg-blue-100 text-blue-600' : 
+                      option.color === 'green' ? 'bg-green-100 text-green-600' :
+                      option.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                      'bg-orange-100 text-orange-600'}`}>
+                      <Icon className="h-8 w-8" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                        {option.title}
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {option.description}
+                      </p>
+
+                      {/* Features */}
+                      <ul className="space-y-2 mb-6">
+                        {option.features.map((feature, index) => (
+                          <li key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                            <svg className="h-4 w-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Action Button */}
+                      <div className="flex items-center gap-4">
+                        <Link
+                          href={option.href}
+                          className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                            option.color === 'blue' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
+                            option.color === 'green' ? 'bg-green-600 hover:bg-green-700 text-white' :
+                            option.color === 'purple' ? 'bg-purple-600 hover:bg-purple-700 text-white' :
+                            'bg-orange-600 hover:bg-orange-700 text-white'
+                          }`}
+                        >
+                          <UploadIcon className="h-4 w-4" />
+                          Start Analysis
+                        </Link>
+                        
+                        <button className="text-sm text-gray-500 hover:text-gray-700">
+                          Download Sample ({option.sampleFile})
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* General Upload Section */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 p-8">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <UploadIcon className="h-8 w-8 text-gray-600" />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+                General CSV Processing
+              </h3>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                Need to process a different type of CSV? Use our general upload tool with column mapping 
+                and custom schema validation.
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowUploadCenter(false)}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+              >
+                <UploadIcon className="h-5 w-5" />
+                Use General Upload Tool
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back to Upload Center */}
+        <div className="mb-8">
+          <button
+            onClick={() => setShowUploadCenter(true)}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back to Upload Center
+          </button>
+        </div>
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            CSV-Driven Analytics
+            General CSV Processing
           </h1>
           <p className="mt-2 text-gray-600">
             Upload CSVs, map columns, and generate instant analytics dashboards

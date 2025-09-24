@@ -1,36 +1,223 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Healthcare Analytics Dashboard
+
+A HIPAA-compliant healthcare claims analysis platform built with Next.js, TypeScript, and Excel integration.
+
+## Features
+
+- **Claims Analysis**: Interactive tables for healthcare cost analysis with export capabilities
+- **HCC Risk Analysis**: Hierarchical Condition Category data analysis for risk assessment
+- **CSV Data Visualization**: AI-powered insights and custom visualizations
+- **Template Generation**: Automated Excel template creation with formulas and validation
+- **Responsive Design**: Mobile-friendly interface with sidebar navigation
+- **Data Security**: HIPAA-compliant data handling and processing
 
 ## Getting Started
 
-First, run the development server:
+### Development Server
 
 ```bash
-npm run dev
-# or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+yarn build
+yarn start
+```
 
-## Learn More
+## Templates
 
-To learn more about Next.js, take a look at the following resources:
+This project includes an automated template generation system for healthcare data analysis.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Available Templates
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Healthcare Cost Template** (`default_healthcare_cost_template.xlsx`)
+   - 51 rows including medical claims, pharmacy, stop loss, and administrative costs
+   - 13 columns (Category + 12 monthly columns)
+   - Built-in formulas for totals, PEPM calculations, and budget analysis
+   - Currency and percentage formatting
+   - Sample data for demonstration
 
-## Deploy on Vercel
+2. **High Cost Claims Template** (`default_high_cost_claims_template.xlsx`)
+   - Member-level data with 18 columns
+   - Data validation for enums (Member Type, Age Band, etc.)
+   - Automatic cost calculations and stop-loss reimbursement formulas
+   - Summary sheet with top claimants and diagnosis breakdown
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Generate Templates
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Generate both templates
+yarn templates
+
+# Run template tests
+yarn test:templates
+
+# View help
+yarn templates --help
+```
+
+### Template Structure
+
+#### Healthcare Cost Template
+
+| Column | Description | Format |
+|--------|-------------|---------|
+| Category | Row labels and section headers | Text |
+| Jan-2024 through Dec-2024 | Monthly values | Currency/Number |
+
+**Key Formulas:**
+- Total Hospital Medical Claims = Domestic + Non-Domestic
+- Total Monthly Claims = Medical + Pharmacy + Stop Loss + Admin
+- PEPM Actual = Total Claims ÷ Employee Count
+- Percentage Variance = (Budget - Actual) ÷ Budget
+
+**Sections:**
+- Medical Claims
+- Pharmacy Claims  
+- Stop Loss
+- Administrative Costs
+- Summary Totals
+- Enrollment Metrics
+- PEPM Metrics
+- Budget Analysis
+
+#### High Cost Claims Template
+
+| Column | Description | Format | Validation |
+|--------|-------------|---------|------------|
+| Member ID | Unique identifier | Integer | Positive numbers |
+| Member Type | Relationship | Text | Subscriber/Spouse/Dependent |
+| Age Band | Age range | Text | Predefined ranges |
+| Total | Sum of cost components | Currency | Calculated |
+| Hit Stop Loss? | Exceeds deductible | Text | Yes/No |
+
+**Key Formulas:**
+- Total = Facility Inpatient + Outpatient + Professional + Pharmacy
+- Estimated Stop-Loss Reimbursement = IF(Hit Stop Loss="Yes", MAX(Total - Deductible, 0), 0)
+
+### Input Guidelines
+
+#### Healthcare Cost Template
+- **Negative Values**: Allowed for rebates, reimbursements, and adjustments
+- **Employee Count**: Use whole numbers for enrollment metrics
+- **PEPM Budget**: Enter target per-employee-per-month amounts
+- **Blank Rows**: Preserved for section organization
+
+#### High Cost Claims Template
+- **Percentages**: Enter as decimals (0.85 for 85%)
+- **Currency**: All monetary values in dollars
+- **Dropdowns**: Use provided lists for validated fields
+- **Member ID**: Unique positive integers
+
+### File Locations
+
+Generated templates are saved to:
+```
+./dist/
+├── default_healthcare_cost_template.xlsx
+└── default_high_cost_claims_template.xlsx
+```
+
+### Testing
+
+The template system includes comprehensive tests:
+
+```bash
+# Run all tests
+yarn test
+
+# Run only template tests
+yarn test:templates
+
+# Watch mode for development
+yarn test:watch
+```
+
+**Test Coverage:**
+- Template structure validation
+- Formula correctness
+- Data validation rules
+- Number formatting
+- Sample data integrity
+- Integration testing
+
+## Development
+
+### Project Structure
+
+```
+├── app/                    # Next.js app directory
+├── components/            # Reusable React components
+├── lib/                   # Shared utilities
+│   └── templates/         # Template generation system
+├── scripts/               # Build and utility scripts
+│   └── templates/         # Template builders and tests
+├── dist/                  # Generated templates
+└── public/               # Static assets
+```
+
+### Tech Stack
+
+- **Framework**: Next.js 15.5.3 with TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: Supabase (PostgreSQL)
+- **Excel**: XLSX.js for spreadsheet generation
+- **Validation**: Zod schemas
+- **Testing**: Jest with TypeScript support
+- **Icons**: Lucide React
+
+### Scripts
+
+```bash
+# Development
+yarn dev                   # Start development server
+yarn build                 # Build for production
+yarn start                 # Start production server
+
+# Templates
+yarn templates            # Generate Excel templates
+yarn templates --help    # Show template help
+
+# Testing  
+yarn test                 # Run all tests
+yarn test:templates      # Run template tests only
+yarn test:watch          # Watch mode
+
+# Code Quality
+yarn lint                # Run ESLint
+```
+
+## Deployment
+
+### Render Deployment
+
+This project is configured for deployment on Render:
+
+```bash
+# Build command
+yarn install --frozen-lockfile && yarn build
+
+# Start command  
+yarn start
+```
+
+### Environment Variables
+
+Required environment variables:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+## Contributing
+
+1. Follow existing code style and patterns
+2. Add tests for new functionality
+3. Update documentation as needed
+4. Test template generation before committing
+
+## License
+
+Private healthcare analytics platform.

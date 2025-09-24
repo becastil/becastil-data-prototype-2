@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import Navigation from '@/components/Navigation'
+import Sidebar from '@/components/Sidebar'
 import NotificationProvider from '@/components/NotificationProvider'
 import { PreferencesProvider } from '@/components/PreferencesProvider'
 import './globals.css'
@@ -30,11 +31,14 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased` }>
         <PreferencesProvider>
           <NotificationProvider>
-            <div className="flex min-h-screen flex-col">
-              <Navigation />
-              <main className="flex-1 bg-gray-50 dark:bg-slate-950">
-                {children}
-              </main>
+            <div className="flex min-h-screen">
+              <Sidebar />
+              <div className="flex min-h-screen flex-1 flex-col lg:ml-64">
+                <Navigation />
+                <main className="flex-1 bg-gray-50 dark:bg-slate-950">
+                  {children}
+                </main>
+              </div>
             </div>
           </NotificationProvider>
         </PreferencesProvider>
