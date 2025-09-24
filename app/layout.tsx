@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import Navigation from '@/components/Navigation'
-import Footer from '@/components/Footer'
 import NotificationProvider from '@/components/NotificationProvider'
 import { PreferencesProvider } from '@/components/PreferencesProvider'
 import './globals.css'
@@ -36,7 +35,6 @@ export default function RootLayout({
               <main className="flex-1 bg-gray-50 dark:bg-slate-950">
                 {children}
               </main>
-              <Footer />
             </div>
           </NotificationProvider>
         </PreferencesProvider>

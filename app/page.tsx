@@ -28,13 +28,13 @@ export default function HomePage() {
           <div className="text-gray-400 text-lg font-medium">or</div>
           
           <Link
-            href="/reports"
+            href="/reports/dashboard"
             className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg shadow-lg hover:border-gray-400 hover:shadow-xl transition-all"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5-1.5m-.5 1.5l-.5-1.5m.002-3H6.248m14.015 0l-3.76-14.967A.75.75 0 0015.747 1H8.253a.75.75 0 00-.742.633L3.751 16.6m14.015 0a.75.75 0 01-.742.633H6.976a.75.75 0 01-.742-.633" />
             </svg>
-            View Sample Report
+            View Analytics Dashboard
           </Link>
         </div>
 

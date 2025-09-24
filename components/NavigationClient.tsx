@@ -54,13 +54,13 @@ export default function NavigationClient({ user }: NavigationClientProps) {
           </Link>
           
           <Link
-            href="/reports"
+            href="/reports/dashboard"
             className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5-1.5m-.5 1.5l-.5-1.5m.002-3H6.248m14.015 0l-3.76-14.967A.75.75 0 0015.747 1H8.253a.75.75 0 00-.742.633L3.751 16.6m14.015 0a.75.75 0 01-.742.633H6.976a.75.75 0 01-.742-.633" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625a1.125 1.125 0 001.125-1.125m-1.125 1.125h-1.5A1.125 1.125 0 0118 18.375m3.75 0v-12.75m0 12.75v-1.5c0-.621-.504-1.125-1.125-1.125M18.375 5.625v1.5c0 .621-.504 1.125-1.125 1.125s-1.125-.504-1.125-1.125v-1.5m1.125 0H18m.375 0h1.125m-1.125 0V5.625m0 0c0-.621.504-1.125 1.125-1.125M16.5 7.5V6.375c0-.621.504-1.125 1.125-1.125h1.125m-1.125 1.125c0 .621-.504 1.125-1.125 1.125H16.5V7.5" />
             </svg>
-            View Report
+            Dashboard
           </Link>
 
           {user && (

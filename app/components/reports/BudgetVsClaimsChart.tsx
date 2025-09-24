@@ -40,50 +40,57 @@ export default function BudgetVsClaimsChart() {
   )
 
   return (
-    <div className="h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="month" tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
-          <YAxis
-            yAxisId="left"
-            tickLine={false}
-            axisLine={{ stroke: '#e5e7eb' }}
-            tickFormatter={value => formatCurrency(Number(value))}
-          />
-          <Tooltip
-            formatter={(value: number, name: string) => [formatCurrency(value), name]}
-            cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
-          />
-          <Legend />
-          <Bar
-            yAxisId="left"
-            dataKey="claims"
-            name="Claims"
-            fill="rgba(59, 130, 246, 0.6)"
-            stroke="rgba(37, 99, 235, 1)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Bar
-            yAxisId="left"
-            dataKey="expenses"
-            name="Expenses"
-            fill="rgba(249, 115, 22, 0.6)"
-            stroke="rgba(234, 88, 12, 1)"
-            radius={[4, 4, 0, 0]}
-          />
-          <Line
-            yAxisId="left"
-            type="monotone"
-            dataKey="budget"
-            name="Budget"
-            stroke="rgba(16, 185, 129, 1)"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart data={data} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis 
+          dataKey="month" 
+          tickLine={false} 
+          axisLine={{ stroke: '#e5e7eb' }}
+          fontSize={12}
+        />
+        <YAxis
+          yAxisId="left"
+          tickLine={false}
+          axisLine={{ stroke: '#e5e7eb' }}
+          tickFormatter={value => formatCurrency(Number(value))}
+          fontSize={12}
+          width={60}
+        />
+        <Tooltip
+          formatter={(value: number, name: string) => [formatCurrency(value), name]}
+          cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+        />
+        <Legend 
+          wrapperStyle={{ fontSize: '12px' }}
+        />
+        <Bar
+          yAxisId="left"
+          dataKey="claims"
+          name="Claims"
+          fill="rgba(59, 130, 246, 0.7)"
+          stroke="rgba(37, 99, 235, 1)"
+          radius={[2, 2, 0, 0]}
+        />
+        <Bar
+          yAxisId="left"
+          dataKey="expenses"
+          name="Expenses"
+          fill="rgba(249, 115, 22, 0.7)"
+          stroke="rgba(234, 88, 12, 1)"
+          radius={[2, 2, 0, 0]}
+        />
+        <Line
+          yAxisId="left"
+          type="monotone"
+          dataKey="budget"
+          name="Budget"
+          stroke="rgba(16, 185, 129, 1)"
+          strokeWidth={2}
+          dot={{ r: 2 }}
+          activeDot={{ r: 4 }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
   )
 }
