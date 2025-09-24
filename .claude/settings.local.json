@@ -39,7 +39,8 @@
       "Bash(npx tsx:*)",
       "Bash(yarn test:*)",
       "Bash(npx jest:*)",
-      "Bash(yarn templates:*)"
+      "Bash(yarn templates:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

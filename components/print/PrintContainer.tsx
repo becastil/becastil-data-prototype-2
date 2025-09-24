@@ -163,7 +163,7 @@ export default function PrintContainer() {
             </div>
             <div className="legend-item">
               <span className="legend-color red"></span>
-              <span>Concern (>100%)</span>
+              <span>Concern (&gt;100%)</span>
             </div>
           </div>
           <p className="note">
