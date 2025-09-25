@@ -4,7 +4,8 @@
  */
 
 import { createContext, useContext } from 'react'
-import { ExperienceRow, MemberClaim } from '../schemas/experience'
+import { ExperienceRow } from '../schemas/experience'
+import { HighCostClaimant } from '../schemas/highCost'
 import { FeesRow, MonthlySummary } from '../schemas/fees'
 
 export interface StepCompletion {
@@ -16,7 +17,7 @@ export interface StepCompletion {
 
 export interface AppState {
   experience: ExperienceRow[]
-  memberClaims: MemberClaim[]
+  highCostClaimants: HighCostClaimant[]
   feesByMonth: Record<string, FeesRow>
   step: StepCompletion
   summaries: MonthlySummary[]
@@ -25,7 +26,7 @@ export interface AppState {
 
 export interface AppActions {
   setExperience: (rows: ExperienceRow[]) => void
-  setMemberClaims: (claims: MemberClaim[]) => void
+  setHighCostClaimants: (rows: HighCostClaimant[]) => void
   upsertFees: (row: FeesRow) => void
   resetFees: () => void
   clearAllData: () => void
@@ -33,7 +34,7 @@ export interface AppActions {
 
 export type AppStore = AppState & AppActions
 
-export type { ExperienceRow, MemberClaim, FeesRow }
+export type { ExperienceRow, HighCostClaimant, FeesRow }
 
 export const AppStoreContext = createContext<AppStore | null>(null)
 
@@ -51,9 +52,9 @@ export function useExperienceData() {
   return store.experience
 }
 
-export function useMemberClaims() {
+export function useHighCostClaimants() {
   const store = useAppStore()
-  return store.memberClaims
+  return store.highCostClaimants
 }
 
 export function useFeesByMonth() {

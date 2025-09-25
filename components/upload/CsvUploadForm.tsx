@@ -1,130 +1,161 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { parseCSVFile } from '@/lib/csv/parser'
+import {
+  EXPERIENCE_TEMPLATE_FILENAME,
+  EXPERIENCE_TEMPLATE_HEADERS,
+  EXPERIENCE_TEMPLATE_SAMPLE_ROW,
+  HIGH_COST_TEMPLATE_FILENAME,
+  HIGH_COST_TEMPLATE_HEADERS,
+  HIGH_COST_TEMPLATE_SAMPLE_ROW,
+  coerceCurrency,
+  coercePercent,
+  coerceYesNo,
+  downloadCsvTemplate,
+  experienceLabelToMonth,
+  validateCsvHeaders,
+  type HeaderValidationResult,
+} from '@/lib/csv/templates'
+import { ExperienceRowSchema, type ExperienceRow } from '@/lib/schemas/experience'
+import { HighCostClaimantSchema, type HighCostClaimant } from '@/lib/schemas/highCost'
 import { useAppStore } from '@/lib/store/useAppStore'
-import { ExperienceRowSchema, MemberClaimSchema, CSV_HEADER_MAPPINGS } from '@/lib/schemas/experience'
-import { parseCSVFile, detectDataType, mapHeaders } from '@/lib/csv/parser'
 
-interface UploadState {
-  status: 'idle' | 'uploading' | 'mapping' | 'processing' | 'success' | 'error'
-  progress: number
-  message: string
-  error?: string
+type UploadType = 'experience' | 'highCost'
+
+interface UploadItem {
+  id: string
+  fileName: string
+  status: 'processing' | 'success' | 'error'
+  type?: UploadType
+  message?: string
+  issues?: HeaderValidationResult
+  preview?: Record<string, unknown>[]
 }
 
-interface HeaderMapping {
-  csvHeader: string
-  mappedField: string
-}
+const MAX_FILES = 5
 
 export default function CsvUploadForm() {
-  const { setExperience, setMemberClaims } = useAppStore()
-  const [uploadState, setUploadState] = useState<UploadState>({
-    status: 'idle',
-    progress: 0,
-    message: '',
-  })
-  const [csvData, setCsvData] = useState<any[] | null>(null)
-  const [headers, setHeaders] = useState<string[]>([])
-  const [dataType, setDataType] = useState<'experience' | 'member' | null>(null)
-  const [headerMappings, setHeaderMappings] = useState<HeaderMapping[]>([])
+  const { setExperience, setHighCostClaimants } = useAppStore()
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>([])
+  const [isProcessing, setIsProcessing] = useState(false)
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0]
-    if (!file) return
+  const handleDownloadExperienceTemplate = () => {
+    downloadCsvTemplate(
+      EXPERIENCE_TEMPLATE_FILENAME,
+      EXPERIENCE_TEMPLATE_HEADERS,
+      EXPERIENCE_TEMPLATE_SAMPLE_ROW,
+    )
+  }
 
-    setUploadState({ status: 'uploading', progress: 10, message: 'Reading CSV file...' })
+  const handleDownloadHighCostTemplate = () => {
+    downloadCsvTemplate(
+      HIGH_COST_TEMPLATE_FILENAME,
+      HIGH_COST_TEMPLATE_HEADERS,
+      HIGH_COST_TEMPLATE_SAMPLE_ROW,
+    )
+  }
 
-    try {
-      // Parse CSV file
-      const { data, headers } = await parseCSVFile(file)
-      setCsvData(data)
-      setHeaders(headers)
-
-      setUploadState({ status: 'uploading', progress: 30, message: 'Analyzing data structure...' })
-
-      // Detect data type
-      const detectedType = detectDataType(data, headers)
-      setDataType(detectedType)
-
-      setUploadState({ status: 'uploading', progress: 50, message: 'Mapping headers...' })
-
-      // Auto-map headers
-      const mappings = mapHeaders(headers, detectedType)
-      const needsMapping = mappings.some(m => !m.mappedField)
-
-      if (needsMapping) {
-        setHeaderMappings(mappings)
-        setUploadState({ status: 'mapping', progress: 60, message: 'Please confirm field mappings' })
-      } else {
-        await processData(data, mappings, detectedType)
-      }
-
-    } catch (error) {
-      console.error('Upload error:', error)
-      setUploadState({
-        status: 'error',
-        progress: 0,
-        message: '',
-        error: error instanceof Error ? error.message : 'Failed to process CSV file'
-      })
-    }
+  const updateUploadItem = useCallback((id: string, updates: Partial<UploadItem>) => {
+    setUploadItems(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...updates } : item)),
+    )
   }, [])
 
-  const processData = async (data: any[], mappings: HeaderMapping[], type: 'experience' | 'member') => {
-    setUploadState({ status: 'processing', progress: 70, message: 'Validating data...' })
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return
+    if (acceptedFiles.length + uploadItems.length > MAX_FILES) {
+      const remaining = Math.max(MAX_FILES - uploadItems.length, 0)
+      setUploadItems(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          fileName: 'Upload limit reached',
+          status: 'error',
+          message: `Only ${MAX_FILES} files can be processed at one time. Remove a file before adding more (remaining slots: ${remaining}).`,
+        },
+      ])
+      return
+    }
 
-    try {
-      const mappedData = data.map(row => {
-        const mapped: any = {}
-        mappings.forEach(mapping => {
-          if (mapping.mappedField && mapping.csvHeader) {
-            mapped[mapping.mappedField] = row[mapping.csvHeader]
-          }
+    setIsProcessing(true)
+
+    const initialItems = acceptedFiles.map<UploadItem>(file => ({
+      id: crypto.randomUUID(),
+      fileName: file.name,
+      status: 'processing',
+    }))
+
+    setUploadItems(prev => [...prev, ...initialItems])
+
+    const experienceRows: ExperienceRow[] = []
+    const highCostRows: HighCostClaimant[] = []
+
+    for (let index = 0; index < acceptedFiles.length; index++) {
+      const file = acceptedFiles[index]
+      const itemId = initialItems[index].id
+
+      try {
+        const { data, headers } = await parseCSVFile(file)
+
+        const experienceValidation = validateCsvHeaders(headers, EXPERIENCE_TEMPLATE_HEADERS)
+        const highCostValidation = validateCsvHeaders(headers, HIGH_COST_TEMPLATE_HEADERS)
+
+        if (experienceValidation.ok) {
+          const parsed = parseExperienceTemplate(data)
+          parsed.forEach(row => experienceRows.push(row))
+          updateUploadItem(itemId, {
+            status: 'success',
+            type: 'experience',
+            message: `Loaded ${parsed.length} records`,
+            preview: data.slice(0, 5),
+          })
+          continue
+        }
+
+        if (highCostValidation.ok) {
+          const parsed = parseHighCostTemplate(data)
+          parsed.forEach(row => highCostRows.push(row))
+          updateUploadItem(itemId, {
+            status: 'success',
+            type: 'highCost',
+            message: `Loaded ${parsed.length} records`,
+            preview: data.slice(0, 5),
+          })
+          continue
+        }
+
+        const primaryIssues = experienceValidation.missing.length || experienceValidation.unexpected.length || experienceValidation.outOfOrder.length
+          ? experienceValidation
+          : highCostValidation
+
+        updateUploadItem(itemId, {
+          status: 'error',
+          message: 'Header validation failed. Verify the template and try again.',
+          issues: primaryIssues,
         })
-        return mapped
-      })
-
-      setUploadState({ status: 'processing', progress: 85, message: 'Saving data...' })
-
-      if (type === 'experience') {
-        const validated = mappedData.map(row => ExperienceRowSchema.parse(row))
-        setExperience(validated)
-      } else {
-        const validated = mappedData.map(row => MemberClaimSchema.parse(row))
-        setMemberClaims(validated)
+      } catch (error) {
+        console.error('Upload processing error:', error)
+        updateUploadItem(itemId, {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unable to process file',
+        })
       }
-
-      setUploadState({
-        status: 'success',
-        progress: 100,
-        message: `Successfully imported ${data.length} rows of ${type} data`
-      })
-
-    } catch (error) {
-      console.error('Validation error:', error)
-      setUploadState({
-        status: 'error',
-        progress: 0,
-        message: '',
-        error: `Data validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
     }
-  }
 
-  const confirmMapping = () => {
-    if (csvData && headerMappings && dataType) {
-      processData(csvData, headerMappings, dataType)
+    if (experienceRows.length > 0) {
+      setExperience(experienceRows)
     }
-  }
 
-  const resetUpload = () => {
-    setUploadState({ status: 'idle', progress: 0, message: '' })
-    setCsvData(null)
-    setHeaders([])
-    setDataType(null)
-    setHeaderMappings([])
+    if (highCostRows.length > 0) {
+      setHighCostClaimants(highCostRows)
+    }
+    setIsProcessing(false)
+  }, [setExperience, setHighCostClaimants, updateUploadItem, uploadItems.length])
+
+  const resetUploads = () => {
+    setUploadItems([])
   }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -133,199 +164,235 @@ export default function CsvUploadForm() {
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.csv'],
     },
-    maxSize: 10 * 1024 * 1024, // 10MB
-    multiple: false,
-    disabled: uploadState.status === 'uploading' || uploadState.status === 'processing',
+    maxSize: 10 * 1024 * 1024,
+    multiple: true,
+    maxFiles: MAX_FILES,
+    disabled: isProcessing,
   })
 
+  const hasUploads = uploadItems.length > 0
+
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Upload Area */}
-      {uploadState.status === 'idle' && (
-        <div>
-          <div
-            {...getRootProps()}
-            className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragActive 
-                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' 
-                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }
-            `}
-          >
-            <input {...getInputProps()} />
-            <div className="mx-auto w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              Drop your CSV file here
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              or click to select a file
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-              Maximum file size: 10MB
-            </p>
-          </div>
-
-          {/* Sample Data Links */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Need a template? Download sample data:
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <a
-                href="/templates/experience-data.csv"
-                download
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Experience Data Template
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </a>
-              <a
-                href="/templates/member-claims.csv"
-                download
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Member Claims Template
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Progress */}
-      {(uploadState.status === 'uploading' || uploadState.status === 'processing') && (
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            {uploadState.message}
-          </p>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${uploadState.progress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      {/* Header Mapping */}
-      {uploadState.status === 'mapping' && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-            Confirm Field Mappings
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            We detected this as <strong>{dataType}</strong> data. Please confirm the field mappings:
-          </p>
-          
-          <div className="space-y-4 mb-6">
-            {headerMappings.map((mapping, index) => (
-              <div key={index} className="flex items-center gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    CSV Column: {mapping.csvHeader}
-                  </label>
-                </div>
-                <div className="flex-1">
-                  <select
-                    value={mapping.mappedField}
-                    onChange={(e) => {
-                      const newMappings = [...headerMappings]
-                      newMappings[index].mappedField = e.target.value
-                      setHeaderMappings(newMappings)
-                    }}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                  >
-                    <option value="">-- Select Field --</option>
-                    {dataType === 'experience' 
-                      ? Object.keys(CSV_HEADER_MAPPINGS.experience).map(field => (
-                          <option key={field} value={field}>{field}</option>
-                        ))
-                      : Object.keys(CSV_HEADER_MAPPINGS.member).map(field => (
-                          <option key={field} value={field}>{field}</option>
-                        ))
-                    }
-                  </select>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={confirmMapping}
-              className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Confirm & Import
-            </button>
-            <button
-              onClick={resetUpload}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Success */}
-      {uploadState.status === 'success' && (
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            Upload Complete!
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            {uploadState.message}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={resetUpload}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Upload Another File
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {uploadState.status === 'error' && (
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <p className="text-lg font-medium text-red-600 dark:text-red-400 mb-2">
-            Upload Failed
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            {uploadState.error}
-          </p>
+    <div className="space-y-8">
+      <section className="rounded-lg border border-black/10 bg-white p-6">
+        <h3 className="text-lg font-medium text-black mb-3">Download Templates</h3>
+        <p className="text-sm text-black/70 mb-4">
+          Start with the exact templates to avoid header validation errors. Both templates include
+          the required columns and a sample row for reference.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
-            onClick={resetUpload}
-            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+            type="button"
+            onClick={handleDownloadExperienceTemplate}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black/5"
           >
-            Try Again
+            Download Experience Data CSV
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadHighCostTemplate}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black/5"
+          >
+            Download High-Cost Claimants CSV
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </button>
         </div>
+      </section>
+
+      <section
+        {...getRootProps()}
+        className={`
+          cursor-pointer rounded-lg border-2 border-dashed p-10 text-center transition-colors
+          ${isDragActive ? 'border-black bg-black/5' : 'border-black/20 hover:border-black/40'}
+          ${isProcessing ? 'opacity-60 pointer-events-none' : ''}
+        `}
+      >
+        <input {...getInputProps()} />
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-black/10">
+          <svg className="h-6 w-6 text-black/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-black">Drop up to {MAX_FILES} CSV files</h3>
+        <p className="mt-1 text-sm text-black/70">
+          Include both the experience data and high-cost claimant templates. Files are validated instantly.
+        </p>
+        <p className="mt-2 text-xs text-black/50">Accepted format: .csv • Max size per file: 10MB</p>
+      </section>
+
+      {hasUploads && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-black">Upload Results</h3>
+            <button
+              type="button"
+              onClick={resetUploads}
+              className="text-sm font-medium text-black/70 hover:text-black"
+            >
+              Clear list
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {uploadItems.map(item => (
+              <UploadResultCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
+  )
+
+  function parseExperienceTemplate(rows: any[]): ExperienceRow[] {
+    const aggregated = new Map<string, ExperienceRow>()
+
+    rows.forEach(row => {
+      const category = row['Category']
+      if (!category) return
+
+      EXPERIENCE_TEMPLATE_HEADERS.slice(1).forEach(header => {
+        const amount = coerceCurrency(row[header])
+        const month = experienceLabelToMonth(header)
+        const key = `${category}__${month}`
+
+        const existing = aggregated.get(key)
+        if (existing) {
+          aggregated.set(key, ExperienceRowSchema.parse({
+            ...existing,
+            amount: existing.amount + amount,
+          }))
+        } else {
+          aggregated.set(key, ExperienceRowSchema.parse({
+            month,
+            category,
+            amount,
+          }))
+        }
+      })
+    })
+
+    return Array.from(aggregated.values())
+  }
+
+  function parseHighCostTemplate(rows: any[]): HighCostClaimant[] {
+    return rows.map(row => HighCostClaimantSchema.parse({
+      memberId: row['Member ID'],
+      memberType: row['Member Type (Employee/Spouse/Dependent)'],
+      ageBand: row['Age Band'],
+      primaryDiagnosisCategory: row['Primary Diagnosis Category'],
+      specificDiagnosisShort: row['Specific Diagnosis Details Short'],
+      specificDiagnosis: row['Specific Diagnosis Details'],
+      percentPlanPaid: coercePercent(row['% of Plan Paid']),
+      percentLargeClaims: coercePercent(row['% of large claims']),
+      total: coerceCurrency(row['Total']),
+      facilityInpatient: coerceCurrency(row['Facility Inpatient']),
+      facilityOutpatient: coerceCurrency(row['Facility Outpatient']),
+      professional: coerceCurrency(row['Professional']),
+      pharmacy: coerceCurrency(row['Pharmacy']),
+      topProvider: row['Top Provider'],
+      enrolled: coerceYesNo(row['Enrolled (Y/N)']),
+      stopLossDeductible: coerceCurrency(row['Stop-Loss Deductible']),
+      estimatedStopLossReimbursement: coerceCurrency(row['Estimated Stop-Loss Reimbursement']),
+      hitStopLoss: coerceYesNo(row['Hit Stop Loss?']),
+    }))
+  }
+}
+
+function UploadResultCard({ item }: { item: UploadItem }) {
+  const statusStyles = useMemo(() => {
+    switch (item.status) {
+      case 'success':
+        return 'border-green-500/40 bg-green-50'
+      case 'error':
+        return 'border-red-500/40 bg-red-50'
+      default:
+        return 'border-black/20 bg-white'
+    }
+  }, [item.status])
+
+  return (
+    <article className={`rounded-lg border px-4 py-3 ${statusStyles}`}>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-semibold text-black">
+              {item.fileName}
+            </h4>
+            {item.type && (
+              <p className="text-xs uppercase tracking-wide text-black/60">
+                {item.type === 'experience' ? 'Experience data' : 'High-cost claimants'}
+              </p>
+            )}
+          </div>
+          <StatusPill status={item.status} />
+        </div>
+
+        {item.message && (
+          <p className="text-sm text-black/80">{item.message}</p>
+        )}
+
+        {item.issues && (
+          <div className="rounded bg-white/60 p-3 text-xs text-black">
+            {item.issues.missing.length > 0 && (
+              <p className="mb-1"><strong>Missing:</strong> {item.issues.missing.join(', ')}</p>
+            )}
+            {item.issues.unexpected.length > 0 && (
+              <p className="mb-1"><strong>Unexpected:</strong> {item.issues.unexpected.join(', ')}</p>
+            )}
+            {item.issues.outOfOrder.length > 0 && (
+              <p><strong>Out of order:</strong> {item.issues.outOfOrder.join(', ')}</p>
+            )}
+          </div>
+        )}
+
+        {item.preview && item.preview.length > 0 && (
+          <div className="overflow-x-auto rounded border border-black/10 bg-white">
+            <table className="min-w-full text-xs">
+              <thead className="bg-black/5">
+                <tr>
+                  {Object.keys(item.preview[0]).map(key => (
+                    <th key={key} className="px-3 py-2 text-left font-medium text-black">
+                      {key}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/10">
+                {item.preview.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {Object.values(row).map((value, cellIndex) => (
+                      <td key={cellIndex} className="px-3 py-2 text-black/80">
+                        {`${value ?? ''}`}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function StatusPill({ status }: { status: UploadItem['status'] }) {
+  const config = {
+    success: { label: 'Success', className: 'bg-green-600/10 text-green-700 border border-green-600/30' },
+    error: { label: 'Error', className: 'bg-red-600/10 text-red-700 border border-red-600/30' },
+    processing: { label: 'Processing', className: 'bg-black/5 text-black border border-black/10' },
+  } as const
+
+  const { label, className } = config[status]
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${className}`}>
+      {label}
+    </span>
   )
 }

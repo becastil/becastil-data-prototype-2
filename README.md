@@ -52,24 +52,27 @@ yarn start
 
 ### Step 1: Upload CSV Data
 
-1. Navigate to `/dashboard/upload`
-2. Upload your experience data CSV file (max 10MB)
-3. Confirm field mappings if needed
-4. Data is automatically validated and stored
+1. Navigate to `/dashboard/upload`.
+2. Download both templates directly from the page:
+   - `experience_data_template.csv`
+   - `high_cost_claimants_template.csv`
+3. Populate the templates and upload up to **five** CSV files at once.
+4. Files are validated immediately; only perfect header matches are accepted.
+5. Valid experience data feeds the summary table and trend charts, while valid high-cost files drive the claimant table and diagnosis charts.
 
-**Required CSV Format for Experience Data:**
-```csv
-month,category,amount,premium,claims
-2024-01,Medical Claims,125000,150000,125000
-2024-01,Pharmacy,35000,45000,35000
+**Experience Template (13 columns):**
+```
+Category,Jan-2024,Feb-2024,Mar-2024,Apr-2024,May-2024,Jun-2024,Jul-2024,Aug-2024,Sep-2024,Oct-2024,Nov-2024,Dec-2024
+MEDICAL CLAIMS,100000,98000,102500,99500,110200,108300,101750,99000,104250,107000,103500,109800
 ```
 
-**Optional Member-Level Claims Data:**
-```csv
-memberId,month,paidAmount,diagnosisCode,serviceType
-M001,2024-01,15000,I21.9,Inpatient
-M002,2024-01,2500,Z51.11,Outpatient
+**High-Cost Claimants Template:**
 ```
+Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Category,Specific Diagnosis Details Short,Specific Diagnosis Details,% of Plan Paid,% of large claims,Total,Facility Inpatient,Facility Outpatient,Professional,Pharmacy,Top Provider,Enrolled (Y/N),Stop-Loss Deductible,Estimated Stop-Loss Reimbursement,Hit Stop Loss?
+123456,Employee,50-54,Oncology,Lymphoma,B-Cell non-Hodgkin lymphoma,85,12,275000,120000,60000,50000,45000,Regional Medical Center,Y,250000,25000,N
+```
+
+> **Strict validation:** headers are case-sensitive and order-sensitive. Percent values may include `%`, currency values may include `$` and commas, and Y/N flags are normalized automatically.
 
 ### Step 2: Enter Monthly Fees
 
@@ -183,11 +186,11 @@ yarn test:watch
 
 ## 📊 Sample Data
 
-Sample CSV templates are available in `/public/templates/`:
-- `experience-data.csv` - Monthly aggregated claims data
-- `member-claims.csv` - Individual member claims for high-cost analysis
+Sample CSV templates are available to download directly from the upload page and stored in `/public/templates/`:
+- `experience_data_template.csv` – Category rows with monthly columns from Jan-2024 through Dec-2024
+- `high_cost_claimants_template.csv` – High-cost claimant roster with diagnosis and cost breakdowns
 
-Download these templates from the upload page for proper formatting examples.
+Both templates include a sample row that illustrates the required formatting.
 
 ## 🔧 Configuration
 

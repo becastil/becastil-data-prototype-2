@@ -2,13 +2,13 @@
 
 import { ReactNode, useState, useEffect } from 'react'
 import { AppStoreContext } from './useAppStore'
-import type { AppState, AppActions, AppStore, ExperienceRow, MemberClaim, FeesRow } from './useAppStore'
+import type { AppState, AppActions, AppStore, ExperienceRow, HighCostClaimant, FeesRow } from './useAppStore'
 import { computeMonthlySummaries } from '../calc/lossRatio'
 import { getUniqueMonths } from '../calc/aggregations'
 
 const initialState: AppState = {
   experience: [],
-  memberClaims: [],
+  highCostClaimants: [],
   feesByMonth: {},
   step: { upload: false, fees: false, table: false, charts: false },
   summaries: [],
@@ -35,7 +35,7 @@ function saveToStorage(state: AppState) {
     if (typeof window === 'undefined') return
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       experience: state.experience,
-      memberClaims: state.memberClaims,
+      highCostClaimants: state.highCostClaimants,
       feesByMonth: state.feesByMonth,
     }))
   } catch {
@@ -51,7 +51,7 @@ function computeDerivedState(baseState: AppState): AppState {
     feesByMonth: baseState.feesByMonth,
   })
   
-  const upload = baseState.experience.length > 0
+  const upload = baseState.experience.length > 0 && baseState.highCostClaimants.length > 0
   const fees = upload && months.every(month => !!baseState.feesByMonth[month])
   const step = {
     upload,
@@ -87,10 +87,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       }))
     },
     
-    setMemberClaims: (claims: MemberClaim[]) => {
-      setState(prevState => ({
+    setHighCostClaimants: (rows: HighCostClaimant[]) => {
+      setState(prevState => computeDerivedState({
         ...prevState,
-        memberClaims: claims,
+        highCostClaimants: rows,
       }))
     },
     

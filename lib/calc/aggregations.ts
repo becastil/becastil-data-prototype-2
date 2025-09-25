@@ -1,4 +1,5 @@
-import { ExperienceRow, MemberClaim } from '../schemas/experience'
+import { ExperienceRow } from '../schemas/experience'
+import { HighCostClaimant } from '../schemas/highCost'
 import { CategoryTotal, TopClaimant, ChartDataPoint } from '../schemas/fees'
 
 /**
@@ -39,24 +40,15 @@ export function aggregateByMonth(experience: ExperienceRow[]): ChartDataPoint[] 
 /**
  * Get top N claimants from member-level data
  */
-export function getTopClaimants(memberClaims: MemberClaim[], topN = 10): TopClaimant[] {
-  const claimantTotals = memberClaims.reduce((acc, claim) => {
-    if (!acc[claim.memberId]) {
-      acc[claim.memberId] = { totalAmount: 0, claimCount: 0 }
-    }
-    acc[claim.memberId].totalAmount += claim.paidAmount
-    acc[claim.memberId].claimCount += 1
-    return acc
-  }, {} as Record<string, { totalAmount: number; claimCount: number }>)
-  
-  const totalAmount = Object.values(claimantTotals).reduce((sum, data) => sum + data.totalAmount, 0)
-  
-  return Object.entries(claimantTotals)
-    .map(([memberId, data]) => ({
-      memberId,
-      totalAmount: data.totalAmount,
-      claimCount: data.claimCount,
-      percentage: totalAmount > 0 ? (data.totalAmount / totalAmount) * 100 : 0,
+export function getTopClaimants(claimants: HighCostClaimant[], topN = 10): TopClaimant[] {
+  const totalAmount = claimants.reduce((sum, claimant) => sum + claimant.total, 0)
+
+  return claimants
+    .map(claimant => ({
+      memberId: claimant.memberId,
+      totalAmount: claimant.total,
+      claimCount: 1,
+      percentage: totalAmount > 0 ? (claimant.total / totalAmount) * 100 : 0,
     }))
     .sort((a, b) => b.totalAmount - a.totalAmount)
     .slice(0, topN)
@@ -76,6 +68,37 @@ export function getUniqueMonths(experience: ExperienceRow[]): string[] {
 export function getUniqueCategories(experience: ExperienceRow[]): string[] {
   const categoryTotals = aggregateByCategory(experience)
   return categoryTotals.map(cat => cat.category)
+}
+
+export function getTopDiagnosisCategories(claimants: HighCostClaimant[], topN = 5) {
+  const totals = claimants.reduce((acc, claimant) => {
+    const key = claimant.primaryDiagnosisCategory || 'Unspecified'
+    acc[key] = (acc[key] || 0) + claimant.total
+    return acc
+  }, {} as Record<string, number>)
+
+  const grandTotal = Object.values(totals).reduce((sum, amount) => sum + amount, 0)
+
+  return Object.entries(totals)
+    .map(([category, amount]) => ({
+      category,
+      amount,
+      percentage: grandTotal > 0 ? (amount / grandTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, topN)
+}
+
+export function getCostDistribution(claimants: HighCostClaimant[]) {
+  return claimants.reduce(
+    (totals, claimant) => ({
+      facilityInpatient: totals.facilityInpatient + claimant.facilityInpatient,
+      facilityOutpatient: totals.facilityOutpatient + claimant.facilityOutpatient,
+      professional: totals.professional + claimant.professional,
+      pharmacy: totals.pharmacy + claimant.pharmacy,
+    }),
+    { facilityInpatient: 0, facilityOutpatient: 0, professional: 0, pharmacy: 0 }
+  )
 }
 
 /**

@@ -1,14 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { useExperienceData, useMemberClaims, useSummaries } from '@/lib/store/useAppStore'
-import { aggregateByCategory, aggregateByMonth, getTopClaimants, getDateRangeOptions } from '@/lib/calc/aggregations'
+import { useExperienceData, useHighCostClaimants, useSummaries } from '@/lib/store/useAppStore'
+import {
+  aggregateByCategory,
+  aggregateByMonth,
+  getTopClaimants,
+  getDateRangeOptions,
+  getTopDiagnosisCategories,
+  getCostDistribution,
+} from '@/lib/calc/aggregations'
 import { StackedWithLineChart } from './StackedWithLineChart'
 import { SimpleKPICard } from './SimpleKPICard'
 import { TopCategoriesChart } from './TopCategoriesChart'
 import { TopClaimantsChart } from './TopClaimantsChart'
-import { TrendComparisonChart } from './TrendComparisonChart'
 import { LossRatioTrendChart } from './LossRatioTrendChart'
+import HighCostTable from '@/components/high-cost/HighCostTable'
+import DiagnosisBreakdownChart from '@/components/high-cost/DiagnosisBreakdownChart'
 
 interface ChartsGridProps {
   className?: string
@@ -16,7 +24,7 @@ interface ChartsGridProps {
 
 export default function ChartsGrid({ className = '' }: ChartsGridProps) {
   const experience = useExperienceData()
-  const memberClaims = useMemberClaims()
+  const highCostClaimants = useHighCostClaimants()
   const summaries = useSummaries()
   
   const [dateRange, setDateRange] = useState<string>('all')
@@ -24,7 +32,9 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
   // Calculate data for charts
   const categoryTotals = aggregateByCategory(experience)
   const monthlyData = aggregateByMonth(experience)
-  const topClaimants = getTopClaimants(memberClaims, 10)
+  const topClaimants = getTopClaimants(highCostClaimants, 10)
+  const diagnosisCategories = getTopDiagnosisCategories(highCostClaimants, 5)
+  const costDistribution = getCostDistribution(highCostClaimants)
   
   // Get totals for KPI cards
   const totalClaims = summaries.reduce((sum, s) => sum + s.claims, 0)
@@ -126,7 +136,7 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
 
         {/* High-Cost Claimants or Loss Ratio Trend */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          {memberClaims.length > 0 ? (
+          {highCostClaimants.length > 0 ? (
             <>
               <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                 Top Claimants (High-Cost Members)
@@ -149,6 +159,16 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
           )}
         </div>
       </div>
+
+      {highCostClaimants.length > 0 && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <HighCostTable claimants={highCostClaimants} />
+          <DiagnosisBreakdownChart
+            categories={diagnosisCategories}
+            distribution={costDistribution}
+          />
+        </div>
+      )}
     </div>
   )
 }

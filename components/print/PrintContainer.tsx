@@ -1,15 +1,15 @@
 'use client'
 
-import { useSummaries, useExperienceData, useMemberClaims } from '@/lib/store/useAppStore'
+import { useSummaries, useExperienceData, useHighCostClaimants } from '@/lib/store/useAppStore'
 import { calculateTotals } from '@/lib/calc/lossRatio'
-import { aggregateByCategory, getTopClaimants } from '@/lib/calc/aggregations'
+import { aggregateByCategory, getTopClaimants, getTopDiagnosisCategories, getCostDistribution } from '@/lib/calc/aggregations'
 import { SimpleKPICard } from '@/components/charts/SimpleKPICard'
 import './print-styles.css'
 
 export default function PrintContainer() {
   const summaries = useSummaries()
   const experience = useExperienceData()
-  const memberClaims = useMemberClaims()
+  const highCostClaimants = useHighCostClaimants()
   const totals = calculateTotals(summaries)
   
   const formatCurrency = (amount: number) => {
@@ -40,7 +40,9 @@ export default function PrintContainer() {
   }
   
   const categoryTotals = aggregateByCategory(experience)
-  const topClaimants = getTopClaimants(memberClaims, 10)
+  const topClaimants = getTopClaimants(highCostClaimants, 10)
+  const diagnosisCategories = getTopDiagnosisCategories(highCostClaimants, 5)
+  const costDistribution = getCostDistribution(highCostClaimants)
   
   // Calculate key metrics
   const totalClaims = summaries.reduce((sum, s) => sum + s.claims, 0)
@@ -226,7 +228,7 @@ export default function PrintContainer() {
         </div>
 
         {/* High-Cost Analysis */}
-        {memberClaims.length > 0 && topClaimants.length > 0 && (
+        {highCostClaimants.length > 0 && topClaimants.length > 0 && (
           <div className="analysis-section">
             <h2>High-Cost Members</h2>
             <div className="claimants-list">
@@ -242,6 +244,35 @@ export default function PrintContainer() {
             </div>
             <div className="claimants-summary">
               Top 3 members represent {topClaimants.slice(0, 3).reduce((sum, c) => sum + c.percentage, 0).toFixed(1)}% of total claims
+            </div>
+            <div className="diagnosis-overview">
+              <h3>Top Diagnosis Categories</h3>
+              <ul>
+                {diagnosisCategories.map(category => (
+                  <li key={category.category}>
+                    <span>{category.category}</span>
+                    <span>{formatCurrency(category.amount)} ({category.percentage.toFixed(1)}%)</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="distribution-grid">
+                <div>
+                  <span>Facility Inpatient</span>
+                  <strong>{formatCurrency(costDistribution.facilityInpatient)}</strong>
+                </div>
+                <div>
+                  <span>Facility Outpatient</span>
+                  <strong>{formatCurrency(costDistribution.facilityOutpatient)}</strong>
+                </div>
+                <div>
+                  <span>Professional</span>
+                  <strong>{formatCurrency(costDistribution.professional)}</strong>
+                </div>
+                <div>
+                  <span>Pharmacy</span>
+                  <strong>{formatCurrency(costDistribution.pharmacy)}</strong>
+                </div>
+              </div>
             </div>
           </div>
         )}
