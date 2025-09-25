@@ -22,3 +22,4 @@ app/.next/
 .vscode/
 .idea/
 *.code-workspace
+.next/
