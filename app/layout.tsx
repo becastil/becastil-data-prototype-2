@@ -29,29 +29,34 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   // Get user data for the sidebar
-  const cookieStore = await cookies()
   let user = null
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  try {
+    const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (supabaseUrl && supabaseAnonKey) {
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
+    if (supabaseUrl && supabaseAnonKey) {
+      const supabase = createServerClient(
+        supabaseUrl,
+        supabaseAnonKey,
+        {
+          cookies: {
+            get(name: string) {
+              return cookieStore.get(name)?.value
+            },
           },
-        },
-      }
-    )
+        }
+      )
 
-    const {
-      data: { user: userData },
-    } = await supabase.auth.getUser()
-    user = userData
+      const {
+        data: { user: userData },
+      } = await supabase.auth.getUser()
+      user = userData
+    }
+  } catch (error) {
+    console.error('Auth initialization error:', error)
+    // Continue with user = null
   }
 
   return (
