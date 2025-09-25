@@ -31,7 +31,7 @@ export default function EnhancedSidebar({ className, user }: EnhancedSidebarProp
   const [state, setState] = useState<SidebarState>({
     isCollapsed: false,
     isMobileOpen: false,
-    expandedGroups: new Set(['main', 'analytics']), // Default expanded groups
+    expandedGroups: new Set(['workflow']), // Default expanded workflow group
     searchQuery: ''
   })
 

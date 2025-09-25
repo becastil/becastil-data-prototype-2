@@ -3,25 +3,12 @@
  * Central place to manage all routes and their organization
  */
 
-import { 
-  Home,
-  LayoutDashboard, 
-  FileBarChart, 
-  FileText, 
-  Upload, 
-  Shield, 
-  LineChart, 
-  HelpCircle,
-  BarChart3,
-  Settings,
-  LogIn,
-  UserPlus,
-  Lock,
-  Heart,
-  Lightbulb,
+import {
+  Upload,
+  FileText,
   Table,
-  TrendingUp,
-  type LucideIcon
+  LineChart,
+  type LucideIcon,
 } from 'lucide-react'
 
 export interface NavigationItem {
@@ -43,152 +30,36 @@ export interface NavigationGroup {
 
 export const navigationConfig: NavigationGroup[] = [
   {
-    id: 'main',
-    label: 'Main',
+    id: 'workflow',
+    label: 'Workflow',
     items: [
       {
-        id: 'home',
-        label: 'Home',
-        href: '/',
-        icon: Home,
-        description: 'Welcome page and getting started'
-      },
-      {
-        id: 'dashboard',
-        label: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
-        description: 'Main dashboard with key metrics and insights'
-      }
-    ]
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics & Reports',
-    isCollapsible: true,
-    items: [
-      {
-        id: 'reports',
-        label: 'Reports',
-        href: '/reports',
-        icon: FileText,
-        description: 'Main reports page with table and chart views'
-      },
-      {
-        id: 'claims-analysis',
-        label: 'Claims Analysis',
-        href: '/reports/claims-analysis',
-        icon: TrendingUp,
-        description: 'Analyze healthcare claims data with interactive tables'
-      },
-      {
-        id: 'reports-dashboard',
-        label: 'Reports Dashboard',
-        href: '/reports/dashboard',
-        icon: FileBarChart,
-        description: 'Comprehensive reporting dashboard'
-      },
-      {
-        id: 'healthcare-costs',
-        label: 'Healthcare Costs',
-        href: '/dashboards/healthcare-costs',
-        icon: Heart,
-        description: 'Healthcare cost analysis and trends'
-      },
-      {
-        id: 'chart-testing',
-        label: 'Chart Testing',
-        href: '/charts/test',
-        icon: BarChart3,
-        description: 'Interactive chart testing and development'
-      },
-      {
-        id: 'business-insights',
-        label: 'Business Insights',
-        href: '/insights/data-dashboards-for-business-success',
-        icon: Lightbulb,
-        description: 'Data dashboards for business success insights'
-      }
-    ]
-  },
-  {
-    id: 'tools',
-    label: 'Data Tools',
-    items: [
-      {
-        id: 'upload-center',
-        label: 'Upload Center',
-        href: '/upload',
+        id: 'upload',
+        label: 'Upload CSV',
+        href: '/dashboard/upload',
         icon: Upload,
-        description: 'Central hub for all data uploads and processing'
+        description: 'Start by uploading your healthcare data CSV.'
       },
       {
-        id: 'csv-visualizer',
-        label: 'CSV Visualizer',
-        href: '/tools/csv-visualizer',
-        icon: Table,
-        description: 'Upload and visualize CSV data with AI insights'
-      },
-      {
-        id: 'hcc-analysis',
-        label: 'HCC Analysis',
-        href: '/hcc',
-        icon: Shield,
-        description: 'Hierarchical Condition Category risk analysis'
-      }
-    ]
-  },
-  {
-    id: 'account',
-    label: 'Account',
-    items: [
-      {
-        id: 'login',
-        label: 'Login',
-        href: '/auth/login',
-        icon: LogIn,
-        description: 'Sign in to your account'
-      },
-      {
-        id: 'signup',
-        label: 'Sign Up',
-        href: '/auth/signup',
-        icon: UserPlus,
-        description: 'Create a new account'
-      }
-    ]
-  },
-  {
-    id: 'support',
-    label: 'Support & Legal',
-    items: [
-      {
-        id: 'help',
-        label: 'Help',
-        href: '/help',
-        icon: HelpCircle,
-        description: 'Documentation and support resources'
-      },
-      {
-        id: 'privacy',
-        label: 'Privacy Policy',
-        href: '/privacy',
-        icon: Lock,
-        description: 'Privacy policy and data protection'
-      },
-      {
-        id: 'terms',
-        label: 'Terms of Service',
-        href: '/terms',
+        id: 'fees',
+        label: 'Monthly Fees',
+        href: '/dashboard/fees',
         icon: FileText,
-        description: 'Terms and conditions'
+        description: 'Enter administrative and stop loss fees by month.'
       },
       {
-        id: 'security',
-        label: 'Security',
-        href: '/security',
-        icon: Shield,
-        description: 'Security information and guidelines'
+        id: 'summary-table',
+        label: 'Summary Table',
+        href: '/dashboard/table',
+        icon: Table,
+        description: 'Review aggregated monthly results.'
+      },
+      {
+        id: 'charts',
+        label: 'Charts',
+        href: '/dashboard/charts',
+        icon: LineChart,
+        description: 'Visualize performance trends and KPIs.'
       }
     ]
   }
