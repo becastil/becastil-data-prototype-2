@@ -49,15 +49,15 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
   if (experience.length === 0) {
     return (
       <div className={`text-center py-16 ${className}`}>
-        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-16 h-16 bg-[#f3ede2] rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-[#9b9287]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-medium text-[#2f2a24] mb-2">
           No Data Available
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-[#5b5247]">
           Complete the previous steps to view charts and analytics.
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
         <select
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100"
+          className="px-3 py-2 border border-[#eadfce] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#cdbfa9] bg-white text-[#2f2a24]"
         >
           {getDateRangeOptions(summaries.map(s => s.month)).map(option => (
             <option key={option.value} value={option.value}>
@@ -110,8 +110,8 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
       </div>
 
       {/* Main Chart - Full Width */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+      <div className="bg-[#fdf9f2] rounded-2xl shadow-sm border border-[#eadfce] p-6">
+        <h3 className="text-lg font-medium text-[#2f2a24] mb-4">
           Monthly Claims by Category with Loss Ratio Trend
         </h3>
         <StackedWithLineChart
@@ -124,8 +124,8 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
       {/* Secondary Charts - Two Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Top Categories */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-[#fdf9f2] rounded-2xl shadow-sm border border-[#eadfce] p-6">
+          <h3 className="text-lg font-medium text-[#2f2a24] mb-4">
             Claims by Category
           </h3>
           <TopCategoriesChart
@@ -135,10 +135,10 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
         </div>
 
         {/* High-Cost Claimants or Loss Ratio Trend */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-[#fdf9f2] rounded-2xl shadow-sm border border-[#eadfce] p-6">
           {highCostClaimants.length > 0 ? (
             <>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-lg font-medium text-[#2f2a24] mb-4">
                 Top Claimants (High-Cost Members)
               </h3>
               <TopClaimantsChart
@@ -148,7 +148,7 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
             </>
           ) : (
             <>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              <h3 className="text-lg font-medium text-[#2f2a24] mb-4">
                 Loss Ratio Trend
               </h3>
               <LossRatioTrendChart

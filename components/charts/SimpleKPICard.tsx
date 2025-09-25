@@ -82,41 +82,47 @@ export function SimpleKPICard({
     }
   }
   
-  const getIconColor = () => {
-    switch (icon) {
-      case 'claims': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30'
-      case 'cost': return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
-      case 'ratio': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-      case 'average': return 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30'
-      case 'sessions': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30'
-      default: return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30'
-    }
+  const getIconStyles = () => {
+    const palette = {
+      claims: { bg: '#e0ebf6', color: '#2f4d6d' },
+      cost: { bg: '#dcefe5', color: '#2f6d55' },
+      ratio: { bg: '#f5e1db', color: '#c75237' },
+      average: { bg: '#e7e1f2', color: '#5b4a84' },
+      sessions: { bg: '#f4e8d0', color: '#b3872a' },
+      default: { bg: '#ebe4da', color: '#5b5247' },
+    } as const
+
+    return palette[icon ?? 'default'] ?? palette.default
   }
   
+  const iconStyles = getIconStyles()
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
+    <div className={`bg-[#fdf9f2] rounded-2xl shadow-sm border border-[#eadfce] p-6 text-[#2f2a24] ${className}`}>
       <div className="flex items-center">
         <div className="flex-shrink-0">
-          <div className={`w-8 h-8 rounded-md flex items-center justify-center ${getIconColor()}`}>
+          <div
+            className="w-8 h-8 rounded-md flex items-center justify-center"
+            style={{ backgroundColor: iconStyles.bg, color: iconStyles.color }}
+          >
             {getIcon()}
           </div>
         </div>
         <div className="ml-5 w-0 flex-1">
           <dl>
-            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+            <dt className="text-sm font-medium text-[#5b5247] truncate">
               {title}
             </dt>
             <dd className="flex items-baseline">
-              <div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              <div className="text-2xl font-semibold text-[#2f2a24]">
                 {formatValue(value)}
               </div>
               {change !== undefined && (
                 <div className={`ml-2 flex items-baseline text-sm font-semibold ${
                   change > 0 
-                    ? 'text-green-600 dark:text-green-400' 
+                    ? 'text-[#2f6d55]'
                     : change < 0 
-                    ? 'text-red-600 dark:text-red-400' 
-                    : 'text-gray-500 dark:text-gray-400'
+                    ? 'text-[#c75237]'
+                    : 'text-[#5b5247]'
                 }`}>
                   {change > 0 && (
                     <svg className="self-center flex-shrink-0 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">

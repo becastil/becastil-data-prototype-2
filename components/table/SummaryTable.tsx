@@ -52,7 +52,7 @@ export default function SummaryTable({ onExport }: SummaryTableProps) {
       <div className="flex justify-end">
         <button
           onClick={onExport}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2f6d55] text-white font-medium rounded-lg shadow-sm hover:!bg-[#275746] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -62,76 +62,76 @@ export default function SummaryTable({ onExport }: SummaryTableProps) {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-[#fdf9f2] rounded-2xl shadow-sm border border-[#eadfce] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+              <tr className="border-b border-[#eadfce] bg-[#f5ede0]">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-[#3d382f]">
                   Month
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Claims
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Premium
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Fees Total
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Total Cost
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Loss Ratio
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-gray-100">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-[#3d382f]">
                   Rolling-12 LR
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-[#f0e4d0]">
               {summaries.map((summary, index) => (
                 <tr 
                   key={summary.month} 
-                  className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
-                    index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-750'
-                  }`}
+                  className={`transition-colors duration-150 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-[#fbf6ed]'
+                  } hover:!bg-[#f3ede2]`}
                 >
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-3 text-sm font-medium text-[#33302a]">
                     {summary.month}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-3 text-sm text-right text-[#33302a]">
                     {formatCurrency(summary.claims)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-3 text-sm text-right text-[#33302a]">
                     {formatCurrency(summary.premium)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-3 text-sm text-right text-[#33302a]">
                     {formatCurrency(summary.feesTotal)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-3 text-sm text-right text-[#33302a]">
                     {formatCurrency(summary.totalCost)}
                   </td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${
                     summary.lossRatio === null 
-                      ? 'text-gray-400 dark:text-gray-500'
+                      ? 'text-[#9b9287]'
                       : summary.lossRatio > 1
-                      ? 'text-red-600 dark:text-red-400'
+                      ? 'text-[#c75237]'
                       : summary.lossRatio > 0.8
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-green-600 dark:text-green-400'
+                      ? 'text-[#b3872a]'
+                      : 'text-[#2f6d55]'
                   }`}>
                     {formatPercent(summary.lossRatio)}
                   </td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${
                     summary.r12LossRatio === null 
-                      ? 'text-gray-400 dark:text-gray-500'
+                      ? 'text-[#9b9287]'
                       : summary.r12LossRatio > 1
-                      ? 'text-red-600 dark:text-red-400'
+                      ? 'text-[#c75237]'
                       : summary.r12LossRatio > 0.8
-                      ? 'text-yellow-600 dark:text-yellow-400'
-                      : 'text-green-600 dark:text-green-400'
+                      ? 'text-[#b3872a]'
+                      : 'text-[#2f6d55]'
                   }`}>
                     {formatPercent(summary.r12LossRatio)}
                   </td>
@@ -140,27 +140,27 @@ export default function SummaryTable({ onExport }: SummaryTableProps) {
             </tbody>
             
             {/* Totals Footer */}
-            <tfoot className="bg-gray-100 dark:bg-gray-700">
-              <tr className="border-t-2 border-gray-300 dark:border-gray-600">
-                <td className="px-4 py-4 text-sm font-bold text-gray-900 dark:text-gray-100">
+            <tfoot className="bg-[#f3ede2]">
+              <tr className="border-t-2 border-[#e2d6c3]">
+                <td className="px-4 py-4 text-sm font-bold text-[#33302a]">
                   TOTAL
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#33302a]">
                   {formatCurrency(totals.claims)}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#33302a]">
                   {formatCurrency(totals.premium)}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#33302a]">
                   {formatCurrency(totals.feesTotal)}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#33302a]">
                   {formatCurrency(totals.totalCost)}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-600 dark:text-gray-400">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#675f55]">
                   {formatPercent(totals.premium > 0 ? totals.claims / totals.premium : null)}
                 </td>
-                <td className="px-4 py-4 text-sm text-right font-bold text-gray-600 dark:text-gray-400">
+                <td className="px-4 py-4 text-sm text-right font-bold text-[#675f55]">
                   —
                 </td>
               </tr>
@@ -170,22 +170,22 @@ export default function SummaryTable({ onExport }: SummaryTableProps) {
       </div>
 
       {/* Footer Notes */}
-      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+      <div className="text-sm text-[#5b5247] space-y-2">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: '#4f8a65' }}></div>
             <span>Good (≤80%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: '#d5a851' }}></div>
             <span>Warning (80-100%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded"></div>
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: '#c75237' }}></div>
             <span>Concern (&gt;100%)</span>
           </div>
         </div>
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="border-t border-[#eadfce] pt-4">
           <p><strong>Latest Rolling-12 Loss Ratio:</strong> {formatPercent(getLatestR12())}</p>
           <p className="mt-1">
             <strong>Note:</strong> Rolling-12 Loss Ratio requires at least 12 months of data. 

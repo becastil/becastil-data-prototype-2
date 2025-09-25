@@ -134,19 +134,19 @@ export default function HighCostTable({ claimants }: HighCostTableProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-medium text-black">High-Cost Claimant Breakdown</h3>
+        <h3 className="text-lg font-medium text-[#2f2a24]">High-Cost Claimant Breakdown</h3>
         <input
           type="search"
           value={globalFilter ?? ''}
           onChange={event => setGlobalFilter(event.target.value)}
           placeholder="Search member, diagnosis, provider..."
-          className="w-full max-w-xs rounded-md border border-black/20 px-3 py-2 text-sm focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20"
+          className="w-full max-w-xs rounded-md border border-[#eadfce] bg-white px-3 py-2 text-sm text-[#2f2a24] focus:border-[#cdbfa9] focus:outline-none focus:ring-2 focus:ring-[#cdbfa9]/60"
         />
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-black/10 text-sm">
-          <thead className="bg-black/5">
+        <table className="min-w-full divide-y divide-[#eadfce] text-sm text-[#2f2a24]">
+          <thead className="bg-[#f3ede2]">
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => {
@@ -155,7 +155,7 @@ export default function HighCostTable({ claimants }: HighCostTableProps) {
                     <th
                       key={header.id}
                       onClick={header.column.getToggleSortingHandler()}
-                      className="cursor-pointer px-3 py-2 text-left font-semibold text-black"
+                      className="cursor-pointer px-3 py-2 text-left font-semibold text-[#3d382f]"
                     >
                       <div className="flex items-center gap-1">
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -168,11 +168,11 @@ export default function HighCostTable({ claimants }: HighCostTableProps) {
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-black/10 bg-white">
+          <tbody className="divide-y divide-[#f0e4d0] bg-white">
             {table.getRowModel().rows.map(row => (
-              <tr key={row.id} className="hover:bg-black/5">
+              <tr key={row.id} className="transition-colors hover:!bg-[#f3ede2]">
                 {row.getVisibleCells().map(cell => (
-                  <td key={cell.id} className="px-3 py-2 text-black/80">
+                  <td key={cell.id} className="px-3 py-2 text-[#4f463b]">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -180,7 +180,7 @@ export default function HighCostTable({ claimants }: HighCostTableProps) {
             ))}
             {table.getRowModel().rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-6 text-center text-black/50">
+                <td colSpan={columns.length} className="px-3 py-6 text-center text-[#9b9287]">
                   No matching claimants.
                 </td>
               </tr>

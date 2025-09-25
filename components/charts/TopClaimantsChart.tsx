@@ -23,25 +23,25 @@ export function TopClaimantsChart({ claimants, height = 350 }: TopClaimantsChart
   }
   
   // Colors for the bars - gradient from high to low impact
-  const getBarColor = (index: number, total: number) => {
+  const getBarColor = (index: number) => {
     const colors = [
-      '#DC2626', // red for highest
-      '#EA580C', // orange-red
-      '#D97706', // amber
-      '#CA8A04', // yellow
-      '#65A30D', // lime
-      '#16A34A', // green
-      '#059669', // emerald
-      '#0D9488', // teal
-      '#0891B2', // cyan
-      '#0284C7', // blue
+      '#c75237',
+      '#d97a4d',
+      '#e29a8c',
+      '#edb89d',
+      '#f2d1ac',
+      '#e0c995',
+      '#c3bf7d',
+      '#a7b97e',
+      '#8aa98a',
+      '#76a3a3',
     ]
     return colors[index % colors.length]
   }
   
   if (claimants.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-center h-64 text-[#9b9287]">
         No claimant data available
       </div>
     )
@@ -55,27 +55,27 @@ export function TopClaimantsChart({ claimants, height = 350 }: TopClaimantsChart
           layout="horizontal"
           margin={{ top: 20, right: 30, left: 60, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#d9ccb8" opacity={0.6} />
           <XAxis 
             type="number"
-            stroke="#6B7280"
+            stroke="#8b7f70"
             fontSize={12}
             tickFormatter={formatCurrency}
           />
           <YAxis 
             type="category"
             dataKey="memberId"
-            stroke="#6B7280"
+            stroke="#8b7f70"
             fontSize={12}
             width={55}
             tick={{ fontSize: 10 }}
           />
           <Tooltip 
             contentStyle={{
-              backgroundColor: '#1F2937',
-              border: '1px solid #374151',
-              borderRadius: '0.375rem',
-              color: '#F9FAFB'
+              backgroundColor: '#fdf9f2',
+              border: '1px solid #eadfce',
+              borderRadius: '0.5rem',
+              color: '#2f2a24'
             }}
             formatter={(value: any, name: string, props: any) => {
               const data = props.payload
@@ -93,24 +93,24 @@ export function TopClaimantsChart({ claimants, height = 350 }: TopClaimantsChart
           />
           <Bar dataKey="totalAmount">
             {claimants.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getBarColor(index, claimants.length)} />
+              <Cell key={`cell-${index}`} fill={getBarColor(index)} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
       
       {/* Summary Stats */}
-      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+      <div className="bg-[#f3ede2] rounded-xl p-4">
+        <div className="grid grid-cols-2 gap-4 text-sm text-[#4f463b]">
           <div>
-            <div className="text-gray-500 dark:text-gray-400">Top 3 Members</div>
-            <div className="font-medium text-gray-900 dark:text-gray-100">
+            <div className="text-[#5b5247]">Top 3 Members</div>
+            <div className="font-medium text-[#2f2a24]">
               {formatPercent(claimants.slice(0, 3).reduce((sum, c) => sum + c.percentage, 0))} of total
             </div>
           </div>
           <div>
-            <div className="text-gray-500 dark:text-gray-400">Highest Single</div>
-            <div className="font-medium text-gray-900 dark:text-gray-100">
+            <div className="text-[#5b5247]">Highest Single</div>
+            <div className="font-medium text-[#2f2a24]">
               {claimants[0] ? formatCurrency(claimants[0].totalAmount) : '$0'}
             </div>
           </div>

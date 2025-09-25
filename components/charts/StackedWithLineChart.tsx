@@ -27,14 +27,14 @@ export function StackedWithLineChart({ monthlyData, summaries, height = 400 }: S
   )
   
   const colors = [
-    '#3B82F6', // blue
-    '#10B981', // green
-    '#F59E0B', // yellow
-    '#EF4444', // red
-    '#8B5CF6', // purple
-    '#06B6D4', // cyan
-    '#F97316', // orange
-    '#84CC16', // lime
+    '#8fb8db', // soft blue
+    '#a7d8c1', // soft green
+    '#f0c987', // warm amber
+    '#e29a8c', // muted coral
+    '#c9b4e5', // lavender
+    '#97d8e2', // pastel teal
+    '#f2b28c', // peach
+    '#c8d89b', // sage
   ]
   
   const formatCurrency = (value: number) => {
@@ -61,32 +61,32 @@ export function StackedWithLineChart({ monthlyData, summaries, height = 400 }: S
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#d9ccb8" opacity={0.6} />
         <XAxis 
           dataKey="month" 
-          stroke="#6B7280"
+          stroke="#8b7f70"
           fontSize={12}
         />
         <YAxis 
           yAxisId="left"
-          stroke="#6B7280"
+          stroke="#8b7f70"
           fontSize={12}
           tickFormatter={formatCurrency}
         />
         <YAxis 
           yAxisId="right" 
           orientation="right"
-          stroke="#6B7280"
+          stroke="#8b7f70"
           fontSize={12}
           tickFormatter={formatPercent}
           domain={[0, 150]} // 0% to 150%
         />
         <Tooltip 
           contentStyle={{
-            backgroundColor: '#1F2937',
-            border: '1px solid #374151',
-            borderRadius: '0.375rem',
-            color: '#F9FAFB'
+            backgroundColor: '#fdf9f2',
+            border: '1px solid #eadfce',
+            borderRadius: '0.5rem',
+            color: '#2f2a24'
           }}
           formatter={(value: any, name: string) => {
             if (name === 'lossRatio') {
@@ -114,9 +114,9 @@ export function StackedWithLineChart({ monthlyData, summaries, height = 400 }: S
           yAxisId="right"
           type="monotone"
           dataKey="lossRatio"
-          stroke="#EF4444"
+          stroke="#c75237"
           strokeWidth={2}
-          dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
+          dot={{ fill: '#c75237', strokeWidth: 2, r: 4 }}
           name="Loss Ratio (%)"
         />
       </ComposedChart>
