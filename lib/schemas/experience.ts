@@ -5,9 +5,9 @@ export const MonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month mu
 export const ExperienceRowSchema = z.object({
   month: MonthSchema,
   category: z.string().min(1, 'Category is required'),
-  amount: z.coerce.number().nonnegative('Amount must be non-negative'),
-  premium: z.coerce.number().nonnegative().optional(),
-  claims: z.coerce.number().nonnegative().optional(),
+  amount: z.coerce.number(),
+  premium: z.coerce.number().optional(),
+  claims: z.coerce.number().optional(),
 })
 
 export type ExperienceRow = z.infer<typeof ExperienceRowSchema>

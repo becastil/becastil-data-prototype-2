@@ -16,6 +16,7 @@ import {
   downloadCsvTemplate,
   experienceLabelToMonth,
   validateCsvHeaders,
+  validateExperienceHeaders,
   type HeaderValidationResult,
 } from '@/lib/csv/templates'
 import { ExperienceRowSchema, type ExperienceRow } from '@/lib/schemas/experience'
@@ -35,6 +36,9 @@ interface UploadItem {
 }
 
 const MAX_FILES = 5
+const DOMESTIC_HOSPITAL_CATEGORY = 'Domestic Hospital Claims'
+const TOTAL_HOSPITAL_CATEGORY = 'Total Hospital Medical Claims'
+const NON_DOMESTIC_HOSPITAL_CATEGORY = 'Non Domestic Hospital Claims'
 
 export default function CsvUploadForm() {
   const { setExperience, setHighCostClaimants } = useAppStore()
@@ -99,11 +103,11 @@ export default function CsvUploadForm() {
       try {
         const { data, headers } = await parseCSVFile(file)
 
-        const experienceValidation = validateCsvHeaders(headers, EXPERIENCE_TEMPLATE_HEADERS)
+        const experienceValidation = validateExperienceHeaders(headers)
         const highCostValidation = validateCsvHeaders(headers, HIGH_COST_TEMPLATE_HEADERS)
 
         if (experienceValidation.ok) {
-          const parsed = parseExperienceTemplate(data)
+          const parsed = parseExperienceTemplate(data, experienceValidation.monthHeaders)
           parsed.forEach(row => experienceRows.push(row))
           updateUploadItem(itemId, {
             status: 'success',
@@ -126,9 +130,12 @@ export default function CsvUploadForm() {
           continue
         }
 
-        const primaryIssues = experienceValidation.missing.length || experienceValidation.unexpected.length || experienceValidation.outOfOrder.length
-          ? experienceValidation
-          : highCostValidation
+        const experienceHasIssues =
+          experienceValidation.missing.length > 0 ||
+          experienceValidation.unexpected.length > 0 ||
+          experienceValidation.outOfOrder.length > 0
+
+        const primaryIssues = experienceHasIssues ? experienceValidation : highCostValidation
 
         updateUploadItem(itemId, {
           status: 'error',
@@ -248,35 +255,51 @@ export default function CsvUploadForm() {
     </div>
   )
 
-  function parseExperienceTemplate(rows: any[]): ExperienceRow[] {
-    const aggregated = new Map<string, ExperienceRow>()
+  function parseExperienceTemplate(rows: any[], monthHeaders: string[]): ExperienceRow[] {
+    const monthlyValues: Record<string, Record<string, number>> = {}
 
     rows.forEach(row => {
       const category = row['Category']
       if (!category) return
 
-      EXPERIENCE_TEMPLATE_HEADERS.slice(1).forEach(header => {
+      monthHeaders.forEach(header => {
         const amount = coerceCurrency(row[header])
         const month = experienceLabelToMonth(header)
-        const key = `${category}__${month}`
-
-        const existing = aggregated.get(key)
-        if (existing) {
-          aggregated.set(key, ExperienceRowSchema.parse({
-            ...existing,
-            amount: existing.amount + amount,
-          }))
-        } else {
-          aggregated.set(key, ExperienceRowSchema.parse({
-            month,
-            category,
-            amount,
-          }))
-        }
+        monthlyValues[month] ??= {}
+        monthlyValues[month][category] = (monthlyValues[month][category] ?? 0) + amount
       })
     })
 
-    return Array.from(aggregated.values())
+    Object.entries(monthlyValues).forEach(([month, categories]) => {
+      const domesticHospital = categories[DOMESTIC_HOSPITAL_CATEGORY]
+      const totalHospital = categories[TOTAL_HOSPITAL_CATEGORY]
+      let nonDomestic = categories[NON_DOMESTIC_HOSPITAL_CATEGORY]
+
+      if (typeof totalHospital === 'number' && typeof domesticHospital === 'number' && typeof nonDomestic !== 'number') {
+        nonDomestic = totalHospital - domesticHospital
+        categories[NON_DOMESTIC_HOSPITAL_CATEGORY] = nonDomestic
+      }
+
+      if (typeof domesticHospital === 'number' && typeof nonDomestic === 'number' && typeof totalHospital !== 'number') {
+        categories[TOTAL_HOSPITAL_CATEGORY] = domesticHospital + nonDomestic
+      }
+    })
+
+    const experienceRows: ExperienceRow[] = []
+
+    Object.entries(monthlyValues).forEach(([month, categories]) => {
+      Object.entries(categories).forEach(([category, amount]) => {
+        experienceRows.push(
+          ExperienceRowSchema.parse({
+            month,
+            category,
+            amount,
+          }),
+        )
+      })
+    })
+
+    return experienceRows
   }
 
   function parseHighCostTemplate(rows: any[]): HighCostClaimant[] {

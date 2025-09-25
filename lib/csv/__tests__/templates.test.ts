@@ -1,36 +1,47 @@
-import { validateCsvHeaders, EXPERIENCE_TEMPLATE_HEADERS } from '../templates'
+import { validateCsvHeaders, validateExperienceHeaders, HIGH_COST_TEMPLATE_HEADERS } from '../templates'
 
-describe('validateCsvHeaders', () => {
-  it('accepts matching headers', () => {
-    const result = validateCsvHeaders([...EXPERIENCE_TEMPLATE_HEADERS], EXPERIENCE_TEMPLATE_HEADERS)
+describe('validateExperienceHeaders', () => {
+  it('accepts dynamic month headers', () => {
+    const headers = ['Category', 'Jan-2025', 'Feb-2025', 'Mar-2025']
+    const result = validateExperienceHeaders(headers)
     expect(result.ok).toBe(true)
-    expect(result.missing).toHaveLength(0)
-    expect(result.unexpected).toHaveLength(0)
-    expect(result.outOfOrder).toHaveLength(0)
+    expect(result.monthHeaders).toEqual(['Jan-2025', 'Feb-2025', 'Mar-2025'])
   })
 
-  it('flags missing headers', () => {
-    const headers = [...EXPERIENCE_TEMPLATE_HEADERS]
-    headers.splice(3, 1)
-    const result = validateCsvHeaders(headers, EXPERIENCE_TEMPLATE_HEADERS)
+  it('flags invalid month labels', () => {
+    const headers = ['Category', 'January-2025']
+    const result = validateExperienceHeaders(headers)
     expect(result.ok).toBe(false)
-    expect(result.missing).toContain('Apr-2024')
+    expect(result.unexpected).toContain('January-2025')
   })
 
-  it('flags unexpected headers', () => {
-    const headers = [...EXPERIENCE_TEMPLATE_HEADERS, 'ExtraColumn']
-    const result = validateCsvHeaders(headers, EXPERIENCE_TEMPLATE_HEADERS)
+  it('requires category column first', () => {
+    const headers = ['Jan-2025', 'Category', 'Feb-2025']
+    const result = validateExperienceHeaders(headers)
     expect(result.ok).toBe(false)
-    expect(result.unexpected).toContain('ExtraColumn')
+    expect(result.outOfOrder).toContain('Category')
+    expect(result.monthHeaders).toEqual(['Jan-2025', 'Feb-2025'])
   })
 
-  it('flags out of order headers', () => {
-    const headers = [...EXPERIENCE_TEMPLATE_HEADERS]
-    const [first, second] = headers.slice(1, 3)
-    headers[1] = second
-    headers[2] = first
-    const result = validateCsvHeaders(headers, EXPERIENCE_TEMPLATE_HEADERS)
+  it('flags duplicate months', () => {
+    const headers = ['Category', 'Jan-2025', 'Jan-2025']
+    const result = validateExperienceHeaders(headers)
     expect(result.ok).toBe(false)
-    expect(result.outOfOrder).toEqual(expect.arrayContaining([first, second]))
+    expect(result.unexpected).toContain('Duplicate: Jan-2025')
+  })
+})
+
+describe('validateCsvHeaders (exact match)', () => {
+  it('accepts exact high-cost headers', () => {
+    const result = validateCsvHeaders([...HIGH_COST_TEMPLATE_HEADERS], HIGH_COST_TEMPLATE_HEADERS)
+    expect(result.ok).toBe(true)
+  })
+
+  it('flags missing high-cost headers', () => {
+    const headers = [...HIGH_COST_TEMPLATE_HEADERS]
+    headers.pop()
+    const result = validateCsvHeaders(headers, HIGH_COST_TEMPLATE_HEADERS)
+    expect(result.ok).toBe(false)
+    expect(result.missing.length).toBeGreaterThan(0)
   })
 })

@@ -73,7 +73,8 @@ export default function UploadPage() {
           <div className="space-y-4 text-sm text-black">
             <div>
               <h3 className="font-semibold">Experience Data Template</h3>
-              <p>Exact header order is required: <code>Category, Jan-2024, Feb-2024, …, Dec-2024</code>. Each month must contain numeric values only.</p>
+              <p>Keep <code>Category</code> in the first column, then list your month columns in <code>MMM-YYYY</code> format (for example <code>Jan-2025</code> through <code>Jul-2025</code>). Each month must contain numeric values only.</p>
+              <p className="mt-2 text-sm text-black/60">Provide rows for <em>Domestic Hospital Claims</em> and <em>Total Hospital Medical Claims</em>; the system will automatically derive <em>Non Domestic Hospital Claims</em> as the difference.</p>
             </div>
             <div>
               <h3 className="font-semibold">High-Cost Claimants Template</h3>

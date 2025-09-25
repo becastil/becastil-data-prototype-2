@@ -1,4 +1,4 @@
-const EXPERIENCE_MONTH_HEADERS = [
+const DEFAULT_EXPERIENCE_MONTH_HEADERS = [
   'Jan-2024',
   'Feb-2024',
   'Mar-2024',
@@ -15,7 +15,7 @@ const EXPERIENCE_MONTH_HEADERS = [
 
 export const EXPERIENCE_TEMPLATE_HEADERS = [
   'Category',
-  ...EXPERIENCE_MONTH_HEADERS,
+  ...DEFAULT_EXPERIENCE_MONTH_HEADERS,
 ] as const
 
 export const EXPERIENCE_TEMPLATE_SAMPLE_ROW = [
@@ -87,6 +87,17 @@ export interface HeaderValidationResult {
   outOfOrder: string[]
 }
 
+export interface ExperienceHeaderValidationResult extends HeaderValidationResult {
+  monthHeaders: string[]
+}
+
+const MONTH_ABBREVIATIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+const MONTH_TO_NUMBER = MONTH_ABBREVIATIONS.reduce<Record<string, string>>((acc, month, index) => {
+  acc[month.toLowerCase()] = (index + 1).toString().padStart(2, '0')
+  return acc
+}, {})
+const MONTH_LABEL_REGEX = new RegExp(`^(${MONTH_ABBREVIATIONS.join('|')})-\\d{4}$`, 'i')
+
 export function downloadCsvTemplate(
   filename: string,
   headers: readonly string[],
@@ -132,6 +143,48 @@ export function validateCsvHeaders(
     normalizedFound.length === normalizedExpected.length
 
   return { ok, missing, unexpected, outOfOrder }
+}
+
+export function validateExperienceHeaders(found: string[]): ExperienceHeaderValidationResult {
+  const normalizedFound = found.map(header => header.trim())
+  const missing: string[] = []
+  const unexpected: string[] = []
+  const outOfOrder: string[] = []
+  const monthHeaders: string[] = []
+
+  const categoryIndex = normalizedFound.indexOf('Category')
+
+  if (categoryIndex === -1) {
+    missing.push('Category')
+  } else if (categoryIndex !== 0) {
+    outOfOrder.push('Category')
+  }
+
+  const bodyHeaders = normalizedFound.filter((_, index) => index !== categoryIndex)
+
+  if (bodyHeaders.length === 0) {
+    missing.push('At least one month column')
+  }
+
+  bodyHeaders.forEach(header => {
+    if (!MONTH_LABEL_REGEX.test(header)) {
+      unexpected.push(header)
+      return
+    }
+    monthHeaders.push(header)
+  })
+
+  const duplicateMonths = monthHeaders.filter((header, index) => monthHeaders.indexOf(header) !== index)
+  duplicateMonths.forEach(header => {
+    const duplicateLabel = `Duplicate: ${header}`
+    if (!unexpected.includes(duplicateLabel)) {
+      unexpected.push(duplicateLabel)
+    }
+  })
+
+  const ok = missing.length === 0 && unexpected.length === 0 && outOfOrder.length === 0
+
+  return { ok, missing, unexpected, outOfOrder, monthHeaders }
 }
 
 export function coercePercent(value: unknown): number {
@@ -183,18 +236,17 @@ export function coerceYesNo(value: unknown): 'Y' | 'N' {
 }
 
 export function experienceLabelToMonth(label: string): string {
-  const [monthPart, yearPart] = label.trim().split('-')
-  if (!monthPart || !yearPart) {
+  const trimmed = label.trim()
+  const match = trimmed.match(MONTH_LABEL_REGEX)
+  if (!match) {
     throw new Error(`Invalid month header: ${label}`)
   }
 
-  const monthIndex = EXPERIENCE_MONTH_HEADERS.findIndex(h => h.startsWith(monthPart))
-  if (monthIndex === -1) {
+  const [monthPart, yearPart] = trimmed.split('-')
+  const monthNum = MONTH_TO_NUMBER[monthPart.toLowerCase()]
+  if (!monthNum) {
     throw new Error(`Unsupported month label: ${label}`)
   }
 
-  const monthNum = (monthIndex + 1).toString().padStart(2, '0')
   return `${yearPart}-${monthNum}`
 }
-
-export { EXPERIENCE_MONTH_HEADERS }

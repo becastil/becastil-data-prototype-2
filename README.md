@@ -60,11 +60,13 @@ yarn start
 4. Files are validated immediately; only perfect header matches are accepted.
 5. Valid experience data feeds the summary table and trend charts, while valid high-cost files drive the claimant table and diagnosis charts.
 
-**Experience Template (13 columns):**
+**Experience Template (Category + month columns):**
 ```
 Category,Jan-2024,Feb-2024,Mar-2024,Apr-2024,May-2024,Jun-2024,Jul-2024,Aug-2024,Sep-2024,Oct-2024,Nov-2024,Dec-2024
 MEDICAL CLAIMS,100000,98000,102500,99500,110200,108300,101750,99000,104250,107000,103500,109800
 ```
+
+> You can rename the month columns to any `MMM-YYYY` sequence (for example `Jan-2025` … `Jul-2025`). Keep `Category` in column one and the months in the order you want to load them.
 
 **High-Cost Claimants Template:**
 ```
@@ -73,6 +75,7 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 ```
 
 > **Strict validation:** headers are case-sensitive and order-sensitive. Percent values may include `%`, currency values may include `$` and commas, and Y/N flags are normalized automatically.
+> When the upload includes `Domestic Hospital Claims` and `Total Hospital Medical Claims`, the dashboard auto-calculates `Non Domestic Hospital Claims` as the difference so you never have to maintain that column manually.
 
 ### Step 2: Enter Monthly Fees
 

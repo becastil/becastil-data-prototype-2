@@ -5,6 +5,7 @@ import { AppStoreContext } from './useAppStore'
 import type { AppState, AppActions, AppStore, ExperienceRow, HighCostClaimant, FeesRow } from './useAppStore'
 import { computeMonthlySummaries } from '../calc/lossRatio'
 import { getUniqueMonths } from '../calc/aggregations'
+import { computeFinancialMetrics } from '../calc/financialMetrics'
 
 const initialState: AppState = {
   experience: [],
@@ -13,6 +14,7 @@ const initialState: AppState = {
   step: { upload: false, fees: false, table: false, charts: false },
   summaries: [],
   months: [],
+  financialMetrics: [],
 }
 
 // Storage key
@@ -50,6 +52,7 @@ function computeDerivedState(baseState: AppState): AppState {
     experience: baseState.experience,
     feesByMonth: baseState.feesByMonth,
   })
+  const financialMetrics = computeFinancialMetrics(baseState.experience)
   
   const upload = baseState.experience.length > 0 && baseState.highCostClaimants.length > 0
   const fees = upload && months.every(month => !!baseState.feesByMonth[month])
@@ -64,6 +67,7 @@ function computeDerivedState(baseState: AppState): AppState {
     ...baseState,
     months,
     summaries,
+    financialMetrics,
     step,
   }
 }

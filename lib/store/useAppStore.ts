@@ -5,6 +5,7 @@
 
 import { createContext, useContext } from 'react'
 import { ExperienceRow } from '../schemas/experience'
+import { FinancialMetrics } from '../calc/financialMetrics'
 import { HighCostClaimant } from '../schemas/highCost'
 import { FeesRow, MonthlySummary } from '../schemas/fees'
 
@@ -22,6 +23,7 @@ export interface AppState {
   step: StepCompletion
   summaries: MonthlySummary[]
   months: string[]
+  financialMetrics: FinancialMetrics[]
 }
 
 export interface AppActions {
@@ -75,4 +77,9 @@ export function useSummaries() {
 export function useMonths() {
   const store = useAppStore()
   return store.months
+}
+
+export function useFinancialMetrics() {
+  const store = useAppStore()
+  return store.financialMetrics
 }
