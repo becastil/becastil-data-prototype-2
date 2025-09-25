@@ -92,14 +92,26 @@ export default function FeesPage() {
               </svg>
             </Link>
           ) : (
-            <div className="max-w-sm rounded-lg border border-black/10 bg-white p-3 text-sm text-black/70">
-              {feeDefinitions.length === 0
-                ? 'Add at least one fee definition to unlock the summary table.'
-                : months.length === 0
-                ? 'Upload headcount data for at least one month to compute fees and budgets.'
-                : !hasBudgetCoverage
-                ? 'Enter budget PEPM or totals for every month in the schedule.'
-                : 'Review the fee schedule and budgets above. Add overrides where needed to complete this step.'}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-2 rounded-lg border border-black/20 px-6 py-3 font-medium text-black/40"
+              >
+                Continue to Summary Table
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <div className="max-w-sm rounded-lg border border-black/10 bg-white p-3 text-sm text-black/70">
+                {feeDefinitions.length === 0
+                  ? 'Add at least one fee definition to unlock the summary table.'
+                  : months.length === 0
+                  ? 'Upload headcount data for at least one month to compute fees and budgets.'
+                  : !hasBudgetCoverage
+                  ? 'Enter budget PEPM or totals for every month in the schedule.'
+                  : 'Review the fee schedule, budgets, and adjustments above. Add overrides where needed to complete this step.'}
+              </div>
             </div>
           )}
         </div>
