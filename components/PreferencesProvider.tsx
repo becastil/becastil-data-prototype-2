@@ -22,7 +22,7 @@ interface PreferencesContextValue {
 const STORAGE_KEY = 'healthdash:preferences'
 
 const defaultPreferences: Preferences = {
-  theme: 'system',
+  theme: 'light',
   defaultLanding: '/dashboard',
   timezone:
     typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
@@ -32,18 +32,18 @@ const defaultPreferences: Preferences = {
 
 const PreferencesContext = createContext<PreferencesContextValue | undefined>(undefined)
 
-function resolveTheme(theme: ThemePreference) {
-  if (theme === 'system' && typeof window !== 'undefined') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return theme === 'dark' ? 'dark' : 'light'
+function resolveTheme(_: ThemePreference) {
+  return 'light'
 }
 
 function applyTheme(theme: ThemePreference) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   const resolved = resolveTheme(theme)
-  root.classList.toggle('dark', resolved === 'dark')
+  if (resolved === 'light') {
+    root.classList.remove('dark')
+    root.setAttribute('data-theme', 'light')
+  }
 }
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {

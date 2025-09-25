@@ -60,15 +60,15 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className="bg-gray-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased` }>
+    <html lang="en" className="bg-white text-black">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-black`}>
         <PreferencesProvider>
           <NotificationProvider>
             <div className="flex min-h-screen">
               <EnhancedSidebar user={user} />
               <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
                 <Navigation />
-                <main className="flex-1 bg-gray-50 dark:bg-slate-950 px-4 py-6 lg:px-6">
+                <main className="flex-1 bg-white px-4 py-6 lg:px-6">
                   {children}
                 </main>
               </div>

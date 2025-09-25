@@ -32,7 +32,7 @@ export default function StepNav() {
   const stepCompletion = useStepCompletion()
   
   return (
-    <nav className="w-48 bg-white border-r border-stone-200 min-h-screen">
+    <nav className="w-48 bg-white border-r border-black/10 min-h-screen text-black">
       <div className="p-6 space-y-3">
         {steps.map((step) => {
           const isCompleted = stepCompletion[step.id as keyof typeof stepCompletion]
@@ -44,14 +44,14 @@ export default function StepNav() {
               key={step.id}
               href={isDisabled ? '#' : step.href}
               className={`
-                block w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
+                block w-full px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-150
                 ${isActive 
-                  ? 'bg-stone-900 text-white' 
+                  ? 'border-black bg-white text-black'
                   : isCompleted
-                  ? 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  ? 'border-black/40 bg-white text-black'
                   : isDisabled
-                  ? 'bg-stone-50 text-stone-400 cursor-not-allowed'
-                  : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
+                  ? 'border-black/10 bg-white text-black/50 cursor-not-allowed'
+                  : 'border-black/20 bg-white text-black hover:bg-black/5'
                 }
               `}
               onClick={isDisabled ? (e) => e.preventDefault() : undefined}

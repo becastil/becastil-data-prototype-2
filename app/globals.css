@@ -19,6 +19,10 @@
   }
 }
 
+html {
+  color-scheme: only light;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -26,6 +30,38 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+[class*="text-slate-"],
+[class*="text-gray-"],
+[class*="text-stone-"],
+[class*="text-blue-"],
+[class*="text-green-"],
+[class*="text-purple-"],
+[class*="text-red-"],
+[class*="text-amber-"],
+[class*="text-yellow-"] {
+  color: #000 !important;
+}
+
+[class*="bg-blue-"],
+[class*="bg-green-"],
+[class*="bg-purple-"],
+[class*="bg-red-"],
+[class*="bg-amber-"],
+[class*="bg-yellow-"],
+[class*="bg-teal-"],
+.bg-blue-900\/20,
+.bg-blue-900\/30,
+.bg-blue-900\/40,
+.bg-green-900\/20,
+.bg-green-900\/30,
+.bg-green-900\/40,
+.bg-amber-900\/20,
+.bg-purple-900\/30,
+.bg-red-900\/30 {
+  background-color: #ffffff !important;
+  color: #000 !important;
 }
 
 /* Ultra-minimalist styles with navigation exceptions */

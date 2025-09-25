@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AppStoreProvider>
-      <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-screen bg-white text-black">
         <StepNav />
         <main className="flex-1 overflow-hidden">
           {children}

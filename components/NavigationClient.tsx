@@ -34,7 +34,7 @@ export default function NavigationClient({ user }: NavigationClientProps) {
   const userInitial = user?.email?.[0]?.toUpperCase()
 
   return (
-    <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200/70 dark:border-slate-700/50">
+    <header className="bg-white border-b border-black/10">
       <div className="flex items-center justify-between px-6 py-3">
         {/* Page Title Area - Will be populated by individual pages */}
         <div className="flex-1">
@@ -48,24 +48,24 @@ export default function NavigationClient({ user }: NavigationClientProps) {
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((open) => !open)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white text-sm font-semibold text-black transition-colors hover:bg-black/5"
                 aria-label="User menu"
               >
                 {userInitial}
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-black/10 bg-white p-4 shadow-xl">
                   <div className="flex items-center gap-3 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-sm font-semibold text-black">
                       {userInitial}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{user.email}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Authenticated User</p>
+                      <p className="truncate text-sm font-medium text-black">{user.email}</p>
+                      <p className="text-xs text-black">Authenticated User</p>
                     </div>
                   </div>
-                  <div className="border-t border-slate-200 pt-3 dark:border-slate-700">
-                    <LogoutButton className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20" />
+                  <div className="border-t border-black/10 pt-3">
+                    <LogoutButton className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50" />
                   </div>
                 </div>
               )}
@@ -75,7 +75,7 @@ export default function NavigationClient({ user }: NavigationClientProps) {
           {!user && (
             <Link
               href="/auth/login"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              className="rounded-lg border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black/5"
             >
               Sign In
             </Link>
