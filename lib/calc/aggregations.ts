@@ -2,6 +2,19 @@ import { ExperienceRow } from '../schemas/experience'
 import { HighCostClaimant } from '../schemas/highCost'
 import { CategoryTotal, TopClaimant, ChartDataPoint } from '../schemas/fees'
 
+interface AmountBandDefinition {
+  label: string
+  min: number
+  max: number
+}
+
+export interface ClaimantAmountBand {
+  label: string
+  count: number
+  totalAmount: number
+  averageAmount: number
+}
+
 /**
  * Aggregate experience data by category
  */
@@ -99,6 +112,35 @@ export function getCostDistribution(claimants: HighCostClaimant[]) {
     }),
     { facilityInpatient: 0, facilityOutpatient: 0, professional: 0, pharmacy: 0 }
   )
+}
+
+const AMOUNT_BANDS: AmountBandDefinition[] = [
+  { label: '$50K to $200K', min: 50_000, max: 200_000 },
+  { label: '$200K to $500K', min: 200_000, max: 500_000 },
+  { label: '$1M to $2M', min: 1_000_000, max: 2_000_000 },
+  { label: '$2M to $3.5M', min: 2_000_000, max: 3_500_000 },
+]
+
+export function getClaimantAmountBands(claimants: HighCostClaimant[]): ClaimantAmountBand[] {
+  const bandTotals = AMOUNT_BANDS.map(() => ({ count: 0, totalAmount: 0 }))
+
+  claimants.forEach(claimant => {
+    const bandIndex = AMOUNT_BANDS.findIndex(band => claimant.total >= band.min && claimant.total < band.max)
+    if (bandIndex === -1) return
+
+    bandTotals[bandIndex].count += 1
+    bandTotals[bandIndex].totalAmount += claimant.total
+  })
+
+  return AMOUNT_BANDS.map((band, index) => {
+    const { count, totalAmount } = bandTotals[index]
+    return {
+      label: band.label,
+      count,
+      totalAmount,
+      averageAmount: count > 0 ? totalAmount / count : 0,
+    }
+  })
 }
 
 /**

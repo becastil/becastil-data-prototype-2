@@ -69,8 +69,8 @@ export default function ChartsPage() {
               Step 4: Charts & Analysis
             </h1>
             <p className="text-lg text-[#4f463b] max-w-3xl">
-              Interactive charts and analytics showing your claims patterns, loss ratios, 
-              and key performance indicators.
+              Explore monthly claims alongside loss ratio performance and understand how high-cost members cluster
+              across paid-amount bands.
             </p>
           </div>
           
@@ -101,7 +101,7 @@ export default function ChartsPage() {
           </Link>
           
           <div className="text-sm text-[#5b5247]">
-            Analysis complete! Export your PDF report when ready.
+            Review the charts, then export the PDF report when you are ready to share.
           </div>
         </div>
 
@@ -111,10 +111,9 @@ export default function ChartsPage() {
             Key Insights
           </h3>
           <div className="text-sm text-[#4f463b] space-y-2">
-            <p>• Review the stacked bar chart to identify seasonal patterns in claims by category</p>
-            <p>• Monitor the loss ratio line - values above 100% indicate claims exceed premium revenue</p>
-            <p>• Use the top categories chart to focus cost management efforts on highest-impact areas</p>
-            <p>• Track high-cost claimants for case management opportunities</p>
+            <p>• Watch for months where the actual bar rises above the budget line to flag overspend risk.</p>
+            <p>• Hover the combo chart to review medical, Rx, admin, and adjustment details behind each month.</p>
+            <p>• Use the paid-amount bands to see where most high-cost members cluster and set program thresholds.</p>
           </div>
         </div>
       </div>
