@@ -84,7 +84,7 @@ export default function FeesPage() {
           {canContinue ? (
             <Link
               href="/dashboard/table"
-              className="inline-flex items-center gap-2 rounded-lg border border-black px-6 py-3 font-medium text-black transition-colors hover:bg-black/5"
+              className="inline-flex items-center gap-3 rounded-full bg-black px-6 py-3 font-medium text-white shadow hover:bg-black/80 transition"
             >
               Continue to Summary Table
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@ export default function FeesPage() {
               <button
                 type="button"
                 disabled
-                className="inline-flex items-center gap-2 rounded-lg border border-black/20 px-6 py-3 font-medium text-black/40"
+                className="inline-flex items-center gap-3 rounded-full bg-black/10 px-6 py-3 font-medium text-black/40"
               >
                 Continue to Summary Table
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

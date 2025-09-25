@@ -121,6 +121,11 @@ function computeDerivedState(baseState: AppState): AppState {
   })
 
   const sortedBudgetMonths = Array.from(budgetMonthSet).sort()
+  sortedBudgetMonths.forEach(month => {
+    if (!(month in sanitizedBudgetByMonth)) {
+      sanitizedBudgetByMonth[month] = { total: 0 }
+    }
+  })
 
   const adminFeeOverrides: Record<string, number> = {}
   const baseFinancialMetrics = computeFinancialMetrics(
@@ -147,7 +152,7 @@ function computeDerivedState(baseState: AppState): AppState {
         if (!allowedTierIds.has(tierId)) return
         const numericCount = sanitizeNumber(count)
         if (Number.isFinite(numericCount) && numericCount !== 0) {
-          normalizedTierMap[tierId] = numericCount
+          normalizedTierMap[tierId] = Math.max(0, Math.round(numericCount))
         }
       })
       if (Object.keys(normalizedTierMap).length > 0) {
