@@ -96,12 +96,19 @@ export interface FinancialMetrics {
   stopLossReimbursement: number
 }
 
-export function computeFinancialMetrics(rows: ExperienceRow[]): FinancialMetrics[] {
+export function computeFinancialMetrics(
+  rows: ExperienceRow[],
+  budgetByMonth: Record<string, { pepm?: number; total?: number }> = {},
+): FinancialMetrics[] {
   const monthMap: MonthCategoryMap = {}
 
   rows.forEach(row => {
     const monthValues = (monthMap[row.month] ??= {})
     monthValues[row.category] = (monthValues[row.category] ?? 0) + row.amount
+  })
+
+  Object.keys(budgetByMonth).forEach(month => {
+    monthMap[month] ??= {}
   })
 
   const months = Object.keys(monthMap).sort()
@@ -170,9 +177,17 @@ export function computeFinancialMetrics(rows: ExperienceRow[]): FinancialMetrics
 
     const eeCount = getByAliases(values, CATEGORY_ALIASES.EE_COUNT) ?? 0
     const memberCount = getByAliases(values, CATEGORY_ALIASES.MEMBER_COUNT) ?? 0
-    const budgetPepm = getByAliases(values, CATEGORY_ALIASES.BUDGET_PEPM) ?? 0
+    const budgetPepmDefault = getByAliases(values, CATEGORY_ALIASES.BUDGET_PEPM) ?? 0
+    const budgetOverride = budgetByMonth[month]
 
-    const monthlyBudget = budgetPepm * eeCount
+    let monthlyBudget = budgetPepmDefault * eeCount
+    if (budgetOverride) {
+      if (typeof budgetOverride.total === 'number') {
+        monthlyBudget = budgetOverride.total
+      } else if (typeof budgetOverride.pepm === 'number') {
+        monthlyBudget = budgetOverride.pepm * eeCount
+      }
+    }
     values[DERIVED.MONTHLY_BUDGET] = monthlyBudget
 
     const monthlyDifference = monthlyTotal - monthlyBudget

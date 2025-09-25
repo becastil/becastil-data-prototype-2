@@ -31,6 +31,8 @@ const initialState: AppState = {
   feeMonths: [],
   feeOverrides: {},
   feeComputedByMonth: {},
+  budgetByMonth: {},
+  budgetMonths: [],
 }
 
 // Storage key
@@ -48,6 +50,8 @@ function loadFromStorage(): Partial<AppState> {
       feeDefinitions: parsed.feeDefinitions ?? [],
       feeMonths: parsed.feeMonths ?? [],
       feeOverrides: parsed.feeOverrides ?? {},
+      budgetByMonth: parsed.budgetByMonth ?? {},
+      budgetMonths: parsed.budgetMonths ?? [],
     }
   } catch {
     return {}
@@ -64,6 +68,8 @@ function saveToStorage(state: AppState) {
       feeDefinitions: state.feeDefinitions,
       feeMonths: state.feeMonths,
       feeOverrides: state.feeOverrides,
+      budgetByMonth: state.budgetByMonth,
+      budgetMonths: state.budgetMonths,
     }))
   } catch {
     // Ignore storage errors
@@ -73,14 +79,42 @@ function saveToStorage(state: AppState) {
 // Helper to compute derived state
 function computeDerivedState(baseState: AppState): AppState {
   const months = getUniqueMonths(baseState.experience)
+  const sanitizedBudgetByMonth: Record<string, { pepm?: number; total?: number }> = {}
+  const budgetMonthSet = new Set<string>()
+
+  Object.entries(baseState.budgetByMonth ?? {}).forEach(([month, entry]) => {
+    const normalized = normalizeMonthKey(month)
+    if (!normalized) return
+    const sanitized = sanitizeBudgetEntry(entry)
+    if (!sanitized) return
+    sanitizedBudgetByMonth[normalized] = sanitized
+    budgetMonthSet.add(normalized)
+  })
+
+  baseState.budgetMonths.forEach(month => {
+    const normalized = normalizeMonthKey(month)
+    if (normalized) {
+      budgetMonthSet.add(normalized)
+    }
+  })
+
+  months.forEach(month => {
+    const normalized = normalizeMonthKey(month)
+    if (normalized) {
+      budgetMonthSet.add(normalized)
+    }
+  })
+
+  const sortedBudgetMonths = Array.from(budgetMonthSet).sort()
+
   const summaries = computeMonthlySummaries({
     experience: baseState.experience,
     feesByMonth: baseState.feesByMonth,
   })
-  const financialMetrics = computeFinancialMetrics(baseState.experience)
+  const financialMetrics = computeFinancialMetrics(baseState.experience, sanitizedBudgetByMonth)
   const metricsByMonth = new Map(financialMetrics.map(metric => [metric.month, metric]))
 
-  const feeMonthsSet = new Set<string>([...baseState.feeMonths, ...months])
+  const feeMonthsSet = new Set<string>([...baseState.feeMonths, ...months, ...sortedBudgetMonths])
   const sortedFeeMonths = Array.from(feeMonthsSet).sort()
 
   let feeComputedByMonth: Record<string, Record<string, number>> = {}
@@ -117,8 +151,12 @@ function computeDerivedState(baseState: AppState): AppState {
   }
 
   const upload = baseState.experience.length > 0 && baseState.highCostClaimants.length > 0
-  const hasFeeCoverage = baseState.feeDefinitions.length > 0 && sortedFeeMonths.length > 0
-  const fees = upload && hasFeeCoverage && sortedFeeMonths.every(month => !!feesByMonth[month])
+  const hasFeeCoverage = baseState.feeDefinitions.length > 0 && sortedFeeMonths.length > 0 && sortedFeeMonths.every(month => !!feesByMonth[month])
+  const hasBudgetCoverage = sortedBudgetMonths.length > 0 && sortedBudgetMonths.every(month => {
+    const entry = sanitizedBudgetByMonth[month]
+    return entry && (typeof entry.total === 'number' || typeof entry.pepm === 'number')
+  })
+  const fees = upload && hasFeeCoverage && hasBudgetCoverage
   const step = {
     upload,
     fees,
@@ -134,6 +172,8 @@ function computeDerivedState(baseState: AppState): AppState {
     feeMonths: sortedFeeMonths,
     feeComputedByMonth,
     feesByMonth,
+    budgetByMonth: sanitizedBudgetByMonth,
+    budgetMonths: sortedBudgetMonths,
     step,
   }
 }
@@ -178,6 +218,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         feeDefinitions: [],
         feeOverrides: {},
         feeComputedByMonth: {},
+        feeMonths: [],
+        budgetByMonth: {},
+        budgetMonths: [],
       }))
     },
     
@@ -270,6 +313,44 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         })
       })
     },
+
+    setBudgetEntry: (month, entry) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        const nextBudget = { ...prevState.budgetByMonth }
+        const sanitized = sanitizeBudgetEntry(entry)
+        if (sanitized) {
+          nextBudget[normalized] = sanitized
+        } else {
+          delete nextBudget[normalized]
+        }
+
+        const nextBudgetMonths = prevState.budgetMonths.includes(normalized)
+          ? prevState.budgetMonths
+          : [...prevState.budgetMonths, normalized]
+
+        return computeDerivedState({
+          ...prevState,
+          budgetByMonth: nextBudget,
+          budgetMonths: nextBudgetMonths,
+        })
+      })
+    },
+
+    removeBudgetEntry: (month) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        const nextBudget = { ...prevState.budgetByMonth }
+        delete nextBudget[normalized]
+        return computeDerivedState({
+          ...prevState,
+          budgetByMonth: nextBudget,
+          budgetMonths: prevState.budgetMonths.filter(item => item !== normalized),
+        })
+      })
+    },
   }
   
   const store: AppStore = { ...state, ...actions }
@@ -288,6 +369,21 @@ function createDefaultFeeDefinition(index: number): FeeDefinition {
     rateBasis: 'FLAT_MONTHLY',
     rateValue: 0,
   }
+}
+
+function sanitizeBudgetEntry(entry: { pepm?: number | null; total?: number | null } | undefined) {
+  if (!entry) return undefined
+  const result: { pepm?: number; total?: number } = {}
+  if (entry.pepm !== undefined && entry.pepm !== null) {
+    result.pepm = sanitizeNumber(entry.pepm)
+  }
+  if (entry.total !== undefined && entry.total !== null) {
+    result.total = sanitizeNumber(entry.total)
+  }
+  if (result.pepm === undefined && result.total === undefined) {
+    return undefined
+  }
+  return result
 }
 
 function computeFeeAmount(

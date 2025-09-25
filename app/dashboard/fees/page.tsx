@@ -2,13 +2,27 @@
 
 import Link from 'next/link'
 import DynamicFeeForm from '@/components/fees/DynamicFeeForm'
-import { useFeeDefinitions, useMonths, useStepCompletion } from '@/lib/store/useAppStore'
+import BudgetForm from '@/components/fees/BudgetForm'
+import {
+  useBudgetByMonth,
+  useBudgetMonths,
+  useFeeDefinitions,
+  useMonths,
+  useStepCompletion,
+} from '@/lib/store/useAppStore'
 
 export default function FeesPage() {
   const stepCompletion = useStepCompletion()
   const months = useMonths()
   const feeDefinitions = useFeeDefinitions()
+  const budgetByMonth = useBudgetByMonth()
+  const budgetMonths = useBudgetMonths()
   const canContinue = stepCompletion.fees
+
+  const hasBudgetCoverage = budgetMonths.length > 0 && budgetMonths.every(month => {
+    const entry = budgetByMonth[month]
+    return entry && (typeof entry.total === 'number' || typeof entry.pepm === 'number')
+  })
 
   if (!stepCompletion.upload) {
     return (
@@ -51,6 +65,8 @@ export default function FeesPage() {
 
         <DynamicFeeForm />
 
+        <BudgetForm />
+
         <div className="mt-8 flex items-start justify-between gap-4">
           <Link
             href="/dashboard/upload"
@@ -77,8 +93,10 @@ export default function FeesPage() {
               {feeDefinitions.length === 0
                 ? 'Add at least one fee definition to unlock the summary table.'
                 : months.length === 0
-                ? 'Upload headcount data for at least one month to compute fees.'
-                : 'Review the monthly schedule above. Add overrides where needed to complete this step.'}
+                ? 'Upload headcount data for at least one month to compute fees and budgets.'
+                : !hasBudgetCoverage
+                ? 'Enter budget PEPM or totals for every month in the schedule.'
+                : 'Review the fee schedule and budgets above. Add overrides where needed to complete this step.'}
             </div>
           )}
         </div>
