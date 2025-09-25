@@ -102,6 +102,7 @@ export function computeFinancialMetrics(
   rows: ExperienceRow[],
   budgetByMonth: Record<string, { pepm?: number; total?: number }> = {},
   adjustments: Record<string, { rxRebates?: number; stopLossReimbursement?: number }> = {},
+  adminFeeOverrides: Record<string, number> = {},
 ): FinancialMetrics[] {
   const monthMap: MonthCategoryMap = {}
 
@@ -182,7 +183,7 @@ export function computeFinancialMetrics(
     const totalRx = sumAliases(values, CATEGORY_ALIASES.RX_GROSS)
     values[DERIVED.TOTAL_RX] = totalRx
 
-    const totalAdmin = sumAliasGroups(values, [
+    let totalAdmin = sumAliasGroups(values, [
       CATEGORY_ALIASES.CONSULTING,
       CATEGORY_ALIASES.TPA_ADMIN,
       CATEGORY_ALIASES.ANTHEM_JAA,
@@ -191,6 +192,9 @@ export function computeFinancialMetrics(
       CATEGORY_ALIASES.ESI_PROGRAMS,
       CATEGORY_ALIASES.STOP_LOSS_FEES,
     ])
+    if (adminFeeOverrides[month] !== undefined) {
+      totalAdmin = adminFeeOverrides[month]
+    }
     values[DERIVED.TOTAL_ADMIN] = totalAdmin
 
     const rxRebates = getByAliases(values, CATEGORY_ALIASES.RX_REBATES) ?? 0

@@ -122,12 +122,14 @@ function computeDerivedState(baseState: AppState): AppState {
 
   const sortedBudgetMonths = Array.from(budgetMonthSet).sort()
 
-  const summaries = computeMonthlySummaries({
-    experience: baseState.experience,
-    feesByMonth: baseState.feesByMonth,
-  })
-  const financialMetrics = computeFinancialMetrics(baseState.experience, sanitizedBudgetByMonth, sanitizedAdjustments)
-  const metricsByMonth = new Map(financialMetrics.map(metric => [metric.month, metric]))
+  const adminFeeOverrides: Record<string, number> = {}
+  const baseFinancialMetrics = computeFinancialMetrics(
+    baseState.experience,
+    sanitizedBudgetByMonth,
+    sanitizedAdjustments,
+  )
+  const metricsByMonthForFees = new Map(baseFinancialMetrics.map(metric => [metric.month, metric]))
+  let financialMetrics: FinancialMetrics[] = baseFinancialMetrics
 
   const tierCountsSource = baseState.feeTierCounts ?? {}
   const sanitizedTierCounts: Record<string, Record<string, Record<string, number>>> = {}
@@ -162,7 +164,7 @@ function computeDerivedState(baseState: AppState): AppState {
   const sortedFeeMonths = Array.from(feeMonthsSet).sort()
 
   let feeComputedByMonth: Record<string, Record<string, number>> = {}
-  let feesByMonth: Record<string, FeesRow> = baseState.feesByMonth
+  let feesByMonth: Record<string, FeesRow> = { ...baseState.feesByMonth }
 
   if (baseState.feeDefinitions.length > 0) {
     feeComputedByMonth = {}
@@ -175,14 +177,15 @@ function computeDerivedState(baseState: AppState): AppState {
         const override = overrides[month]?.[def.id]
         const amount = override !== undefined && override !== null
           ? override
-          : computeFeeAmount(def, month, metricsByMonth, monthsForAnnual, sanitizedTierCounts)
+          : computeFeeAmount(def, month, metricsByMonthForFees, monthsForAnnual, sanitizedTierCounts)
         computed[def.id] = amount
       })
       feeComputedByMonth[month] = computed
     })
 
-    feesByMonth = sortedFeeMonths.reduce<Record<string, FeesRow>>((acc, month) => {
+    const computedFees = sortedFeeMonths.reduce<Record<string, FeesRow>>((acc, month) => {
       const total = Object.values(feeComputedByMonth[month] ?? {}).reduce((sum, value) => sum + value, 0)
+      adminFeeOverrides[month] = total
       acc[month] = {
         month,
         tpaFee: total,
@@ -192,10 +195,22 @@ function computeDerivedState(baseState: AppState): AppState {
       }
       return acc
     }, {})
+    feesByMonth = { ...feesByMonth, ...computedFees }
   }
 
+  const summaries = computeMonthlySummaries({
+    experience: baseState.experience,
+    feesByMonth,
+  })
+
+  financialMetrics = computeFinancialMetrics(
+    baseState.experience,
+    sanitizedBudgetByMonth,
+    sanitizedAdjustments,
+    adminFeeOverrides,
+  )
   const upload = baseState.experience.length > 0 && baseState.highCostClaimants.length > 0
-  const hasFeeCoverage = baseState.feeDefinitions.length > 0 && sortedFeeMonths.length > 0 && sortedFeeMonths.every(month => !!feesByMonth[month])
+  const hasFeeCoverage = months.length > 0 ? months.every(month => !!feesByMonth[month]) : Object.keys(feesByMonth).length > 0
   const hasBudgetCoverage = sortedBudgetMonths.length > 0 && sortedBudgetMonths.every(month => {
     const entry = sanitizedBudgetByMonth[month]
     return entry && (typeof entry.total === 'number' || typeof entry.pepm === 'number')
@@ -213,7 +228,7 @@ function computeDerivedState(baseState: AppState): AppState {
     months,
     summaries,
     financialMetrics,
-    feeMonths: sortedFeeMonths,
+    feeMonths: Array.from(new Set([...sortedFeeMonths, ...Object.keys(feesByMonth)])).sort(),
     feeComputedByMonth,
     feesByMonth,
     feeTierCounts: sanitizedTierCounts,
