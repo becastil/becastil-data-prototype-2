@@ -450,6 +450,37 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       })
     },
 
+    setAdjustmentOverride: (month, entry) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        const next = { ...(prevState.adjustmentOverrides ?? {}) }
+        const sanitized = sanitizeAdjustmentEntry(entry)
+        if (sanitized) {
+          next[normalized] = sanitized
+        } else {
+          delete next[normalized]
+        }
+        return computeDerivedState({
+          ...prevState,
+          adjustmentOverrides: next,
+        })
+      })
+    },
+
+    removeAdjustmentOverride: (month) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        const next = { ...(prevState.adjustmentOverrides ?? {}) }
+        delete next[normalized]
+        return computeDerivedState({
+          ...prevState,
+          adjustmentOverrides: next,
+        })
+      })
+    },
+
     addFeeMonth: (month) => {
       const normalized = normalizeMonthKey(month)
       if (!normalized) return
