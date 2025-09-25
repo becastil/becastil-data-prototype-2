@@ -92,6 +92,8 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 - Annual (even allocation across the active schedule)
 - Custom/manual entry (enter the monthly amount directly)
 
+Use the “One-Off Adjustments” section to capture lump-sum rebates or stop-loss reimbursements that apply to specific months.
+
 ### Step 3: Review Summary Table
 
 1. Navigate to `/dashboard/table` (unlocked after Step 2)

@@ -101,6 +101,7 @@ export interface FinancialMetrics {
 export function computeFinancialMetrics(
   rows: ExperienceRow[],
   budgetByMonth: Record<string, { pepm?: number; total?: number }> = {},
+  adjustments: Record<string, { rxRebates?: number; stopLossReimbursement?: number }> = {},
 ): FinancialMetrics[] {
   const monthMap: MonthCategoryMap = {}
 
@@ -110,6 +111,9 @@ export function computeFinancialMetrics(
   })
 
   Object.keys(budgetByMonth).forEach(month => {
+    monthMap[month] ??= {}
+  })
+  Object.keys(adjustments).forEach(month => {
     monthMap[month] ??= {}
   })
 
@@ -122,6 +126,15 @@ export function computeFinancialMetrics(
 
   months.forEach(month => {
     const values = monthMap[month]
+    const adjustment = adjustments[month]
+    if (adjustment) {
+      if (adjustment.rxRebates !== undefined) {
+        values[CATEGORY_LABELS.RX_REBATES] = adjustment.rxRebates
+      }
+      if (adjustment.stopLossReimbursement !== undefined) {
+        values[CATEGORY_LABELS.STOP_LOSS_REIMB] = adjustment.stopLossReimbursement
+      }
+    }
 
     const domesticHospital = getByAliases(values, CATEGORY_ALIASES.DOMESTIC_HOSPITAL) ?? 0
     let nonDomesticHospital = getByAliases(values, CATEGORY_ALIASES.NON_DOMESTIC_HOSPITAL)

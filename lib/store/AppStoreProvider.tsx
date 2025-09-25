@@ -105,13 +105,23 @@ function computeDerivedState(baseState: AppState): AppState {
     }
   })
 
+  const sanitizedAdjustments: Record<string, { rxRebates?: number; stopLossReimbursement?: number }> = {}
+  Object.entries(baseState.adjustmentOverrides ?? {}).forEach(([month, entry]) => {
+    const normalized = normalizeMonthKey(month)
+    if (!normalized) return
+    const cleaned = sanitizeAdjustmentEntry(entry)
+    if (!cleaned) return
+    sanitizedAdjustments[normalized] = cleaned
+    monthMap[normalized] ??= {}
+  })
+
   const sortedBudgetMonths = Array.from(budgetMonthSet).sort()
 
   const summaries = computeMonthlySummaries({
     experience: baseState.experience,
     feesByMonth: baseState.feesByMonth,
   })
-  const financialMetrics = computeFinancialMetrics(baseState.experience, sanitizedBudgetByMonth)
+  const financialMetrics = computeFinancialMetrics(baseState.experience, sanitizedBudgetByMonth, sanitizedAdjustments)
   const metricsByMonth = new Map(financialMetrics.map(metric => [metric.month, metric]))
 
   const feeMonthsSet = new Set<string>([...baseState.feeMonths, ...months, ...sortedBudgetMonths])
@@ -174,6 +184,7 @@ function computeDerivedState(baseState: AppState): AppState {
     feesByMonth,
     budgetByMonth: sanitizedBudgetByMonth,
     budgetMonths: sortedBudgetMonths,
+    adjustmentOverrides: sanitizedAdjustments,
     step,
   }
 }
@@ -381,6 +392,21 @@ function sanitizeBudgetEntry(entry: { pepm?: number | null; total?: number | nul
     result.total = sanitizeNumber(entry.total)
   }
   if (result.pepm === undefined && result.total === undefined) {
+    return undefined
+  }
+  return result
+}
+
+function sanitizeAdjustmentEntry(entry: { rxRebates?: number | null; stopLossReimbursement?: number | null } | undefined) {
+  if (!entry) return undefined
+  const result: { rxRebates?: number; stopLossReimbursement?: number } = {}
+  if (entry.rxRebates !== undefined && entry.rxRebates !== null) {
+    result.rxRebates = sanitizeNumber(entry.rxRebates)
+  }
+  if (entry.stopLossReimbursement !== undefined && entry.stopLossReimbursement !== null) {
+    result.stopLossReimbursement = sanitizeNumber(entry.stopLossReimbursement)
+  }
+  if (result.rxRebates === undefined && result.stopLossReimbursement === undefined) {
     return undefined
   }
   return result

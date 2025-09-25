@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import DynamicFeeForm from '@/components/fees/DynamicFeeForm'
 import BudgetForm from '@/components/fees/BudgetForm'
+import MonthlyAdjustmentsForm from '@/components/fees/MonthlyAdjustmentsForm'
 import {
   useBudgetByMonth,
   useBudgetMonths,
@@ -66,6 +67,8 @@ export default function FeesPage() {
         <DynamicFeeForm />
 
         <BudgetForm />
+
+        <MonthlyAdjustmentsForm />
 
         <div className="mt-8 flex items-start justify-between gap-4">
           <Link

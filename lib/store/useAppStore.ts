@@ -47,6 +47,7 @@ export interface AppState {
   feeComputedByMonth: Record<string, Record<string, number>>
   budgetByMonth: Record<string, { pepm?: number; total?: number }>
   budgetMonths: string[]
+  adjustmentOverrides: Record<string, { rxRebates?: number; stopLossReimbursement?: number }>
 }
 
 export interface AppActions {
@@ -63,6 +64,11 @@ export interface AppActions {
   setFeeOverride: (month: string, feeId: string, amount: number | null) => void
   setBudgetEntry: (month: string, entry: { pepm?: number | null; total?: number | null }) => void
   removeBudgetEntry: (month: string) => void
+  setAdjustmentOverride: (
+    month: string,
+    entry: { rxRebates?: number | null; stopLossReimbursement?: number | null }
+  ) => void
+  removeAdjustmentOverride: (month: string) => void
 }
 
 export type AppStore = AppState & AppActions
@@ -143,4 +149,9 @@ export function useBudgetByMonth() {
 export function useBudgetMonths() {
   const store = useAppStore()
   return store.budgetMonths
+}
+
+export function useAdjustmentOverrides() {
+  const store = useAppStore()
+  return store.adjustmentOverrides
 }
