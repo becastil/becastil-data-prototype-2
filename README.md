@@ -81,8 +81,9 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 
 1. Navigate to `/dashboard/fees` (unlocked after Step 1)
 2. Add each administrative fee, choose its rate basis, and enter the rate or annual amount from your invoices.
-3. The schedule auto-computes monthly totals using the employee and member counts supplied in your experience file.
-4. Override any month manually when invoices differ from the calculated amount, or add custom months for partial plan years.
+3. Enter the budget PEPM or monthly targets; the scheduler compares them against actual claims and expenses.
+4. The schedule auto-computes monthly totals using the employee and member counts supplied in your experience file.
+5. Override any month manually when invoices differ from the calculated amount, or add custom months for partial plan years.
 
 **Supported rate bases:**
 - Flat monthly amount

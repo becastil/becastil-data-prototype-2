@@ -94,6 +94,8 @@ export interface FinancialMetrics {
   memberCount: number
   rxRebates: number
   stopLossReimbursement: number
+  budgetPepm: number | null
+  cumulativeEeMonths: number
 }
 
 export function computeFinancialMetrics(
@@ -136,8 +138,11 @@ export function computeFinancialMetrics(
         : domesticHospital + (nonDomesticHospital ?? 0)
     values[DERIVED.TOTAL_HOSPITAL] = totalHospital
 
-    const nonHospitalClaims = getByAliases(values, CATEGORY_ALIASES.NON_HOSPITAL) ?? 0
-    const totalAllMedical = totalHospital + nonHospitalClaims
+    let nonHospitalClaims = getByAliases(values, CATEGORY_ALIASES.NON_HOSPITAL)
+    if (nonHospitalClaims === undefined && totalHospitalInput !== undefined) {
+      nonHospitalClaims = totalHospitalInput - domesticHospital
+    }
+    const totalAllMedical = totalHospital + (nonHospitalClaims ?? 0)
     values[DERIVED.TOTAL_ALL_MEDICAL] = totalAllMedical
 
     const ucAdjustment = getByAliases(values, CATEGORY_ALIASES.UC_ADJUSTMENT) ?? 0
@@ -154,6 +159,12 @@ export function computeFinancialMetrics(
       totalMedical += ebaPaid
     }
     values[DERIVED.TOTAL_MEDICAL] = totalMedical
+
+    if (nonHospitalClaims === undefined) {
+      const derivedNonHospital = totalMedical - totalHospital
+      values[CATEGORY_LABELS.NON_HOSPITAL] = derivedNonHospital
+      nonHospitalClaims = derivedNonHospital
+    }
 
     const totalRx = sumAliases(values, CATEGORY_ALIASES.RX_GROSS)
     values[DERIVED.TOTAL_RX] = totalRx
@@ -181,18 +192,22 @@ export function computeFinancialMetrics(
     const budgetOverride = budgetByMonth[month]
 
     let monthlyBudget = budgetPepmDefault * eeCount
+    let budgetPepmUsed: number | null = Number.isFinite(budgetPepmDefault) ? budgetPepmDefault : null
     if (budgetOverride) {
       if (typeof budgetOverride.total === 'number') {
         monthlyBudget = budgetOverride.total
+        budgetPepmUsed = eeCount > 0 ? budgetOverride.total / eeCount : null
       } else if (typeof budgetOverride.pepm === 'number') {
         monthlyBudget = budgetOverride.pepm * eeCount
+        budgetPepmUsed = budgetOverride.pepm
       }
     }
     values[DERIVED.MONTHLY_BUDGET] = monthlyBudget
 
     const monthlyDifference = monthlyTotal - monthlyBudget
     values[DERIVED.MONTHLY_VARIANCE] = monthlyDifference
-    const monthlyDifferencePct = monthlyBudget !== 0 ? monthlyDifference / monthlyBudget : null
+    const monthlyDifferencePctRaw = monthlyBudget !== 0 ? monthlyDifference / monthlyBudget : null
+    const monthlyDifferencePct = monthlyDifferencePctRaw !== null ? roundTo(monthlyDifferencePctRaw, 4) : null
     if (monthlyDifferencePct !== null) {
       values[DERIVED.MONTHLY_VARIANCE_PCT] = monthlyDifferencePct
     }
@@ -208,17 +223,18 @@ export function computeFinancialMetrics(
 
     const cumulativeDifference = cumulativeTotal - cumulativeBudget
     values[DERIVED.CUMULATIVE_VARIANCE] = cumulativeDifference
-    const cumulativeDifferencePct = cumulativeBudget !== 0 ? cumulativeDifference / cumulativeBudget : null
+    const cumulativeDifferencePctRaw = cumulativeBudget !== 0 ? cumulativeDifference / cumulativeBudget : null
+    const cumulativeDifferencePct = cumulativeDifferencePctRaw !== null ? roundTo(cumulativeDifferencePctRaw, 4) : null
     if (cumulativeDifferencePct !== null) {
       values[DERIVED.CUMULATIVE_VARIANCE_PCT] = cumulativeDifferencePct
     }
 
-    const pepmActual = eeCount > 0 ? monthlyTotal / eeCount : null
+    const pepmActual = totalMedical > 0 && eeCount > 0 ? roundTo(monthlyTotal / eeCount, 2) : null
     if (pepmActual !== null) {
       values[DERIVED.PEPM_ACTUAL] = pepmActual
     }
 
-    const pepmCumulative = cumulativeEeMonths > 0 ? cumulativeTotal / cumulativeEeMonths : null
+    const pepmCumulative = cumulativeTotal > 0 && cumulativeEeMonths > 0 ? roundTo(cumulativeTotal / cumulativeEeMonths, 2) : null
     if (pepmCumulative !== null) {
       values[DERIVED.PEPM_CUMULATIVE] = pepmCumulative
     }
@@ -245,6 +261,8 @@ export function computeFinancialMetrics(
       memberCount,
       rxRebates,
       stopLossReimbursement: stopLossReimb,
+      budgetPepm: budgetPepmUsed !== null ? roundTo(budgetPepmUsed, 2) : null,
+      cumulativeEeMonths,
     })
   })
 
@@ -268,4 +286,9 @@ function sumAliases(map: Record<string, number>, aliases: readonly string[]): nu
 
 function sumAliasGroups(map: Record<string, number>, aliasGroups: readonly (readonly string[])[]): number {
   return aliasGroups.reduce((sum, aliases) => sum + (getByAliases(map, aliases) ?? 0), 0)
+}
+
+function roundTo(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals)
+  return Math.round((value + Number.EPSILON) * factor) / factor
 }

@@ -14,7 +14,7 @@ export default function BudgetForm() {
   const budgetMonths = useBudgetMonths()
   const financialMetrics = useFinancialMetrics()
   const experienceMonths = useMonths()
-  const { setBudgetEntry, removeBudgetEntry, addFeeMonth } = useAppStore()
+  const { setBudgetEntry, removeBudgetEntry, addFeeMonth, removeFeeMonth } = useAppStore()
 
   const [newMonthValue, setNewMonthValue] = useState('')
 
@@ -47,19 +47,34 @@ export default function BudgetForm() {
     }, {})
   }, [budgetByMonth, budgetMonths, metricsByMonth])
 
-  const cumulativeTotals = useMemo(() => {
+  const cumulativeData = useMemo(() => {
     let runningActual = 0
     let runningBudget = 0
     return budgetMonths.map(month => {
-      runningActual += metricsByMonth[month]?.monthlyActual ?? 0
-      runningBudget += totalsByMonth[month] ?? 0
+      const actual = metricsByMonth[month]?.monthlyActual ?? 0
+      const budget = totalsByMonth[month] ?? 0
+      runningActual += actual
+      runningBudget += budget
+      const cumulativeDiff = runningActual - runningBudget
       return {
         month,
+        monthlyActual: actual,
+        monthlyBudget: budget,
+        monthlyDiff: actual - budget,
+        monthlyPct: budget !== 0 ? (actual - budget) / budget : null,
         cumulativeActual: runningActual,
         cumulativeBudget: runningBudget,
+        cumulativeDiff,
+        cumulativePct: runningBudget !== 0 ? cumulativeDiff / runningBudget : null,
       }
     })
   }, [budgetMonths, metricsByMonth, totalsByMonth])
+
+  const cumulativeLookup = useMemo(() => {
+    return new Map(cumulativeData.map(item => [item.month, item]))
+  }, [cumulativeData])
+
+  const finalCumulative = cumulativeData[cumulativeData.length - 1]
 
   return (
     <section className="space-y-6">
@@ -112,6 +127,12 @@ export default function BudgetForm() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Headcount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Actual Monthly</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Budget Monthly</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Monthly Diff</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Monthly %</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Cum. Actual</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Cum. Budget</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Cum. Diff</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Cum. %</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">Actions</th>
               </tr>
             </thead>
@@ -120,6 +141,8 @@ export default function BudgetForm() {
                 const entry = budgetByMonth[month] ?? {}
                 const metric = metricsByMonth[month]
                 const total = totalsByMonth[month] ?? 0
+                const cumulative = cumulativeLookup.get(month)
+                const monthlyDiff = (metric?.monthlyActual ?? 0) - total
                 return (
                   <tr key={month}>
                     <td className="whitespace-nowrap px-4 py-3 font-medium text-black">
@@ -171,13 +194,36 @@ export default function BudgetForm() {
                     <td className="px-4 py-3 text-right font-medium text-black">
                       {formatCurrency(total)}
                     </td>
+                    <td className={`px-4 py-3 text-right ${monthlyDiff >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatCurrency(monthlyDiff)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-black/70">
+                      {formatPercent(cumulative?.monthlyPct ?? (total !== 0 ? monthlyDiff / total : null))}
+                    </td>
+                    <td className="px-4 py-3 text-right text-black/80">
+                      {formatCurrency(cumulative?.cumulativeActual ?? 0)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-black/80">
+                      {formatCurrency(cumulative?.cumulativeBudget ?? 0)}
+                    </td>
+                    <td className={`px-4 py-3 text-right ${
+                      (cumulative?.cumulativeDiff ?? 0) >= 0 ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {formatCurrency(cumulative?.cumulativeDiff ?? 0)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-black/70">
+                      {formatPercent(cumulative?.cumulativePct ?? null)}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {experienceMonths.includes(month) ? (
                         <span className="text-[10px] uppercase tracking-wide text-black/40">From upload</span>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => removeBudgetEntry(month)}
+                          onClick={() => {
+                            removeBudgetEntry(month)
+                            removeFeeMonth(month)
+                          }}
                           className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
                         >
                           Remove
@@ -192,11 +238,20 @@ export default function BudgetForm() {
               <tr>
                 <td className="px-4 py-3">Cumulative</td>
                 <td className="px-4 py-3" colSpan={3}></td>
+                <td className="px-4 py-3" colSpan={4}></td>
                 <td className="px-4 py-3 text-right">
-                  {formatCurrency(cumulativeTotals.at(-1)?.cumulativeActual ?? 0)}
+                  {formatCurrency(finalCumulative?.cumulativeActual ?? 0)}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {formatCurrency(cumulativeTotals.at(-1)?.cumulativeBudget ?? 0)}
+                  {formatCurrency(finalCumulative?.cumulativeBudget ?? 0)}
+                </td>
+                <td className={`px-4 py-3 text-right ${
+                  (finalCumulative?.cumulativeDiff ?? 0) >= 0 ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {formatCurrency(finalCumulative?.cumulativeDiff ?? 0)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {formatPercent(finalCumulative?.cumulativePct ?? null)}
                 </td>
                 <td className="px-4 py-3"></td>
               </tr>
@@ -228,6 +283,17 @@ function formatCurrency(value: number): string {
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0)
+}
+
+function formatPercent(value: number | null): string {
+  if (value === null || Number.isNaN(value) || !Number.isFinite(value)) {
+    return '—'
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
 function normalizeMonthInput(value: string): string | null {
