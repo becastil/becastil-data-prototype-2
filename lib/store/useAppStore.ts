@@ -30,6 +30,8 @@ export interface FeeDefinition {
   rateValue: number
   notes?: string
   tiers?: FeeTier[]
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
 }
 
 export type FeeOverrides = Record<string, Record<string, number>>

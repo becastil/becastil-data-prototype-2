@@ -155,6 +155,26 @@ export default function DynamicFeeForm() {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-black/60">Effective From</label>
+                      <input
+                        type="month"
+                        value={definition.effectiveFrom ?? ''}
+                        onChange={event => updateFeeDefinition(definition.id, { effectiveFrom: event.target.value })}
+                        className="mt-1 w-full rounded-md border border-black/20 px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-black/60">Effective To</label>
+                      <input
+                        type="month"
+                        value={definition.effectiveTo ?? ''}
+                        onChange={event => updateFeeDefinition(definition.id, { effectiveTo: event.target.value })}
+                        className="mt-1 w-full rounded-md border border-black/20 px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-black/60">Notes</label>
                     <textarea
@@ -319,7 +339,7 @@ export default function DynamicFeeForm() {
                       const displayAmount = override ?? baseAmount
                       const tiers = definition.tiers ?? []
                       const tierCountsForMonth = feeTierCounts[month]?.[definition.id] ?? {}
-                      const hasTiers = tiers.length > 0
+                      const hasTiers = definition.rateBasis === 'TIERED' && tiers.length > 0
 
                       return (
                         <td key={month} className="px-4 py-2 text-right align-middle">

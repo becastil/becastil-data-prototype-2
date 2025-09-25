@@ -96,6 +96,7 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 Use the “One-Off Adjustments” section to capture lump-sum rebates or stop-loss reimbursements that apply to specific months.
 
 Tiered fees (e.g., single vs. family stop-loss rates) are supported—define up to five tiers per fee and enter monthly enrollment counts so the dashboard multiplies each tier’s rate by the appropriate headcount.
+You can also set effective start/end months on each fee definition to accommodate mid-year rate changes without duplicating data.
 
 ### Step 3: Review Summary Table
 

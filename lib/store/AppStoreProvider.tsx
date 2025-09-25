@@ -290,7 +290,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setState(prevState => computeDerivedState({
         ...prevState,
         feeDefinitions: prevState.feeDefinitions.map(def =>
-          def.id === id ? { ...def, ...updates, rateValue: sanitizeNumber(updates.rateValue ?? def.rateValue) } : def
+          def.id === id
+            ? {
+                ...def,
+                ...updates,
+                rateValue: sanitizeNumber(updates.rateValue ?? def.rateValue),
+                effectiveFrom: updates.effectiveFrom !== undefined
+                  ? normalizeMonthKey(updates.effectiveFrom || '')
+                  : def.effectiveFrom ?? null,
+                effectiveTo: updates.effectiveTo !== undefined
+                  ? normalizeMonthKey(updates.effectiveTo || '')
+                  : def.effectiveTo ?? null,
+              }
+            : def
         ),
       }))
     },
@@ -546,6 +558,8 @@ function createDefaultFeeDefinition(index: number): FeeDefinition {
     rateBasis: 'FLAT_MONTHLY',
     rateValue: 0,
     tiers: [],
+    effectiveFrom: null,
+    effectiveTo: null,
   }
 }
 
@@ -594,6 +608,10 @@ function computeFeeAmount(
   monthsForAnnual: number,
   tierCounts: Record<string, Record<string, Record<string, number>>>,
 ): number {
+  if (!isFeeActiveForMonth(definition, month)) {
+    return 0
+  }
+
   if (definition.tiers && definition.tiers.length > 0) {
     const monthTiers = tierCounts[month]?.[definition.id] ?? {}
     return definition.tiers.reduce((sum, tier) => {
@@ -621,6 +639,14 @@ function computeFeeAmount(
     default:
       return 0
   }
+}
+
+function isFeeActiveForMonth(definition: FeeDefinition, month: string): boolean {
+  const from = definition.effectiveFrom
+  const to = definition.effectiveTo
+  if (from && month < from) return false
+  if (to && month > to) return false
+  return true
 }
 
 function normalizeMonthKey(raw: string): string | null {
