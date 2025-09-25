@@ -9,9 +9,11 @@ export default function FeesPage() {
   const stepCompletion = useStepCompletion()
   const months = useMonths()
   const [validationState, setValidationState] = useState({ isValid: false, completedMonths: 0 })
+  const canContinue = stepCompletion.fees
   
   const handleDataChange = (isValid: boolean, completedMonths: number) => {
-    setValidationState({ isValid, completedMonths })
+    const allMonthsCompleted = months.length > 0 && completedMonths === months.length
+    setValidationState({ isValid: isValid && allMonthsCompleted, completedMonths })
   }
   
   if (!stepCompletion.upload) {
@@ -96,7 +98,7 @@ export default function FeesPage() {
             Back to Upload
           </Link>
           
-          {validationState.isValid && (
+          {canContinue && (
             <Link 
               href="/dashboard/table"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-lg border border-black hover:bg-black/5 transition-colors"

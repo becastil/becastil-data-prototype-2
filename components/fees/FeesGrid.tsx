@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useMonths, useFeesByMonth, useAppStore } from '@/lib/store/useAppStore'
-import { FeesRowSchema } from '@/lib/schemas/fees'
+import { FeesRowSchema, type FeesRow } from '@/lib/schemas/fees'
+
+const feeFields = ['tpaFee', 'networkFee', 'stopLossPremium', 'otherFees'] as const
+type FeeField = (typeof feeFields)[number]
 
 interface FeesGridProps {
   onDataChange?: (isValid: boolean, totalMonths: number) => void
@@ -13,97 +16,117 @@ export default function FeesGrid({ onDataChange }: FeesGridProps) {
   const existingFees = useFeesByMonth()
   const { upsertFees, resetFees } = useAppStore()
   
-  const [gridData, setGridData] = useState<Record<string, any>>({})
+  const [gridData, setGridData] = useState<Record<string, FeesRow>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [hasChanges, setHasChanges] = useState(false)
+  const [hasUserEdited, setHasUserEdited] = useState(false)
 
   // Initialize grid data from existing fees
   useEffect(() => {
-    const initialData: Record<string, any> = {}
-    months.forEach(month => {
-      const existing = existingFees[month]
-      initialData[month] = {
-        month,
-        tpaFee: existing?.tpaFee ?? 0,
-        networkFee: existing?.networkFee ?? 0,
-        stopLossPremium: existing?.stopLossPremium ?? 0,
-        otherFees: existing?.otherFees ?? 0,
-      }
+    setGridData(prev => {
+      const initialData: Record<string, FeesRow> = {}
+
+      months.forEach(month => {
+        const existing = existingFees[month]
+        initialData[month] = {
+          month,
+          tpaFee: existing?.tpaFee ?? 0,
+          networkFee: existing?.networkFee ?? 0,
+          stopLossPremium: existing?.stopLossPremium ?? 0,
+          otherFees: existing?.otherFees ?? 0,
+        }
+      })
+
+      const isSame = months.every(month => {
+        const current = prev[month]
+        const next = initialData[month]
+        if (!current || !next) return false
+        return (
+          current.month === next.month &&
+          current.tpaFee === next.tpaFee &&
+          current.networkFee === next.networkFee &&
+          current.stopLossPremium === next.stopLossPremium &&
+          current.otherFees === next.otherFees
+        )
+      }) && Object.keys(prev).length === months.length
+
+      return isSame ? prev : initialData
     })
-    setGridData(initialData)
+
+    const hasStoredFees = months.some(month => !!existingFees[month])
+    setHasUserEdited(hasStoredFees)
   }, [months, existingFees])
 
   // Validate data and notify parent
   useEffect(() => {
-    const validCount = months.filter(month => {
-      const fees = gridData[month]
-      if (!fees) return false
-      
-      try {
-        FeesRowSchema.parse(fees)
-        return true
-      } catch {
-        return false
-      }
-    }).length
-    
-    onDataChange?.(validCount === months.length, validCount)
-  }, [gridData, months, onDataChange])
+    if (months.length === 0) {
+      setErrors({})
+      onDataChange?.(false, 0)
+      return
+    }
 
-  const updateCell = useCallback((month: string, field: string, value: string) => {
+    const newErrors: Record<string, string> = {}
+    const validRows: FeesRow[] = []
+
+    months.forEach(month => {
+      const fees = gridData[month]
+      if (!fees) return
+
+      const result = FeesRowSchema.safeParse(fees)
+      if (result.success) {
+        validRows.push(result.data)
+      } else if (result.error) {
+        result.error.issues.forEach(issue => {
+          const field = issue.path[0]
+          if (typeof field === 'string') {
+            newErrors[`${month}-${field}`] = issue.message
+          }
+        })
+      }
+    })
+
+    setErrors(newErrors)
+
+    const rowsToUpsert = validRows.filter(row => {
+      const existing = existingFees[row.month]
+      if (!existing) return true
+      return (
+        existing.tpaFee !== row.tpaFee ||
+        existing.networkFee !== row.networkFee ||
+        existing.stopLossPremium !== row.stopLossPremium ||
+        existing.otherFees !== row.otherFees
+      )
+    })
+
+    if (rowsToUpsert.length > 0 && Object.keys(newErrors).length === 0 && hasUserEdited) {
+      rowsToUpsert.forEach(row => upsertFees(row))
+    }
+
+    const savedCount = months.filter(month => !!existingFees[month]).length
+    onDataChange?.(validRows.length === months.length, savedCount)
+  }, [gridData, months, existingFees, hasUserEdited, onDataChange, upsertFees])
+
+  const updateCell = useCallback((month: string, field: FeeField, value: string) => {
     const numValue = parseFloat(value) || 0
     
     setGridData(prev => ({
       ...prev,
       [month]: {
-        ...prev[month],
+        ...(prev[month] ?? {
+          month,
+          tpaFee: 0,
+          networkFee: 0,
+          stopLossPremium: 0,
+          otherFees: 0,
+        }),
         [field]: numValue,
       }
     }))
-    
-    // Clear error for this cell
-    const errorKey = `${month}-${field}`
-    if (errors[errorKey]) {
-      setErrors(prev => {
-        const newErrors = { ...prev }
-        delete newErrors[errorKey]
-        return newErrors
-      })
-    }
-    
-    setHasChanges(true)
-  }, [errors])
-
-  const validateAndSave = () => {
-    const newErrors: Record<string, string> = {}
-    let validCount = 0
-    
-    months.forEach(month => {
-      const fees = gridData[month]
-      if (!fees) return
-      
-      try {
-        const validated = FeesRowSchema.parse(fees)
-        upsertFees(validated)
-        validCount++
-      } catch (error: any) {
-        const issues = error.issues || [{ path: ['unknown'], message: error.message }]
-        issues.forEach((issue: any) => {
-          const field = issue.path[0]
-          newErrors[`${month}-${field}`] = issue.message
-        })
-      }
-    })
-    
-    setErrors(newErrors)
-    setHasChanges(false)
-    
-    return validCount === months.length
-  }
+    setHasUserEdited(true)
+  }, [])
 
   const handleReset = () => {
     resetFees()
-    const resetData: Record<string, any> = {}
+    const resetData: Record<string, FeesRow> = {}
     months.forEach(month => {
       resetData[month] = {
         month,
@@ -115,19 +138,17 @@ export default function FeesGrid({ onDataChange }: FeesGridProps) {
     })
     setGridData(resetData)
     setErrors({})
-    setHasChanges(false)
+    setHasUserEdited(true)
   }
 
   // Handle paste from Excel
-  const handlePaste = useCallback((event: React.ClipboardEvent, startMonth: string, startField: string) => {
+  const handlePaste = useCallback((event: React.ClipboardEvent, startMonth: string, startField: FeeField) => {
     event.preventDefault()
     
     const pastedText = event.clipboardData.getData('text')
     const rows = pastedText.split('\n').filter(row => row.trim())
-    const fields = ['tpaFee', 'networkFee', 'stopLossPremium', 'otherFees']
-    
     const startMonthIndex = months.indexOf(startMonth)
-    const startFieldIndex = fields.indexOf(startField)
+    const startFieldIndex = feeFields.indexOf(startField)
     
     if (startMonthIndex === -1 || startFieldIndex === -1) return
     
@@ -138,21 +159,27 @@ export default function FeesGrid({ onDataChange }: FeesGridProps) {
       if (monthIndex >= months.length) return
       
       const month = months[monthIndex]
-      const newRowData = { ...gridData[month] }
+      const newRowData: FeesRow = {
+        month,
+        tpaFee: 0,
+        networkFee: 0,
+        stopLossPremium: 0,
+        otherFees: 0,
+        ...(gridData[month] ?? {}),
+      }
       
       cells.forEach((cell, cellIndex) => {
         const fieldIndex = startFieldIndex + cellIndex
-        if (fieldIndex >= fields.length) return
+        if (fieldIndex >= feeFields.length) return
         
-        const field = fields[fieldIndex]
+        const field = feeFields[fieldIndex]
         const value = parseFloat(cell.replace(/[,$]/g, '')) || 0
         newRowData[field] = value
       })
       
       setGridData(prev => ({ ...prev, [month]: newRowData }))
     })
-    
-    setHasChanges(true)
+    setHasUserEdited(true)
   }, [months, gridData])
 
   const getMonthTotal = (month: string) => {
@@ -226,7 +253,7 @@ export default function FeesGrid({ onDataChange }: FeesGridProps) {
                 <td className="px-4 py-3 text-sm font-medium text-black">
                   {month}
                 </td>
-                {['tpaFee', 'networkFee', 'stopLossPremium', 'otherFees'].map((field) => {
+                {feeFields.map((field) => {
                   const errorKey = `${month}-${field}`
                   const hasError = !!errors[errorKey]
                   
@@ -288,27 +315,9 @@ export default function FeesGrid({ onDataChange }: FeesGridProps) {
         >
           Reset All Fees
         </button>
-        
-        <div className="flex items-center gap-3">
-          {hasChanges && (
-            <span className="text-sm text-black/70">
-              You have unsaved changes
-            </span>
-          )}
-          <button
-            onClick={validateAndSave}
-            disabled={!hasChanges}
-            className={`
-              rounded-lg px-4 py-2 font-medium transition-colors
-              ${hasChanges
-                ? 'border border-black bg-white text-black hover:bg-black/5'
-                : 'border border-black/20 bg-white text-black/40 cursor-not-allowed'
-              }
-            `}
-          >
-            Save Fees
-          </button>
-        </div>
+        <span className="text-sm text-black/70">
+          Changes save automatically when all fields are valid.
+        </span>
       </div>
 
       {/* Errors */}
