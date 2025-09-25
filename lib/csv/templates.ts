@@ -1,16 +1,16 @@
 const DEFAULT_EXPERIENCE_MONTH_HEADERS = [
-  'Jan-2024',
-  'Feb-2024',
-  'Mar-2024',
-  'Apr-2024',
-  'May-2024',
-  'Jun-2024',
-  'Jul-2024',
-  'Aug-2024',
-  'Sep-2024',
-  'Oct-2024',
-  'Nov-2024',
-  'Dec-2024',
+  '1/1/2024',
+  '2/1/2024',
+  '3/1/2024',
+  '4/1/2024',
+  '5/1/2024',
+  '6/1/2024',
+  '7/1/2024',
+  '8/1/2024',
+  '9/1/2024',
+  '10/1/2024',
+  '11/1/2024',
+  '12/1/2024',
 ] as const
 
 export const EXPERIENCE_TEMPLATE_HEADERS = [
@@ -91,12 +91,8 @@ export interface ExperienceHeaderValidationResult extends HeaderValidationResult
   monthHeaders: string[]
 }
 
-const MONTH_ABBREVIATIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
-const MONTH_TO_NUMBER = MONTH_ABBREVIATIONS.reduce<Record<string, string>>((acc, month, index) => {
-  acc[month.toLowerCase()] = (index + 1).toString().padStart(2, '0')
-  return acc
-}, {})
-const MONTH_LABEL_REGEX = new RegExp(`^(${MONTH_ABBREVIATIONS.join('|')})-\\d{4}$`, 'i')
+// Regex to match M/D/YYYY format (e.g., 1/1/2025, 12/1/2024)
+const DATE_LABEL_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
 
 export function downloadCsvTemplate(
   filename: string,
@@ -167,10 +163,21 @@ export function validateExperienceHeaders(found: string[]): ExperienceHeaderVali
   }
 
   bodyHeaders.forEach(header => {
-    if (!MONTH_LABEL_REGEX.test(header)) {
+    if (!DATE_LABEL_REGEX.test(header)) {
       unexpected.push(header)
       return
     }
+    
+    // Validate that it's the first day of the month
+    const match = header.match(DATE_LABEL_REGEX)
+    if (match) {
+      const day = parseInt(match[2])
+      if (day !== 1) {
+        unexpected.push(`${header} (must be 1st day of month)`)
+        return
+      }
+    }
+    
     monthHeaders.push(header)
   })
 
@@ -237,16 +244,22 @@ export function coerceYesNo(value: unknown): 'Y' | 'N' {
 
 export function experienceLabelToMonth(label: string): string {
   const trimmed = label.trim()
-  const match = trimmed.match(MONTH_LABEL_REGEX)
+  const match = trimmed.match(DATE_LABEL_REGEX)
   if (!match) {
-    throw new Error(`Invalid month header: ${label}`)
+    throw new Error(`Invalid date header: ${label}`)
   }
 
-  const [monthPart, yearPart] = trimmed.split('-')
-  const monthNum = MONTH_TO_NUMBER[monthPart.toLowerCase()]
-  if (!monthNum) {
-    throw new Error(`Unsupported month label: ${label}`)
+  const month = parseInt(match[1])
+  const day = parseInt(match[2])
+  const year = parseInt(match[3])
+  
+  if (day !== 1) {
+    throw new Error(`Date must be first day of month: ${label}`)
+  }
+  
+  if (month < 1 || month > 12) {
+    throw new Error(`Invalid month in date: ${label}`)
   }
 
-  return `${yearPart}-${monthNum}`
+  return `${year}-${month.toString().padStart(2, '0')}`
 }

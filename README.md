@@ -60,13 +60,13 @@ yarn start
 4. Files are validated immediately; only perfect header matches are accepted.
 5. Valid experience data feeds the summary table and trend charts, while valid high-cost files drive the claimant table and diagnosis charts.
 
-**Experience Template (Category + month columns):**
+**Experience Template (Category + date columns):**
 ```
-Category,Jan-2024,Feb-2024,Mar-2024,Apr-2024,May-2024,Jun-2024,Jul-2024,Aug-2024,Sep-2024,Oct-2024,Nov-2024,Dec-2024
+Category,1/1/2024,2/1/2024,3/1/2024,4/1/2024,5/1/2024,6/1/2024,7/1/2024,8/1/2024,9/1/2024,10/1/2024,11/1/2024,12/1/2024
 MEDICAL CLAIMS,100000,98000,102500,99500,110200,108300,101750,99000,104250,107000,103500,109800
 ```
 
-> You can rename the month columns to any `MMM-YYYY` sequence (for example `Jan-2025` … `Jul-2025`). Keep `Category` in column one and the months in the order you want to load them.
+> Use date format `M/D/YYYY` where the date is the first day of each month (for example `1/1/2025`, `2/1/2025`, `3/1/2025`). Keep `Category` in column one and the dates in chronological order.
 
 **High-Cost Claimants Template:**
 ```

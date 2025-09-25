@@ -40,7 +40,9 @@
       "Bash(yarn test:*)",
       "Bash(npx jest:*)",
       "Bash(yarn templates:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []
