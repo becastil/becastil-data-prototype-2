@@ -1,41 +1,61 @@
 import { createServerClient } from '@supabase/ssr'
+import type { User } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import ProfileSetup from '@/components/ProfileSetup'
 import DashboardStats from '@/components/DashboardStats'
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  let user: User | null = null
   let profile: { full_name?: string } | null = null
+  let profileLoaded = false
 
-  if (user) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    profile = data
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables missing, rendering dashboard page in guest mode')
+    } else {
+      const cookieStore = await cookies()
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      })
 
-    if (!profile) {
-      return <ProfileSetup user={user} />
+      const { data, error } = await supabase.auth.getUser()
+
+      if (error) {
+        console.error('Supabase auth lookup failed in dashboard page:', error)
+      } else {
+        user = data.user
+
+        if (user) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+          profileLoaded = true
+
+          if (profileError) {
+            console.error('Supabase profile lookup failed in dashboard page:', profileError)
+          } else {
+            profile = profileData
+          }
+        }
+      }
     }
+  } catch (error) {
+    console.error('Unexpected error while preparing dashboard page:', error)
+  }
+
+  if (user && profileLoaded && !profile) {
+    return <ProfileSetup user={user} />
   }
 
   const displayName = profile?.full_name ?? user?.email ?? 'Guest Analyst'

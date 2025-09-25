@@ -76,36 +76,56 @@ const DEMO_STATS = {
 } as const
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const fallbackResponse = NextResponse.json({ success: true, stats: DEMO_STATS, demo: true })
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Dashboard stats API: Supabase environment variables missing, serving demo data')
+    return fallbackResponse
+  }
+
   try {
     // Initialize Supabase client
     const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
         },
-      }
-    )
+      },
+    })
 
     // Check authentication
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser()
+
+    if (authError) {
+      console.error('Dashboard stats API auth error, serving demo data:', authError)
+      return fallbackResponse
+    }
 
     if (!user) {
       return NextResponse.json({ success: true, stats: DEMO_STATS, demo: true })
     }
 
     // Get user profile
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*, organization:organizations(*)')
       .eq('id', user.id)
       .single()
+
+    if (profileError) {
+      console.error('Dashboard stats API profile lookup failed:', profileError)
+      return NextResponse.json(
+        { success: false, message: 'Profile lookup failed' },
+        { status: 500 }
+      )
+    }
 
     if (!profile || !profile.organization) {
       return NextResponse.json(
@@ -118,22 +138,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const organizationId = profile.organization.id
 
     // Get total claims count and amount
-    const { data: claimsStats } = await supabase
+    const { data: claimsStats, error: claimsError } = await supabase
       .from('claims_data')
       .select('total_amount.sum(), id.count()')
       .eq('organization_id', organizationId)
       .single()
 
+    if (claimsError) {
+      console.error('Dashboard stats API claims aggregation failed:', claimsError)
+      return NextResponse.json(
+        { success: false, message: 'Failed to aggregate claims data' },
+        { status: 500 }
+      )
+    }
+
     // Get recent upload sessions
-    const { data: recentSessions } = await supabase
+    const { data: recentSessions, error: sessionsError } = await supabase
       .from('upload_sessions')
       .select('*')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(5)
 
+    if (sessionsError) {
+      console.error('Dashboard stats API upload sessions lookup failed:', sessionsError)
+    }
+
     // Get monthly claim totals (last 12 months)
-    const { data: monthlyTotals } = await supabase
+    const { data: monthlyTotals, error: monthlyError } = await supabase
       .from('claims_data')
       .select('month_key, total_amount.sum()')
       .eq('organization_id', organizationId)
@@ -141,21 +173,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .order('month_key', { ascending: false })
       .limit(12)
 
+    if (monthlyError) {
+      console.error('Dashboard stats API monthly totals lookup failed:', monthlyError)
+    }
+
     // Get service type breakdown
-    const { data: serviceTypes } = await supabase
+    const { data: serviceTypes, error: serviceTypeError } = await supabase
       .from('claims_data')
       .select('service_type, total_amount.sum(), id.count()')
       .eq('organization_id', organizationId)
       .order('sum', { ascending: false })
       .limit(10)
 
+    if (serviceTypeError) {
+      console.error('Dashboard stats API service type aggregation failed:', serviceTypeError)
+    }
+
     // Get top claimants by total amount
-    const { data: topClaimants } = await supabase
+    const { data: topClaimants, error: topClaimantsError } = await supabase
       .from('claims_data')
       .select('claimant_id, total_amount.sum(), id.count()')
       .eq('organization_id', organizationId)
       .order('sum', { ascending: false })
       .limit(10)
+
+    if (topClaimantsError) {
+      console.error('Dashboard stats API top claimants aggregation failed:', topClaimantsError)
+    }
 
     const stats = {
       summary: {
@@ -176,10 +220,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     })
 
   } catch (error) {
-    console.error('Dashboard stats API error:', error)
-    return NextResponse.json(
-      { success: false, message: 'Server error' },
-      { status: 500 }
-    )
+    console.error('Dashboard stats API unexpected error, serving demo data:', error)
+    return fallbackResponse
   }
 }
