@@ -604,7 +604,7 @@ export default function DataDashboardsForBusinessSuccessPage() {
             </div>
             <div className="flex gap-3">
               <Link
-                href="/upload"
+                href="/dashboard/upload"
                 className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-100"
               >
                 Try Sample Workflow

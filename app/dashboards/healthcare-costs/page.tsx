@@ -148,7 +148,7 @@ export default function HealthcareCostsDashboard() {
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <a
-              href="/upload"
+              href="/dashboard/upload"
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800"
             >
               <ArrowLeft className="w-4 h-4" />
