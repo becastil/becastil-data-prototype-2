@@ -16,7 +16,7 @@ export default function HomePage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
           <Link
-            href="/upload"
+            href="/dashboard/upload"
             className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold text-white bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 transition-all hover:shadow-xl"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
@@ -28,7 +28,7 @@ export default function HomePage() {
           <div className="text-gray-400 text-lg font-medium">or</div>
           
           <Link
-            href="/reports/dashboard"
+            href="/dashboard"
             className="inline-flex items-center gap-3 px-8 py-4 text-lg font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-lg shadow-lg hover:border-gray-400 hover:shadow-xl transition-all"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
