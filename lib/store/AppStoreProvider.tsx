@@ -2,10 +2,22 @@
 
 import { ReactNode, useState, useEffect } from 'react'
 import { AppStoreContext } from './useAppStore'
-import type { AppState, AppActions, AppStore, ExperienceRow, HighCostClaimant, FeesRow } from './useAppStore'
+import type {
+  AppState,
+  AppActions,
+  AppStore,
+  ExperienceRow,
+  HighCostClaimant,
+  FeesRow,
+  FeeDefinition,
+  FeeOverrides,
+} from './useAppStore'
 import { computeMonthlySummaries } from '../calc/lossRatio'
 import { getUniqueMonths } from '../calc/aggregations'
 import { computeFinancialMetrics } from '../calc/financialMetrics'
+import type { FinancialMetrics } from '../calc/financialMetrics'
+
+const MONTH_KEY_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/
 
 const initialState: AppState = {
   experience: [],
@@ -15,6 +27,10 @@ const initialState: AppState = {
   summaries: [],
   months: [],
   financialMetrics: [],
+  feeDefinitions: [],
+  feeMonths: [],
+  feeOverrides: {},
+  feeComputedByMonth: {},
 }
 
 // Storage key
@@ -25,7 +41,14 @@ function loadFromStorage(): Partial<AppState> {
   try {
     if (typeof window === 'undefined') return {}
     const stored = localStorage.getItem(STORAGE_KEY)
-    return stored ? JSON.parse(stored) : {}
+    if (!stored) return {}
+    const parsed = JSON.parse(stored)
+    return {
+      ...parsed,
+      feeDefinitions: parsed.feeDefinitions ?? [],
+      feeMonths: parsed.feeMonths ?? [],
+      feeOverrides: parsed.feeOverrides ?? {},
+    }
   } catch {
     return {}
   }
@@ -38,7 +61,9 @@ function saveToStorage(state: AppState) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       experience: state.experience,
       highCostClaimants: state.highCostClaimants,
-      feesByMonth: state.feesByMonth,
+      feeDefinitions: state.feeDefinitions,
+      feeMonths: state.feeMonths,
+      feeOverrides: state.feeOverrides,
     }))
   } catch {
     // Ignore storage errors
@@ -53,9 +78,47 @@ function computeDerivedState(baseState: AppState): AppState {
     feesByMonth: baseState.feesByMonth,
   })
   const financialMetrics = computeFinancialMetrics(baseState.experience)
-  
+  const metricsByMonth = new Map(financialMetrics.map(metric => [metric.month, metric]))
+
+  const feeMonthsSet = new Set<string>([...baseState.feeMonths, ...months])
+  const sortedFeeMonths = Array.from(feeMonthsSet).sort()
+
+  let feeComputedByMonth: Record<string, Record<string, number>> = {}
+  let feesByMonth: Record<string, FeesRow> = baseState.feesByMonth
+
+  if (baseState.feeDefinitions.length > 0) {
+    feeComputedByMonth = {}
+    const overrides = baseState.feeOverrides ?? {}
+    const monthsForAnnual = sortedFeeMonths.length || 12
+
+    sortedFeeMonths.forEach(month => {
+      const computed: Record<string, number> = {}
+      baseState.feeDefinitions.forEach(def => {
+        const override = overrides[month]?.[def.id]
+        const amount = override !== undefined && override !== null
+          ? override
+          : computeFeeAmount(def, month, metricsByMonth, monthsForAnnual)
+        computed[def.id] = amount
+      })
+      feeComputedByMonth[month] = computed
+    })
+
+    feesByMonth = sortedFeeMonths.reduce<Record<string, FeesRow>>((acc, month) => {
+      const total = Object.values(feeComputedByMonth[month] ?? {}).reduce((sum, value) => sum + value, 0)
+      acc[month] = {
+        month,
+        tpaFee: total,
+        networkFee: 0,
+        stopLossPremium: 0,
+        otherFees: 0,
+      }
+      return acc
+    }, {})
+  }
+
   const upload = baseState.experience.length > 0 && baseState.highCostClaimants.length > 0
-  const fees = upload && months.every(month => !!baseState.feesByMonth[month])
+  const hasFeeCoverage = baseState.feeDefinitions.length > 0 && sortedFeeMonths.length > 0
+  const fees = upload && hasFeeCoverage && sortedFeeMonths.every(month => !!feesByMonth[month])
   const step = {
     upload,
     fees,
@@ -68,6 +131,9 @@ function computeDerivedState(baseState: AppState): AppState {
     months,
     summaries,
     financialMetrics,
+    feeMonths: sortedFeeMonths,
+    feeComputedByMonth,
+    feesByMonth,
     step,
   }
 }
@@ -109,6 +175,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setState(prevState => computeDerivedState({
         ...prevState,
         feesByMonth: {},
+        feeDefinitions: [],
+        feeOverrides: {},
+        feeComputedByMonth: {},
       }))
     },
     
@@ -117,6 +186,89 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(STORAGE_KEY)
       }
+    },
+
+    addFeeDefinition: () => {
+      setState(prevState => computeDerivedState({
+        ...prevState,
+        feeDefinitions: [...prevState.feeDefinitions, createDefaultFeeDefinition(prevState.feeDefinitions.length + 1)],
+      }))
+    },
+
+    updateFeeDefinition: (id, updates) => {
+      setState(prevState => computeDerivedState({
+        ...prevState,
+        feeDefinitions: prevState.feeDefinitions.map(def =>
+          def.id === id ? { ...def, ...updates, rateValue: sanitizeNumber(updates.rateValue ?? def.rateValue) } : def
+        ),
+      }))
+    },
+
+    removeFeeDefinition: (id) => {
+      setState(prevState => {
+        const nextOverrides: FeeOverrides = {}
+        Object.entries(prevState.feeOverrides).forEach(([month, map]) => {
+          const { [id]: _removed, ...rest } = map
+          if (Object.keys(rest).length > 0) {
+            nextOverrides[month] = rest
+          }
+        })
+        return computeDerivedState({
+          ...prevState,
+          feeDefinitions: prevState.feeDefinitions.filter(def => def.id !== id),
+          feeOverrides: nextOverrides,
+        })
+      })
+    },
+
+    addFeeMonth: (month) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        if (prevState.feeMonths.includes(normalized)) {
+          return prevState
+        }
+        return computeDerivedState({
+          ...prevState,
+          feeMonths: [...prevState.feeMonths, normalized],
+        })
+      })
+    },
+
+    removeFeeMonth: (month) => {
+      setState(prevState => computeDerivedState({
+        ...prevState,
+        feeMonths: prevState.feeMonths.filter(item => item !== month),
+        feeOverrides: Object.fromEntries(
+          Object.entries(prevState.feeOverrides).filter(([key]) => key !== month)
+        ),
+      }))
+    },
+
+    setFeeOverride: (month, feeId, amount) => {
+      const normalizedMonth = normalizeMonthKey(month)
+      if (!normalizedMonth) return
+      setState(prevState => {
+        const overrides: FeeOverrides = { ...prevState.feeOverrides }
+        const monthOverrides = { ...(overrides[normalizedMonth] ?? {}) }
+
+        if (amount === null || Number.isNaN(amount)) {
+          delete monthOverrides[feeId]
+        } else {
+          monthOverrides[feeId] = amount
+        }
+
+        if (Object.keys(monthOverrides).length > 0) {
+          overrides[normalizedMonth] = monthOverrides
+        } else {
+          delete overrides[normalizedMonth]
+        }
+
+        return computeDerivedState({
+          ...prevState,
+          feeOverrides: overrides,
+        })
+      })
     },
   }
   
@@ -127,4 +279,61 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       {children}
     </AppStoreContext.Provider>
   )
+}
+
+function createDefaultFeeDefinition(index: number): FeeDefinition {
+  return {
+    id: generateId(),
+    name: `Fee ${index}`,
+    rateBasis: 'FLAT_MONTHLY',
+    rateValue: 0,
+  }
+}
+
+function computeFeeAmount(
+  definition: FeeDefinition,
+  month: string,
+  metricsByMonth: Map<string, FinancialMetrics>,
+  monthsForAnnual: number,
+): number {
+  const metric = metricsByMonth.get(month)
+  const eeCount = metric?.eeCount ?? 0
+  const memberCount = metric?.memberCount ?? 0
+  const rate = sanitizeNumber(definition.rateValue)
+
+  switch (definition.rateBasis) {
+    case 'FLAT_MONTHLY':
+      return rate
+    case 'PER_EMPLOYEE_PER_MONTH':
+      return rate * eeCount
+    case 'PER_MEMBER_PER_MONTH':
+      return rate * memberCount
+    case 'ANNUAL':
+      return monthsForAnnual > 0 ? rate / monthsForAnnual : rate
+    case 'CUSTOM':
+    default:
+      return 0
+  }
+}
+
+function normalizeMonthKey(raw: string): string | null {
+  if (!raw) return null
+  const value = raw.trim()
+  if (MONTH_KEY_REGEX.test(value)) {
+    return value
+  }
+  return null
+}
+
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).slice(2, 10)
+}
+
+function sanitizeNumber(value: number): number {
+  if (typeof value !== 'number') return 0
+  if (Number.isNaN(value) || !Number.isFinite(value)) return 0
+  return value
 }

@@ -9,6 +9,23 @@ import { FinancialMetrics } from '../calc/financialMetrics'
 import { HighCostClaimant } from '../schemas/highCost'
 import { FeesRow, MonthlySummary } from '../schemas/fees'
 
+export type FeeRateBasis =
+  | 'FLAT_MONTHLY'
+  | 'PER_EMPLOYEE_PER_MONTH'
+  | 'PER_MEMBER_PER_MONTH'
+  | 'ANNUAL'
+  | 'CUSTOM'
+
+export interface FeeDefinition {
+  id: string
+  name: string
+  rateBasis: FeeRateBasis
+  rateValue: number
+  notes?: string
+}
+
+export type FeeOverrides = Record<string, Record<string, number>>
+
 export interface StepCompletion {
   upload: boolean
   fees: boolean
@@ -24,6 +41,10 @@ export interface AppState {
   summaries: MonthlySummary[]
   months: string[]
   financialMetrics: FinancialMetrics[]
+  feeDefinitions: FeeDefinition[]
+  feeMonths: string[]
+  feeOverrides: FeeOverrides
+  feeComputedByMonth: Record<string, Record<string, number>>
 }
 
 export interface AppActions {
@@ -32,11 +53,17 @@ export interface AppActions {
   upsertFees: (row: FeesRow) => void
   resetFees: () => void
   clearAllData: () => void
+  addFeeDefinition: () => void
+  updateFeeDefinition: (id: string, updates: Partial<Omit<FeeDefinition, 'id'>>) => void
+  removeFeeDefinition: (id: string) => void
+  addFeeMonth: (month: string) => void
+  removeFeeMonth: (month: string) => void
+  setFeeOverride: (month: string, feeId: string, amount: number | null) => void
 }
 
 export type AppStore = AppState & AppActions
 
-export type { ExperienceRow, HighCostClaimant, FeesRow }
+export type { ExperienceRow, HighCostClaimant, FeesRow, FeeDefinition, FeeRateBasis }
 
 export const AppStoreContext = createContext<AppStore | null>(null)
 
@@ -82,4 +109,24 @@ export function useMonths() {
 export function useFinancialMetrics() {
   const store = useAppStore()
   return store.financialMetrics
+}
+
+export function useFeeDefinitions() {
+  const store = useAppStore()
+  return store.feeDefinitions
+}
+
+export function useFeeMonths() {
+  const store = useAppStore()
+  return store.feeMonths
+}
+
+export function useFeeOverrides() {
+  const store = useAppStore()
+  return store.feeOverrides
+}
+
+export function useFeeComputedByMonth() {
+  const store = useAppStore()
+  return store.feeComputedByMonth
 }

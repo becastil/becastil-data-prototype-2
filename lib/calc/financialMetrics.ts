@@ -1,15 +1,40 @@
 import { ExperienceRow } from '../schemas/experience'
 
-const CATEGORY = {
-  DOMESTIC_HOSPITAL: 'Domestic Medical Facility Claims (IP/OP)',
-  NON_DOMESTIC_HOSPITAL: 'Non-Domestic Medical Claims (IP/OP)',
+const CATEGORY_ALIASES = {
+  DOMESTIC_HOSPITAL: ['Domestic Hospital Claims', 'Domestic Medical Facility Claims (IP/OP)'],
+  NON_DOMESTIC_HOSPITAL: ['Non Domestic Hospital Claims', 'Non-Domestic Medical Claims (IP/OP)'],
+  TOTAL_HOSPITAL: ['Total Hospital Medical Claims'],
+  NON_HOSPITAL: ['Non-Hospital Medical Claims'],
+  UC_ADJUSTMENT: ['UC Claims Settlement Adjustment'],
+  RUNOUT: ['Run Out Claims'],
+  EBA_PAID: ['Medical Claims Paid via EBA'],
+  HMNH_HIGH_COST: ['High Cost Claims paid via HMNH'],
+  RX_GROSS: ['ESI Pharmacy Claims', 'Pharmacy Claims'],
+  RX_REBATES: ['Rx Rebates', 'Pharmacy Rebates'],
+  STOP_LOSS_FEES: ['Total Stop Loss Fees'],
+  STOP_LOSS_REIMB: ['Stop Loss Reimbursement'],
+  CONSULTING: ['Consulting'],
+  TPA_ADMIN: ['TPA Claims/COBRA Administration Fee (PEPM)', 'TPA Administration Fee'],
+  ANTHEM_JAA: ['Anthem JAA'],
+  KPPC_FEES: ['KPPC Fees'],
+  KPCM_FEES: ['KPCM Fees'],
+  ESI_PROGRAMS: ['Optional ESI Programs'],
+  EE_COUNT: ['EE COUNT (Active & COBRA)', 'Employee Count'],
+  MEMBER_COUNT: ['MEMBER COUNT', 'Member Count'],
+  INCURRED_TARGET_PEPM: ['INCURRED TARGET PEPM'],
+  BUDGET_PEPM: ['2025–2026 PEPM BUDGET (with 0% Margin)', 'Budget PEPM'],
+} as const
+
+const CATEGORY_LABELS = {
+  DOMESTIC_HOSPITAL: 'Domestic Hospital Claims',
+  NON_DOMESTIC_HOSPITAL: 'Non Domestic Hospital Claims',
   TOTAL_HOSPITAL: 'Total Hospital Medical Claims',
   NON_HOSPITAL: 'Non-Hospital Medical Claims',
   UC_ADJUSTMENT: 'UC Claims Settlement Adjustment',
   RUNOUT: 'Run Out Claims',
   EBA_PAID: 'Medical Claims Paid via EBA',
   HMNH_HIGH_COST: 'High Cost Claims paid via HMNH',
-  RX_GROSS_ESI: 'ESI Pharmacy Claims',
+  RX_GROSS: 'Rx Claims',
   RX_REBATES: 'Rx Rebates',
   STOP_LOSS_FEES: 'Total Stop Loss Fees',
   STOP_LOSS_REIMB: 'Stop Loss Reimbursement',
@@ -89,13 +114,13 @@ export function computeFinancialMetrics(rows: ExperienceRow[]): FinancialMetrics
   months.forEach(month => {
     const values = monthMap[month]
 
-    const domesticHospital = getOptional(values, CATEGORY.DOMESTIC_HOSPITAL) ?? 0
-    let nonDomesticHospital = getOptional(values, CATEGORY.NON_DOMESTIC_HOSPITAL)
-    const totalHospitalInput = getOptional(values, CATEGORY.TOTAL_HOSPITAL)
+    const domesticHospital = getByAliases(values, CATEGORY_ALIASES.DOMESTIC_HOSPITAL) ?? 0
+    let nonDomesticHospital = getByAliases(values, CATEGORY_ALIASES.NON_DOMESTIC_HOSPITAL)
+    const totalHospitalInput = getByAliases(values, CATEGORY_ALIASES.TOTAL_HOSPITAL)
 
     if (nonDomesticHospital === undefined && totalHospitalInput !== undefined) {
       nonDomesticHospital = totalHospitalInput - domesticHospital
-      values[CATEGORY.NON_DOMESTIC_HOSPITAL] = nonDomesticHospital
+      values[CATEGORY_LABELS.NON_DOMESTIC_HOSPITAL] = nonDomesticHospital
     }
 
     const totalHospital =
@@ -104,48 +129,48 @@ export function computeFinancialMetrics(rows: ExperienceRow[]): FinancialMetrics
         : domesticHospital + (nonDomesticHospital ?? 0)
     values[DERIVED.TOTAL_HOSPITAL] = totalHospital
 
-    const nonHospitalClaims = getOptional(values, CATEGORY.NON_HOSPITAL) ?? 0
+    const nonHospitalClaims = getByAliases(values, CATEGORY_ALIASES.NON_HOSPITAL) ?? 0
     const totalAllMedical = totalHospital + nonHospitalClaims
     values[DERIVED.TOTAL_ALL_MEDICAL] = totalAllMedical
 
-    const ucAdjustment = getOptional(values, CATEGORY.UC_ADJUSTMENT) ?? 0
+    const ucAdjustment = getByAliases(values, CATEGORY_ALIASES.UC_ADJUSTMENT) ?? 0
     const totalAdjustedMedical = totalAllMedical + ucAdjustment
     values[DERIVED.TOTAL_ADJUSTED_MEDICAL] = totalAdjustedMedical
 
     let totalMedical = totalAdjustedMedical
-    if (CATEGORY.RUNOUT in values) {
-      totalMedical += values[CATEGORY.RUNOUT]
+    const runout = getByAliases(values, CATEGORY_ALIASES.RUNOUT)
+    if (typeof runout === 'number') {
+      totalMedical += runout
     }
-    if (CATEGORY.EBA_PAID in values) {
-      totalMedical += values[CATEGORY.EBA_PAID]
+    const ebaPaid = getByAliases(values, CATEGORY_ALIASES.EBA_PAID)
+    if (typeof ebaPaid === 'number') {
+      totalMedical += ebaPaid
     }
     values[DERIVED.TOTAL_MEDICAL] = totalMedical
 
-    const totalRx = Object.entries(values)
-      .filter(([key]) => /pharmacy claims/i.test(key) || (/rx/i.test(key) && /claims/i.test(key)))
-      .reduce((sum, [, value]) => sum + value, 0)
+    const totalRx = sumAliases(values, CATEGORY_ALIASES.RX_GROSS)
     values[DERIVED.TOTAL_RX] = totalRx
 
-    const totalAdmin = sumValues(values, [
-      CATEGORY.CONSULTING,
-      CATEGORY.TPA_ADMIN,
-      CATEGORY.ANTHEM_JAA,
-      CATEGORY.KPPC_FEES,
-      CATEGORY.KPCM_FEES,
-      CATEGORY.ESI_PROGRAMS,
-      CATEGORY.STOP_LOSS_FEES,
+    const totalAdmin = sumAliasGroups(values, [
+      CATEGORY_ALIASES.CONSULTING,
+      CATEGORY_ALIASES.TPA_ADMIN,
+      CATEGORY_ALIASES.ANTHEM_JAA,
+      CATEGORY_ALIASES.KPPC_FEES,
+      CATEGORY_ALIASES.KPCM_FEES,
+      CATEGORY_ALIASES.ESI_PROGRAMS,
+      CATEGORY_ALIASES.STOP_LOSS_FEES,
     ])
     values[DERIVED.TOTAL_ADMIN] = totalAdmin
 
-    const rxRebates = getOptional(values, CATEGORY.RX_REBATES) ?? 0
-    const stopLossReimb = getOptional(values, CATEGORY.STOP_LOSS_REIMB) ?? 0
+    const rxRebates = getByAliases(values, CATEGORY_ALIASES.RX_REBATES) ?? 0
+    const stopLossReimb = getByAliases(values, CATEGORY_ALIASES.STOP_LOSS_REIMB) ?? 0
 
     const monthlyTotal = totalMedical + totalRx + totalAdmin + rxRebates + stopLossReimb
     values[DERIVED.MONTHLY_TOTAL] = monthlyTotal
 
-    const eeCount = getOptional(values, CATEGORY.EE_COUNT) ?? 0
-    const memberCount = getOptional(values, CATEGORY.MEMBER_COUNT) ?? 0
-    const budgetPepm = getOptional(values, CATEGORY.BUDGET_PEPM) ?? 0
+    const eeCount = getByAliases(values, CATEGORY_ALIASES.EE_COUNT) ?? 0
+    const memberCount = getByAliases(values, CATEGORY_ALIASES.MEMBER_COUNT) ?? 0
+    const budgetPepm = getByAliases(values, CATEGORY_ALIASES.BUDGET_PEPM) ?? 0
 
     const monthlyBudget = budgetPepm * eeCount
     values[DERIVED.MONTHLY_BUDGET] = monthlyBudget
@@ -211,12 +236,21 @@ export function computeFinancialMetrics(rows: ExperienceRow[]): FinancialMetrics
   return metrics
 }
 
-export { CATEGORY as FINANCIAL_CATEGORY_LABELS, DERIVED as FINANCIAL_DERIVED_LABELS }
+export { CATEGORY_LABELS as FINANCIAL_CATEGORY_LABELS, DERIVED as FINANCIAL_DERIVED_LABELS }
 
-function getOptional(map: Record<string, number>, key: string): number | undefined {
-  return key in map ? map[key] : undefined
+function getByAliases(map: Record<string, number>, aliases: readonly string[]): number | undefined {
+  for (const alias of aliases) {
+    if (alias in map) {
+      return map[alias]
+    }
+  }
+  return undefined
 }
 
-function sumValues(map: Record<string, number>, keys: string[]): number {
-  return keys.reduce((sum, key) => sum + (map[key] ?? 0), 0)
+function sumAliases(map: Record<string, number>, aliases: readonly string[]): number {
+  return aliases.reduce((sum, alias) => sum + (map[alias] ?? 0), 0)
+}
+
+function sumAliasGroups(map: Record<string, number>, aliasGroups: readonly (readonly string[])[]): number {
+  return aliasGroups.reduce((sum, aliases) => sum + (getByAliases(map, aliases) ?? 0), 0)
 }

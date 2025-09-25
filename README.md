@@ -77,16 +77,19 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 > **Strict validation:** headers are case-sensitive and order-sensitive. Percent values may include `%`, currency values may include `$` and commas, and Y/N flags are normalized automatically.
 > When the upload includes `Domestic Hospital Claims` and `Total Hospital Medical Claims`, the dashboard auto-calculates `Non Domestic Hospital Claims` as the difference so you never have to maintain that column manually.
 
-### Step 2: Enter Monthly Fees
+### Step 2: Configure Monthly Fees
 
 1. Navigate to `/dashboard/fees` (unlocked after Step 1)
-2. Enter fees for each month in the interactive grid:
-   - TPA Fee
-   - Network Fee  
-   - Stop Loss Premium
-   - Other Fees
-3. Support for Excel paste (Ctrl+V) for bulk data entry
-4. Running totals calculated automatically
+2. Add each administrative fee, choose its rate basis, and enter the rate or annual amount from your invoices.
+3. The schedule auto-computes monthly totals using the employee and member counts supplied in your experience file.
+4. Override any month manually when invoices differ from the calculated amount, or add custom months for partial plan years.
+
+**Supported rate bases:**
+- Flat monthly amount
+- Per employee per month (PEPM)
+- Per member per month (PMPM)
+- Annual (even allocation across the active schedule)
+- Custom/manual entry (enter the monthly amount directly)
 
 ### Step 3: Review Summary Table
 
@@ -142,7 +145,7 @@ Summary Table ← Charts Dashboard ← Print View ← Computed Summaries
 - `AppStoreProvider` - Global state management with persistence
 - `StepNav` - 4-step navigation with completion tracking
 - `CsvUploadForm` - Smart CSV processing with field mapping
-- `FeesGrid` - Interactive grid with Excel paste support
+- `DynamicFeeForm` - Configurable fee definitions with rate-basis automation
 - `SummaryTable` - Calculated results with export functionality
 - `ChartsGrid` - 6-tile analytics dashboard
 - `PrintContainer` - 2-page PDF-optimized layout
