@@ -14,7 +14,14 @@ export type FeeRateBasis =
   | 'PER_EMPLOYEE_PER_MONTH'
   | 'PER_MEMBER_PER_MONTH'
   | 'ANNUAL'
+  | 'TIERED'
   | 'CUSTOM'
+
+export interface FeeTier {
+  id: string
+  label: string
+  rate: number
+}
 
 export interface FeeDefinition {
   id: string
@@ -22,6 +29,7 @@ export interface FeeDefinition {
   rateBasis: FeeRateBasis
   rateValue: number
   notes?: string
+  tiers?: FeeTier[]
 }
 
 export type FeeOverrides = Record<string, Record<string, number>>
@@ -45,6 +53,7 @@ export interface AppState {
   feeMonths: string[]
   feeOverrides: FeeOverrides
   feeComputedByMonth: Record<string, Record<string, number>>
+  feeTierCounts: Record<string, Record<string, Record<string, number>>>
   budgetByMonth: Record<string, { pepm?: number; total?: number }>
   budgetMonths: string[]
   adjustmentOverrides: Record<string, { rxRebates?: number; stopLossReimbursement?: number }>
@@ -59,6 +68,10 @@ export interface AppActions {
   addFeeDefinition: () => void
   updateFeeDefinition: (id: string, updates: Partial<Omit<FeeDefinition, 'id'>>) => void
   removeFeeDefinition: (id: string) => void
+  addFeeTier: (feeId: string) => void
+  updateFeeTier: (feeId: string, tierId: string, updates: Partial<Omit<FeeTier, 'id'>>) => void
+  removeFeeTier: (feeId: string, tierId: string) => void
+  setFeeTierCount: (month: string, feeId: string, tierId: string, count: number | null) => void
   addFeeMonth: (month: string) => void
   removeFeeMonth: (month: string) => void
   setFeeOverride: (month: string, feeId: string, amount: number | null) => void
@@ -73,7 +86,7 @@ export interface AppActions {
 
 export type AppStore = AppState & AppActions
 
-export type { ExperienceRow, HighCostClaimant, FeesRow, FeeDefinition, FeeRateBasis }
+export type { ExperienceRow, HighCostClaimant, FeesRow, FeeDefinition, FeeRateBasis, FeeTier }
 
 export const AppStoreContext = createContext<AppStore | null>(null)
 
@@ -139,6 +152,11 @@ export function useFeeOverrides() {
 export function useFeeComputedByMonth() {
   const store = useAppStore()
   return store.feeComputedByMonth
+}
+
+export function useFeeTierCounts() {
+  const store = useAppStore()
+  return store.feeTierCounts
 }
 
 export function useBudgetByMonth() {

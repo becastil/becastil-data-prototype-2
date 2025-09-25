@@ -17,12 +17,8 @@ export default function MonthlyAdjustmentsForm() {
   const [newMonth, setNewMonth] = useState('')
 
   const normalizedAdjustments = useMemo(() => {
-    const union = new Set<string>([
-      ...Object.keys(adjustmentOverrides),
-      ...financialMetrics.map(metric => metric.month),
-    ])
-    return Array.from(union).sort()
-  }, [adjustmentOverrides, financialMetrics])
+    return Object.keys(adjustmentOverrides).sort()
+  }, [adjustmentOverrides])
 
   const metricsByMonth = useMemo(() => {
     return financialMetrics.reduce<Record<string, { monthlyActual: number }>>((acc, metric) => {
@@ -37,8 +33,7 @@ export default function MonthlyAdjustmentsForm() {
         <div>
           <h2 className="text-xl font-semibold text-black">One-Off Adjustments</h2>
           <p className="text-sm text-black/70">
-            Enter lump-sum rebates or stop-loss reimbursements that hit specific months. These amounts feed directly into the
-            medical P&amp;L and loss-ratio calculations.
+            Enter lump-sum rebates or stop-loss reimbursements that hit specific months. Use negative values for credits so the amounts roll up correctly in the medical P&amp;L.
           </p>
         </div>
         <form
@@ -48,7 +43,7 @@ export default function MonthlyAdjustmentsForm() {
             if (!newMonth) return
             const normalized = normalizeMonthInput(newMonth)
             if (!normalized) return
-            setAdjustmentOverride(normalized, {})
+            setAdjustmentOverride(normalized, { rxRebates: 0, stopLossReimbursement: 0 })
             setNewMonth('')
           }}
         >

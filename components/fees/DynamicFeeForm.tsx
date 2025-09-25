@@ -1,13 +1,23 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useAppStore, useFeeComputedByMonth, useFeeDefinitions, useFeeMonths, useFeeOverrides, useFinancialMetrics, useMonths } from '@/lib/store/useAppStore'
+import {
+  useAppStore,
+  useFeeComputedByMonth,
+  useFeeDefinitions,
+  useFeeMonths,
+  useFeeOverrides,
+  useFeeTierCounts,
+  useFinancialMetrics,
+  useMonths,
+} from '@/lib/store/useAppStore'
 
 const RATE_BASIS_OPTIONS = [
   { value: 'FLAT_MONTHLY', label: 'Flat Monthly Amount' },
   { value: 'PER_EMPLOYEE_PER_MONTH', label: 'Per Employee Per Month (PEPM)' },
   { value: 'PER_MEMBER_PER_MONTH', label: 'Per Member Per Month (PMPM)' },
   { value: 'ANNUAL', label: 'Annual (evenly allocated)' },
+  { value: 'TIERED', label: 'Tiered Rates (Single / Family, etc.)' },
   { value: 'CUSTOM', label: 'Custom / Manual Entry' },
 ] as const
 
@@ -16,9 +26,21 @@ export default function DynamicFeeForm() {
   const feeMonths = useFeeMonths()
   const feeOverrides = useFeeOverrides()
   const feeComputedByMonth = useFeeComputedByMonth()
+  const feeTierCounts = useFeeTierCounts()
   const financialMetrics = useFinancialMetrics()
   const experienceMonths = useMonths()
-  const { addFeeDefinition, updateFeeDefinition, removeFeeDefinition, addFeeMonth, removeFeeMonth, setFeeOverride } = useAppStore()
+  const {
+    addFeeDefinition,
+    updateFeeDefinition,
+    removeFeeDefinition,
+    addFeeTier,
+    updateFeeTier,
+    removeFeeTier,
+    addFeeMonth,
+    removeFeeMonth,
+    setFeeOverride,
+    setFeeTierCount,
+  } = useAppStore()
 
   const [newMonthValue, setNewMonthValue] = useState('')
 
@@ -93,7 +115,24 @@ export default function DynamicFeeForm() {
                       <label className="block text-xs font-semibold uppercase tracking-wide text-black/60">Rate Basis</label>
                       <select
                         value={definition.rateBasis}
-                        onChange={event => updateFeeDefinition(definition.id, { rateBasis: event.target.value as typeof RATE_BASIS_OPTIONS[number]['value'] })}
+                        onChange={event => {
+                          const newBasis = event.target.value as typeof RATE_BASIS_OPTIONS[number]['value']
+                          if (newBasis === 'TIERED') {
+                            updateFeeDefinition(definition.id, { rateBasis: newBasis, rateValue: 0 })
+                            if (!definition.tiers || definition.tiers.length === 0) {
+                              addFeeTier(definition.id)
+                              addFeeTier(definition.id)
+                            }
+                          } else {
+                            updateFeeDefinition(definition.id, {
+                              rateBasis: newBasis,
+                              tiers: [],
+                            })
+                            if (definition.tiers && definition.tiers.length > 0) {
+                              definition.tiers.forEach(tier => removeFeeTier(definition.id, tier.id))
+                            }
+                          }
+                        }}
                         className="mt-1 w-full rounded-md border border-black/20 px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20"
                       >
                         {RATE_BASIS_OPTIONS.map(option => (
@@ -110,7 +149,8 @@ export default function DynamicFeeForm() {
                         inputMode="decimal"
                         value={Number.isFinite(definition.rateValue) ? definition.rateValue : 0}
                         onChange={event => updateFeeDefinition(definition.id, { rateValue: parseFloat(event.target.value) })}
-                        className="mt-1 w-full rounded-md border border-black/20 px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20"
+                        disabled={definition.rateBasis === 'TIERED'}
+                        className="mt-1 w-full rounded-md border border-black/20 px-3 py-2 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/20 disabled:bg-black/5 disabled:text-black/40"
                         placeholder="0.00"
                       />
                     </div>
@@ -144,6 +184,55 @@ export default function DynamicFeeForm() {
                   Annual amounts are allocated evenly across the months currently in your schedule ({feeMonths.length || 12} months).
                 </p>
               )}
+              {definition.rateBasis === 'TIERED' && (
+                <div className="mt-4 space-y-3 rounded-md border border-purple-200 bg-purple-50/70 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                      Tiered Rates (max 5)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => addFeeTier(definition.id)}
+                      disabled={(definition.tiers?.length ?? 0) >= 5}
+                      className="inline-flex items-center gap-1 rounded-md border border-purple-300 px-2 py-1 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Add Tier
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {(definition.tiers ?? []).map(tier => (
+                      <div key={tier.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 text-sm">
+                        <input
+                          value={tier.label}
+                          onChange={event => updateFeeTier(definition.id, tier.id, { label: event.target.value })}
+                          className="rounded-md border border-purple-200 px-2 py-1 text-sm text-black focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                          placeholder="Tier label"
+                        />
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={Number.isFinite(tier.rate) ? tier.rate : 0}
+                          onChange={event => updateFeeTier(definition.id, tier.id, { rate: parseFloat(event.target.value) })}
+                          className="w-24 rounded-md border border-purple-200 px-2 py-1 text-right text-sm text-black focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                          placeholder="0.00"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFeeTier(definition.id, tier.id)}
+                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    {(definition.tiers?.length ?? 0) === 0 && (
+                      <p className="text-xs text-purple-700">
+                        Add at least one tier to enable tier-based calculations.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -154,7 +243,7 @@ export default function DynamicFeeForm() {
           <div>
             <h2 className="text-xl font-semibold text-black">Monthly Fee Schedule</h2>
             <p className="text-sm text-black/70">
-              Override calculated amounts as needed. Per-employee and per-member rates use the headcount data from your experience file.
+              Override calculated amounts as needed. PEPM/PMPM calculations use the uploaded headcounts, and tiered fees multiply each tier’s rate by the counts you enter below.
             </p>
           </div>
           <form
@@ -191,9 +280,9 @@ export default function DynamicFeeForm() {
               <thead className="bg-black/5">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-black/60">Fee</th>
-                  {feeMonths.map(month => {
-                    const isLocked = experienceMonths.includes(month)
-                    return (
+                {feeMonths.map(month => {
+                  const isLocked = experienceMonths.includes(month)
+                  return (
                       <th key={month} className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-black/60">
                         <div className="flex items-center justify-end gap-2">
                           <span>{formatMonthLabel(month)}</span>
@@ -228,6 +317,9 @@ export default function DynamicFeeForm() {
                       const override = overrides[definition.id]
                       const baseAmount = monthFees[definition.id] ?? 0
                       const displayAmount = override ?? baseAmount
+                      const tiers = definition.tiers ?? []
+                      const tierCountsForMonth = feeTierCounts[month]?.[definition.id] ?? {}
+                      const hasTiers = tiers.length > 0
 
                       return (
                         <td key={month} className="px-4 py-2 text-right align-middle">
@@ -247,6 +339,30 @@ export default function DynamicFeeForm() {
                             )}
                             {override === undefined && (
                               <span className="text-[10px] text-black/40">{formatCurrency(baseAmount)}</span>
+                            )}
+                            {hasTiers && (
+                              <div className="mt-2 w-full rounded-md border border-black/10 bg-black/5 p-2 text-xs text-black">
+                                {tiers.map(tier => {
+                                  const count = tierCountsForMonth[tier.id] ?? 0
+                                  const tierTotal = tier.rate * count
+                                  return (
+                                    <div key={tier.id} className="flex items-center justify-between gap-2">
+                                      <span className="truncate" title={tier.label}>{tier.label}</span>
+                                      <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={Number.isFinite(count) ? count : 0}
+                                        onChange={event => {
+                                          const value = event.target.value
+                                          setFeeTierCount(month, definition.id, tier.id, value === '' ? null : parseFloat(value))
+                                        }}
+                                        className="w-16 rounded-md border border-black/20 px-1 py-0.5 text-right text-xs text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10"
+                                      />
+                                      <span className="w-20 text-right text-black/60">{formatCurrency(tierTotal)}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
                             )}
                           </div>
                         </td>

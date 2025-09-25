@@ -90,9 +90,12 @@ Member ID,Member Type (Employee/Spouse/Dependent),Age Band,Primary Diagnosis Cat
 - Per employee per month (PEPM)
 - Per member per month (PMPM)
 - Annual (even allocation across the active schedule)
+- Tiered (single/family, or up to 5 custom tiers with separate rates)
 - Custom/manual entry (enter the monthly amount directly)
 
 Use the “One-Off Adjustments” section to capture lump-sum rebates or stop-loss reimbursements that apply to specific months.
+
+Tiered fees (e.g., single vs. family stop-loss rates) are supported—define up to five tiers per fee and enter monthly enrollment counts so the dashboard multiplies each tier’s rate by the appropriate headcount.
 
 ### Step 3: Review Summary Table
 

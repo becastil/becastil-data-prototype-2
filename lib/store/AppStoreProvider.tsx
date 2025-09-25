@@ -31,8 +31,10 @@ const initialState: AppState = {
   feeMonths: [],
   feeOverrides: {},
   feeComputedByMonth: {},
+  feeTierCounts: {},
   budgetByMonth: {},
   budgetMonths: [],
+  adjustmentOverrides: {},
 }
 
 // Storage key
@@ -50,8 +52,10 @@ function loadFromStorage(): Partial<AppState> {
       feeDefinitions: parsed.feeDefinitions ?? [],
       feeMonths: parsed.feeMonths ?? [],
       feeOverrides: parsed.feeOverrides ?? {},
+      feeTierCounts: parsed.feeTierCounts ?? {},
       budgetByMonth: parsed.budgetByMonth ?? {},
       budgetMonths: parsed.budgetMonths ?? [],
+      adjustmentOverrides: parsed.adjustmentOverrides ?? {},
     }
   } catch {
     return {}
@@ -68,8 +72,10 @@ function saveToStorage(state: AppState) {
       feeDefinitions: state.feeDefinitions,
       feeMonths: state.feeMonths,
       feeOverrides: state.feeOverrides,
+      feeTierCounts: state.feeTierCounts,
       budgetByMonth: state.budgetByMonth,
       budgetMonths: state.budgetMonths,
+      adjustmentOverrides: state.adjustmentOverrides,
     }))
   } catch {
     // Ignore storage errors
@@ -112,7 +118,6 @@ function computeDerivedState(baseState: AppState): AppState {
     const cleaned = sanitizeAdjustmentEntry(entry)
     if (!cleaned) return
     sanitizedAdjustments[normalized] = cleaned
-    monthMap[normalized] ??= {}
   })
 
   const sortedBudgetMonths = Array.from(budgetMonthSet).sort()
@@ -124,7 +129,36 @@ function computeDerivedState(baseState: AppState): AppState {
   const financialMetrics = computeFinancialMetrics(baseState.experience, sanitizedBudgetByMonth, sanitizedAdjustments)
   const metricsByMonth = new Map(financialMetrics.map(metric => [metric.month, metric]))
 
+  const tierCountsSource = baseState.feeTierCounts ?? {}
+  const sanitizedTierCounts: Record<string, Record<string, Record<string, number>>> = {}
+
+  Object.entries(tierCountsSource).forEach(([month, feeMap]) => {
+    const normalizedMonth = normalizeMonthKey(month)
+    if (!normalizedMonth) return
+    const normalizedFeeMap: Record<string, Record<string, number>> = {}
+    Object.entries(feeMap).forEach(([feeId, tiers]) => {
+      const definition = baseState.feeDefinitions.find(def => def.id === feeId)
+      if (!definition || !definition.tiers || definition.tiers.length === 0) return
+      const allowedTierIds = new Set(definition.tiers.map(tier => tier.id))
+      const normalizedTierMap: Record<string, number> = {}
+      Object.entries(tiers).forEach(([tierId, count]) => {
+        if (!allowedTierIds.has(tierId)) return
+        const numericCount = sanitizeNumber(count)
+        if (Number.isFinite(numericCount) && numericCount !== 0) {
+          normalizedTierMap[tierId] = numericCount
+        }
+      })
+      if (Object.keys(normalizedTierMap).length > 0) {
+        normalizedFeeMap[feeId] = normalizedTierMap
+      }
+    })
+    if (Object.keys(normalizedFeeMap).length > 0) {
+      sanitizedTierCounts[normalizedMonth] = normalizedFeeMap
+    }
+  })
+
   const feeMonthsSet = new Set<string>([...baseState.feeMonths, ...months, ...sortedBudgetMonths])
+  Object.keys(sanitizedTierCounts).forEach(month => feeMonthsSet.add(month))
   const sortedFeeMonths = Array.from(feeMonthsSet).sort()
 
   let feeComputedByMonth: Record<string, Record<string, number>> = {}
@@ -141,7 +175,7 @@ function computeDerivedState(baseState: AppState): AppState {
         const override = overrides[month]?.[def.id]
         const amount = override !== undefined && override !== null
           ? override
-          : computeFeeAmount(def, month, metricsByMonth, monthsForAnnual)
+          : computeFeeAmount(def, month, metricsByMonth, monthsForAnnual, sanitizedTierCounts)
         computed[def.id] = amount
       })
       feeComputedByMonth[month] = computed
@@ -182,6 +216,7 @@ function computeDerivedState(baseState: AppState): AppState {
     feeMonths: sortedFeeMonths,
     feeComputedByMonth,
     feesByMonth,
+    feeTierCounts: sanitizedTierCounts,
     budgetByMonth: sanitizedBudgetByMonth,
     budgetMonths: sortedBudgetMonths,
     adjustmentOverrides: sanitizedAdjustments,
@@ -232,6 +267,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         feeMonths: [],
         budgetByMonth: {},
         budgetMonths: [],
+        feeTierCounts: {},
+        adjustmentOverrides: {},
       }))
     },
     
@@ -267,10 +304,136 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             nextOverrides[month] = rest
           }
         })
+        const nextTierCounts: Record<string, Record<string, Record<string, number>>> = {}
+        Object.entries(prevState.feeTierCounts ?? {}).forEach(([month, feeMap]) => {
+          const { [id]: _removedFee, ...rest } = feeMap
+          if (Object.keys(rest).length > 0) {
+            nextTierCounts[month] = rest
+          }
+        })
         return computeDerivedState({
           ...prevState,
           feeDefinitions: prevState.feeDefinitions.filter(def => def.id !== id),
           feeOverrides: nextOverrides,
+          feeTierCounts: nextTierCounts,
+        })
+      })
+    },
+
+    addFeeTier: (feeId) => {
+      setState(prevState => {
+        const index = prevState.feeDefinitions.findIndex(def => def.id === feeId)
+        if (index === -1) return prevState
+        const definition = prevState.feeDefinitions[index]
+        const tiers = definition.tiers ?? []
+        if (tiers.length >= 5) return prevState
+        const nextDefinitions = [...prevState.feeDefinitions]
+        nextDefinitions[index] = {
+          ...definition,
+          rateBasis: 'TIERED',
+          tiers: [...tiers, createDefaultTier(tiers.length + 1)],
+        }
+        return computeDerivedState({
+          ...prevState,
+          feeDefinitions: nextDefinitions,
+        })
+      })
+    },
+
+    updateFeeTier: (feeId, tierId, updates) => {
+      setState(prevState => {
+        const nextDefinitions = prevState.feeDefinitions.map(def => {
+          if (def.id !== feeId) return def
+          const tiers = def.tiers ?? []
+          return {
+            ...def,
+            tiers: tiers.map(tier =>
+              tier.id === tierId
+                ? {
+                    ...tier,
+                    ...updates,
+                    rate: updates.rate !== undefined ? sanitizeNumber(updates.rate) : tier.rate,
+                  }
+                : tier
+            ),
+          }
+        })
+        return computeDerivedState({
+          ...prevState,
+          feeDefinitions: nextDefinitions,
+        })
+      })
+    },
+
+    removeFeeTier: (feeId, tierId) => {
+      setState(prevState => {
+        const nextDefinitions = prevState.feeDefinitions.map(def => {
+          if (def.id !== feeId) return def
+          const tiers = def.tiers ?? []
+          const filtered = tiers.filter(tier => tier.id !== tierId)
+          return {
+            ...def,
+            tiers: filtered,
+            rateBasis: filtered.length > 0 ? 'TIERED' : def.rateBasis === 'TIERED' ? 'FLAT_MONTHLY' : def.rateBasis,
+          }
+        })
+
+        const nextTierCounts: Record<string, Record<string, Record<string, number>>> = {}
+        Object.entries(prevState.feeTierCounts ?? {}).forEach(([month, feeMap]) => {
+          const tierMap = feeMap[feeId]
+          if (!tierMap) {
+            nextTierCounts[month] = feeMap
+            return
+          }
+          const { [tierId]: _removedTier, ...restTiers } = tierMap
+          const updatedFeeMap = { ...feeMap }
+          if (Object.keys(restTiers).length > 0) {
+            updatedFeeMap[feeId] = restTiers
+          } else {
+            delete updatedFeeMap[feeId]
+          }
+          if (Object.keys(updatedFeeMap).length > 0) {
+            nextTierCounts[month] = updatedFeeMap
+          }
+        })
+
+        return computeDerivedState({
+          ...prevState,
+          feeDefinitions: nextDefinitions,
+          feeTierCounts: nextTierCounts,
+        })
+      })
+    },
+
+    setFeeTierCount: (month, feeId, tierId, count) => {
+      const normalized = normalizeMonthKey(month)
+      if (!normalized) return
+      setState(prevState => {
+        const tierCounts = { ...(prevState.feeTierCounts ?? {}) }
+        const monthCounts = { ...(tierCounts[normalized] ?? {}) }
+        const feeCounts = { ...(monthCounts[feeId] ?? {}) }
+
+        if (count === null || Number.isNaN(count)) {
+          delete feeCounts[tierId]
+        } else {
+          feeCounts[tierId] = Math.max(0, Math.round(sanitizeNumber(count)))
+        }
+
+        if (Object.keys(feeCounts).length > 0) {
+          monthCounts[feeId] = feeCounts
+        } else {
+          delete monthCounts[feeId]
+        }
+
+        if (Object.keys(monthCounts).length > 0) {
+          tierCounts[normalized] = monthCounts
+        } else {
+          delete tierCounts[normalized]
+        }
+
+        return computeDerivedState({
+          ...prevState,
+          feeTierCounts: tierCounts,
         })
       })
     },
@@ -295,6 +458,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         feeMonths: prevState.feeMonths.filter(item => item !== month),
         feeOverrides: Object.fromEntries(
           Object.entries(prevState.feeOverrides).filter(([key]) => key !== month)
+        ),
+        feeTierCounts: Object.fromEntries(
+          Object.entries(prevState.feeTierCounts ?? {}).filter(([key]) => key !== month)
         ),
       }))
     },
@@ -379,6 +545,15 @@ function createDefaultFeeDefinition(index: number): FeeDefinition {
     name: `Fee ${index}`,
     rateBasis: 'FLAT_MONTHLY',
     rateValue: 0,
+    tiers: [],
+  }
+}
+
+function createDefaultTier(index: number) {
+  return {
+    id: generateId(),
+    label: `Tier ${index}`,
+    rate: 0,
   }
 }
 
@@ -417,7 +592,16 @@ function computeFeeAmount(
   month: string,
   metricsByMonth: Map<string, FinancialMetrics>,
   monthsForAnnual: number,
+  tierCounts: Record<string, Record<string, Record<string, number>>>,
 ): number {
+  if (definition.tiers && definition.tiers.length > 0) {
+    const monthTiers = tierCounts[month]?.[definition.id] ?? {}
+    return definition.tiers.reduce((sum, tier) => {
+      const count = monthTiers[tier.id] ?? 0
+      return sum + sanitizeNumber(tier.rate) * sanitizeNumber(count)
+    }, 0)
+  }
+
   const metric = metricsByMonth.get(month)
   const eeCount = metric?.eeCount ?? 0
   const memberCount = metric?.memberCount ?? 0
@@ -432,6 +616,7 @@ function computeFeeAmount(
       return rate * memberCount
     case 'ANNUAL':
       return monthsForAnnual > 0 ? rate / monthsForAnnual : rate
+    case 'TIERED':
     case 'CUSTOM':
     default:
       return 0
