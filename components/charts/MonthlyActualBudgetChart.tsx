@@ -5,11 +5,13 @@ import {
   ComposedChart,
   Bar,
   Line,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
+  Brush,
 } from 'recharts'
 import type { TooltipProps } from 'recharts'
 
@@ -29,6 +31,14 @@ interface MonthlyActualBudgetPoint {
 interface MonthlyActualBudgetChartProps {
   data: MonthlyActualBudgetPoint[]
   height?: number
+  visibleRange?: {
+    start?: string | null
+    end?: string | null
+  }
+  focusMonth?: string | null
+  onMonthFocus?: (rawMonth: string | null) => void
+  onMonthSelect?: (rawMonth: string) => void
+  onRangeChange?: (start: string, end: string) => void
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -108,7 +118,15 @@ function MonthlyTooltip({ active, payload }: TooltipProps<number, string>) {
   )
 }
 
-export function MonthlyActualBudgetChart({ data, height = 400 }: MonthlyActualBudgetChartProps) {
+export function MonthlyActualBudgetChart({
+  data,
+  height = 400,
+  visibleRange,
+  focusMonth = null,
+  onMonthFocus,
+  onMonthSelect,
+  onRangeChange,
+}: MonthlyActualBudgetChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-64 items-center justify-center text-[var(--foreground)]/60">
@@ -117,9 +135,35 @@ export function MonthlyActualBudgetChart({ data, height = 400 }: MonthlyActualBu
     )
   }
 
+  const startIndex = visibleRange?.start
+    ? Math.max(0, data.findIndex(point => point.rawMonth === visibleRange.start))
+    : 0
+  const endIndex = visibleRange?.end
+    ? Math.max(0, data.findIndex(point => point.rawMonth === visibleRange.end))
+    : data.length - 1
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 24, right: 36, left: 16, bottom: 16 }}>
+      <ComposedChart
+        data={data}
+        margin={{ top: 24, right: 36, left: 16, bottom: 32 }}
+        onMouseMove={state => {
+          if (!onMonthFocus) return
+          const payload = state?.activePayload?.[0]?.payload as MonthlyActualBudgetPoint | undefined
+          const month = payload?.rawMonth ?? null
+          if (month !== focusMonth) {
+            onMonthFocus(month)
+          }
+        }}
+        onMouseLeave={() => onMonthFocus?.(null)}
+        onClick={state => {
+          if (!onMonthSelect) return
+          const payload = state?.activePayload?.[0]?.payload as MonthlyActualBudgetPoint | undefined
+          if (payload?.rawMonth) {
+            onMonthSelect(payload.rawMonth)
+          }
+        }}
+      >
         <defs>
           <linearGradient id="actualBarGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6366F1" stopOpacity={0.95} />
@@ -146,10 +190,26 @@ export function MonthlyActualBudgetChart({ data, height = 400 }: MonthlyActualBu
         <Bar
           dataKey="actualTotal"
           name="Actual Claims & Expenses"
-          fill="url(#actualBarGradient)"
           radius={[8, 8, 0, 0]}
           maxBarSize={48}
-        />
+        >
+          {data.map(point => {
+            const inRange = (() => {
+              if (!visibleRange?.start || !visibleRange?.end) return true
+              return point.rawMonth >= visibleRange.start && point.rawMonth <= visibleRange.end
+            })()
+            const isFocused = focusMonth === point.rawMonth
+            return (
+              <Cell
+                key={point.rawMonth}
+                fill="url(#actualBarGradient)"
+                fillOpacity={inRange ? (isFocused ? 1 : 0.85) : 0.25}
+                stroke={isFocused ? 'var(--accent)' : undefined}
+                strokeWidth={isFocused ? 2 : 0}
+              />
+            )
+          })}
+        </Bar>
         <Line
           type="monotone"
           dataKey="budget"
@@ -157,7 +217,37 @@ export function MonthlyActualBudgetChart({ data, height = 400 }: MonthlyActualBu
           stroke="#F97316"
           strokeWidth={3}
           dot={{ fill: '#F97316', strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, stroke: '#F97316', strokeWidth: 2, fill: '#fff' }}
+          activeDot={props => {
+            const rawMonth = (props.payload as MonthlyActualBudgetPoint | undefined)?.rawMonth
+            const isActive = focusMonth === rawMonth
+            return (
+              <circle
+                cx={props.cx}
+                cy={props.cy}
+                r={isActive ? 7 : 5}
+                stroke="#F97316"
+                strokeWidth={isActive ? 3 : 2}
+                fill={isActive ? '#fff' : '#F97316'}
+              />
+            )
+          }}
+        />
+        <Brush
+          dataKey="month"
+          height={28}
+          startIndex={startIndex < 0 ? 0 : startIndex}
+          endIndex={endIndex < 0 ? data.length - 1 : endIndex}
+          travellerWidth={12}
+          stroke="rgba(37,99,235,0.45)"
+          fill="rgba(37,99,235,0.08)"
+          onChange={range => {
+            if (!onRangeChange) return
+            const start = data[range.startIndex]?.rawMonth
+            const end = data[range.endIndex]?.rawMonth
+            if (start && end) {
+              onRangeChange(start, end)
+            }
+          }}
         />
       </ComposedChart>
     </ResponsiveContainer>

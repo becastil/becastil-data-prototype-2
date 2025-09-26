@@ -39,6 +39,20 @@ const initialState: AppState = {
     enabled: false,
     fieldIds: [],
   },
+  dashboardFilters: {
+    startMonth: null,
+    endMonth: null,
+    highCostBand: null,
+    topClaimantId: null,
+    activeClaimCategories: [],
+    stopLossTargetPct: 100,
+  },
+  dashboardFocus: {
+    month: null,
+    band: null,
+    claimantId: null,
+    category: null,
+  },
 }
 
 // Storage key
@@ -614,6 +628,46 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         customSummary: {
           ...prevState.customSummary,
           enabled,
+        },
+      }))
+    },
+
+    updateDashboardFilters: (updates) => {
+      setState(prevState => ({
+        ...prevState,
+        dashboardFilters: {
+          ...prevState.dashboardFilters,
+          ...updates,
+          activeClaimCategories:
+            updates.activeClaimCategories !== undefined
+              ? Array.from(new Set(updates.activeClaimCategories))
+              : prevState.dashboardFilters.activeClaimCategories,
+        },
+      }))
+    },
+
+    resetDashboardFilters: () => {
+      setState(prevState => ({
+        ...prevState,
+        dashboardFilters: { ...initialState.dashboardFilters },
+      }))
+    },
+
+    setDashboardFocus: (focus) => {
+      if (!focus) {
+        setState(prevState => ({
+          ...prevState,
+          dashboardFocus: { ...initialState.dashboardFocus },
+        }))
+        return
+      }
+      setState(prevState => ({
+        ...prevState,
+        dashboardFocus: {
+          month: focus.month ?? null,
+          band: focus.band ?? null,
+          claimantId: focus.claimantId ?? null,
+          category: focus.category ?? null,
         },
       }))
     },

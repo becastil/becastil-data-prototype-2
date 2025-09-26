@@ -10,6 +10,7 @@ interface LossGaugeCardProps {
   onModeChange: (mode: 'fuel' | 'stopLoss') => void
   hideModeSwitcher?: boolean
   className?: string
+  targetPercent?: number | null
 }
 
 const GaugeBackground = () => (
@@ -35,6 +36,7 @@ export function LossGaugeCard({
   onModeChange,
   hideModeSwitcher = false,
   className = '',
+  targetPercent = null,
 }: LossGaugeCardProps) {
   const clampedFuel = fuelPercent === null ? null : Math.min(Math.max(fuelPercent, 0), 200)
   const clampedStopLoss = Math.min(Math.max(stopLossPercent, 0), 200)
@@ -70,6 +72,10 @@ export function LossGaugeCard({
       ? `${fuelPercent - 100 >= 0 ? '+' : ''}${(fuelPercent - 100).toFixed(1)}% vs plan`
       : 'Awaiting budget inputs'
     : 'Year-to-date'
+
+  const scenarioDelta = targetPercent !== null && mode === 'fuel' && fuelPercent !== null
+    ? fuelPercent - targetPercent
+    : null
 
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
@@ -140,6 +146,11 @@ export function LossGaugeCard({
       <p className="text-xs leading-relaxed text-[var(--foreground)] opacity-70">
         {helper}
       </p>
+      {scenarioDelta !== null && (
+        <div className={`rounded-xl border px-3 py-2 text-xs font-semibold tabular-nums ${scenarioDelta <= 0 ? 'border-[rgba(22,163,74,0.35)] text-[var(--positive)]' : 'border-[rgba(220,38,38,0.3)] text-[var(--negative)]'}`}>
+          Target {targetPercent?.toFixed(0)}% • {scenarioDelta >= 0 ? '+' : ''}{scenarioDelta.toFixed(1)}% vs target
+        </div>
+      )}
     </div>
   )
 }

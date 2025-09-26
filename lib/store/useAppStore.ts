@@ -48,6 +48,22 @@ export interface CustomSummaryConfig {
   fieldIds: string[]
 }
 
+export interface DashboardFilters {
+  startMonth: string | null
+  endMonth: string | null
+  highCostBand: string | null
+  topClaimantId: string | null
+  activeClaimCategories: string[]
+  stopLossTargetPct: number
+}
+
+export interface DashboardFocus {
+  month: string | null
+  band: string | null
+  claimantId: string | null
+  category: string | null
+}
+
 export interface AppState {
   experience: ExperienceRow[]
   highCostClaimants: HighCostClaimant[]
@@ -65,6 +81,8 @@ export interface AppState {
   budgetMonths: string[]
   adjustmentOverrides: Record<string, { rxRebates?: number; stopLossReimbursement?: number }>
   customSummary: CustomSummaryConfig
+  dashboardFilters: DashboardFilters
+  dashboardFocus: DashboardFocus
 }
 
 export interface AppActions {
@@ -92,6 +110,9 @@ export interface AppActions {
   removeAdjustmentOverride: (month: string) => void
   setCustomSummaryLayout: (fieldIds: string[]) => void
   setCustomSummaryEnabled: (enabled: boolean) => void
+  updateDashboardFilters: (updates: Partial<DashboardFilters>) => void
+  resetDashboardFilters: () => void
+  setDashboardFocus: (focus: DashboardFocus | null) => void
 }
 
 export type AppStore = AppState & AppActions
@@ -187,4 +208,14 @@ export function useAdjustmentOverrides() {
 export function useCustomSummaryConfig() {
   const store = useAppStore()
   return store.customSummary
+}
+
+export function useDashboardFilters() {
+  const store = useAppStore()
+  return store.dashboardFilters
+}
+
+export function useDashboardFocus() {
+  const store = useAppStore()
+  return store.dashboardFocus
 }

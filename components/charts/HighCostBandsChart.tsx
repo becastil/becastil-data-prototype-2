@@ -1,11 +1,14 @@
 'use client'
 
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts'
 import type { ClaimantAmountBand } from '@/lib/calc/aggregations'
 
 type HighCostBandsChartProps = {
   data: ClaimantAmountBand[]
   height?: number
+  activeBand?: string | null
+  onBandFocus?: (bandLabel: string | null) => void
+  onBandSelect?: (band: ClaimantAmountBand) => void
 }
 
 const numberFormatter = new Intl.NumberFormat('en-US')
@@ -15,7 +18,13 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 })
 
-export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartProps) {
+export function HighCostBandsChart({
+  data,
+  height = 340,
+  activeBand = null,
+  onBandFocus,
+  onBandSelect,
+}: HighCostBandsChartProps) {
   const totalClaimants = data.reduce((sum, band) => sum + band.count, 0)
 
   if (totalClaimants === 0) {
@@ -64,7 +73,24 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
           }}
           labelFormatter={label => `${label}`}
         />
-        <Bar dataKey="count" fill="url(#bandBarGradient)" radius={[6, 6, 6, 6]} maxBarSize={48} />
+        <Bar dataKey="count" radius={[6, 6, 6, 6]} maxBarSize={48}>
+          {enrichedData.map(band => {
+            const isActive = activeBand === band.label
+            return (
+              <Cell
+                key={band.label}
+                fill="url(#bandBarGradient)"
+                fillOpacity={isActive ? 1 : 0.5}
+                stroke={isActive ? 'var(--accent)' : undefined}
+                strokeWidth={isActive ? 2 : 0}
+                onMouseEnter={() => onBandFocus?.(band.label)}
+                onMouseLeave={() => onBandFocus?.(null)}
+                onClick={() => onBandSelect?.(band)}
+                style={{ cursor: 'pointer' }}
+              />
+            )
+          })}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

@@ -1,11 +1,13 @@
 'use client'
 
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
-import type { MouseEvent } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import Link from 'next/link'
 import {
   useAppStore,
   useCustomSummaryConfig,
+  useDashboardFilters,
+  useDashboardFocus,
   useExperienceData,
   useFeeComputedByMonth,
   useFeeDefinitions,
@@ -505,7 +507,9 @@ export default function FinancialSummaryTable() {
   const feeComputedByMonth = useFeeComputedByMonth()
   const feeOverrides = useFeeOverrides()
   const customSummary = useCustomSummaryConfig()
-  const { setCustomSummaryLayout, setCustomSummaryEnabled } = useAppStore()
+  const dashboardFilters = useDashboardFilters()
+  const dashboardFocus = useDashboardFocus()
+  const { setCustomSummaryLayout, setCustomSummaryEnabled, setDashboardFocus } = useAppStore()
 
   const months = useMemo(() => {
     const monthSet = new Set<string>()
@@ -515,6 +519,18 @@ export default function FinancialSummaryTable() {
     Object.keys(feeOverrides ?? {}).forEach(month => monthSet.add(month))
     return Array.from(monthSet).sort()
   }, [experience, financialMetrics, feeComputedByMonth, feeOverrides])
+
+  const displayMonths = useMemo(() => {
+    if (!dashboardFilters.startMonth && !dashboardFilters.endMonth) {
+      return months
+    }
+    const filtered = months.filter(month => {
+      if (dashboardFilters.startMonth && month < dashboardFilters.startMonth) return false
+      if (dashboardFilters.endMonth && month > dashboardFilters.endMonth) return false
+      return true
+    })
+    return filtered.length > 0 ? filtered : months
+  }, [months, dashboardFilters.startMonth, dashboardFilters.endMonth])
 
   const metricsByMonth = useMemo(() => {
     return financialMetrics.reduce<Record<string, FinancialMetrics>>((acc, metric) => {
@@ -814,14 +830,16 @@ export default function FinancialSummaryTable() {
   }, [months, baseRows])
 
   const miniChartData = useMemo(() => {
-    return months.map(month => ({
+    return displayMonths.map(month => ({
       month: formatMonthLabel(month),
       total: baseTotalsByMonth[month] ?? 0,
     }))
-  }, [months, baseTotalsByMonth])
+  }, [displayMonths, baseTotalsByMonth])
 
   const areaGradientId = useMemo(() => `summaryAreaGradient-${Math.random().toString(36).slice(2)}`, [])
 
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({ category: 260 })
+  const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable')
   const [currentSort, setCurrentSort] = useState<{ column: string | null; direction: 'asc' | 'desc' | null }>({
     column: null,
     direction: null,
@@ -836,6 +854,102 @@ export default function FinancialSummaryTable() {
     x: 0,
     y: 0,
   })
+
+  const headerPaddingClass = density === 'compact' ? 'px-4 py-3' : 'px-5 py-4'
+  const dataCellPaddingClass = density === 'compact' ? 'px-4 py-3' : 'px-5 py-4'
+
+  const resizingColumnRef = useRef<{ key: string; startX: number; startWidth: number } | null>(null)
+
+  useEffect(() => {
+    setColumnWidths(prev => {
+      const next: Record<string, number> = { ...prev }
+      let changed = false
+
+      if (!next.category) {
+        next.category = 260
+        changed = true
+      }
+
+      displayMonths.forEach(month => {
+        if (!next[month]) {
+          next[month] = 140
+          changed = true
+        }
+      })
+
+      Object.keys(next).forEach(key => {
+        if (key !== 'category' && !displayMonths.includes(key)) {
+          delete next[key]
+          changed = true
+        }
+      })
+
+      return changed ? next : prev
+    })
+  }, [displayMonths])
+
+  const handleResizeMove = useCallback((event: MouseEvent) => {
+    const state = resizingColumnRef.current
+    if (!state) return
+    const delta = event.clientX - state.startX
+    const newWidth = Math.max(120, state.startWidth + delta)
+    setColumnWidths(prev => {
+      if (prev[state.key] === newWidth) return prev
+      return { ...prev, [state.key]: newWidth }
+    })
+  }, [])
+
+  const handleResizeEnd = useCallback(() => {
+    resizingColumnRef.current = null
+    window.removeEventListener('mousemove', handleResizeMove)
+    window.removeEventListener('mouseup', handleResizeEnd)
+  }, [handleResizeMove])
+
+  const handleResizeStart = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>, key: string) => {
+      event.preventDefault()
+      const currentWidth = columnWidths[key] ?? (key === 'category' ? 260 : 140)
+      resizingColumnRef.current = {
+        key,
+        startX: event.clientX,
+        startWidth: currentWidth,
+      }
+      window.addEventListener('mousemove', handleResizeMove)
+      window.addEventListener('mouseup', handleResizeEnd)
+    },
+    [columnWidths, handleResizeMove, handleResizeEnd],
+  )
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('mousemove', handleResizeMove)
+      window.removeEventListener('mouseup', handleResizeEnd)
+    }
+  }, [handleResizeMove, handleResizeEnd])
+
+  const handleMonthHighlight = useCallback(
+    (month: string | null) => {
+      setDashboardFocus({
+        month,
+        band: dashboardFocus.band,
+        claimantId: dashboardFocus.claimantId,
+        category: dashboardFocus.category,
+      })
+    },
+    [dashboardFocus.band, dashboardFocus.category, dashboardFocus.claimantId, setDashboardFocus],
+  )
+
+  const handleRowFocus = useCallback(
+    (label: string | null) => {
+      setDashboardFocus({
+        month: dashboardFocus.month,
+        band: dashboardFocus.band,
+        claimantId: dashboardFocus.claimantId,
+        category: label,
+      })
+    },
+    [dashboardFocus.band, dashboardFocus.claimantId, dashboardFocus.month, setDashboardFocus],
+  )
 
   const tableRef = useRef<HTMLDivElement>(null)
 
@@ -852,8 +966,8 @@ export default function FinancialSummaryTable() {
   }, [useCustomLayout])
 
   const hasData = useMemo(() => {
-    return baseRows.some(row => months.some(month => row.values[month] !== null))
-  }, [months, baseRows])
+    return baseRows.some(row => displayMonths.some(month => row.values[month] !== null))
+  }, [displayMonths, baseRows])
 
   const filteredData = useMemo(() => {
     let data = [...baseRows]
@@ -862,7 +976,7 @@ export default function FinancialSummaryTable() {
       const searchTerm = globalSearch.toLowerCase()
       data = data.filter(row => {
         if (row.label.toLowerCase().includes(searchTerm)) return true
-        return months.some(month => {
+        return displayMonths.some(month => {
           const formatted = formatDisplay(row.values[month], row.valueType).text.toLowerCase()
           return formatted.includes(searchTerm)
         })
@@ -876,7 +990,7 @@ export default function FinancialSummaryTable() {
         return
       }
 
-      if (months.includes(column)) {
+      if (displayMonths.includes(column)) {
         data = data.filter(row => {
           const value = row.values[column]
           if (value === null || value === undefined) return false
@@ -895,7 +1009,7 @@ export default function FinancialSummaryTable() {
           if (column === 'category') {
             aValue = a.label.toLowerCase()
             bValue = b.label.toLowerCase()
-          } else if (months.includes(column)) {
+          } else if (displayMonths.includes(column)) {
             aValue = a.values[column]
             bValue = b.values[column]
           }
@@ -917,15 +1031,15 @@ export default function FinancialSummaryTable() {
     }
 
     return data
-  }, [baseRows, globalSearch, columnFilters, currentSort, months])
+  }, [baseRows, globalSearch, columnFilters, currentSort, displayMonths])
 
   const highlightCards = useMemo<HighlightCardData[]>(() => {
     const cards: HighlightCardData[] = []
-    if (months.length === 0) return cards
+    if (displayMonths.length === 0) return cards
 
-    const latestMonth = months[months.length - 1]
+    const latestMonth = displayMonths[displayMonths.length - 1]
     const latestTotal = baseTotalsByMonth[latestMonth] ?? 0
-    const previousMonth = months.length > 1 ? months[months.length - 2] : undefined
+    const previousMonth = displayMonths.length > 1 ? displayMonths[displayMonths.length - 2] : undefined
 
     let deltaLabel: string | undefined
     let tone: HighlightTone = 'default'
@@ -971,7 +1085,7 @@ export default function FinancialSummaryTable() {
     }
 
     return cards
-  }, [months, baseTotalsByMonth, filteredData.length, baseRows.length, metricsByMonth])
+  }, [displayMonths, baseTotalsByMonth, filteredData.length, baseRows.length, metricsByMonth])
 
   const renderAreaTooltip = useCallback(({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (!active || !payload || payload.length === 0) return null
@@ -987,7 +1101,7 @@ export default function FinancialSummaryTable() {
   }, [])
 
   const totalsByMonth = useMemo(() => {
-    return months.reduce<Record<string, number>>((acc, month) => {
+    return displayMonths.reduce<Record<string, number>>((acc, month) => {
       acc[month] = filteredData.reduce((sum, row) => {
         if (row.valueType !== 'currency') return sum
         const value = row.values[month]
@@ -996,7 +1110,7 @@ export default function FinancialSummaryTable() {
       }, 0)
       return acc
     }, {})
-  }, [filteredData, months])
+  }, [filteredData, displayMonths])
 
   const handleSort = (column: string) => {
     setCurrentSort(prev => {
@@ -1018,6 +1132,30 @@ export default function FinancialSummaryTable() {
     })
   }
 
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onRemove: () => void }> = []
+
+    if (globalSearch.trim()) {
+      chips.push({
+        key: 'global-search',
+        label: `Search · ${globalSearch}`,
+        onRemove: () => setGlobalSearch(''),
+      })
+    }
+
+    Object.entries(columnFilters).forEach(([column, value]) => {
+      if (!value.trim()) return
+      const label = column === 'category' ? `Category · ${value}` : `${formatMonthLabel(column)} · ${value}`
+      chips.push({
+        key: column,
+        label,
+        onRemove: () => handleColumnFilter(column, ''),
+      })
+    })
+
+    return chips
+  }, [columnFilters, globalSearch, handleColumnFilter])
+
   const toggleGroup = (group: GroupName) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev)
@@ -1030,7 +1168,7 @@ export default function FinancialSummaryTable() {
     })
   }
 
-  const showTooltipAt = useCallback((event: MouseEvent<HTMLTableCellElement>, text: string) => {
+  const showTooltipAt = useCallback((event: ReactMouseEvent<HTMLTableCellElement>, text: string) => {
     const rect = event.currentTarget.getBoundingClientRect()
     setTooltip({
       show: true,
@@ -1046,9 +1184,9 @@ export default function FinancialSummaryTable() {
 
   const deriveMetrics = useCallback(
     (row: TableRow) => {
-      if (months.length < 2) return { delta: null, percent: null }
-      const latestMonth = months[months.length - 1]
-      const previousMonth = months[months.length - 2]
+      if (displayMonths.length < 2) return { delta: null, percent: null }
+      const latestMonth = displayMonths[displayMonths.length - 1]
+      const previousMonth = displayMonths[displayMonths.length - 2]
       const latest = row.values[latestMonth]
       const previous = row.values[previousMonth]
       if (latest === null || latest === undefined || previous === null || previous === undefined) {
@@ -1058,12 +1196,12 @@ export default function FinancialSummaryTable() {
       const percent = previous !== 0 ? delta / Math.abs(previous) : null
       return { delta, percent }
     },
-    [months],
+    [displayMonths],
   )
 
   const exportCSV = () => {
-    const headers = ['Cost Category', ...months.map(formatMonthLabel)]
-    if (showDerivedMetrics && months.length >= 2) {
+    const headers = ['Cost Category', ...displayMonths.map(formatMonthLabel)]
+    if (showDerivedMetrics && displayMonths.length >= 2) {
       headers.push('MoM Δ', '%Δ MoM')
     }
 
@@ -1072,10 +1210,10 @@ export default function FinancialSummaryTable() {
     filteredData.forEach(row => {
       const values = [
         `"${row.label}"`,
-        ...months.map(month => formatForCsv(row.values[month], row.valueType)),
+        ...displayMonths.map(month => formatForCsv(row.values[month], row.valueType)),
       ]
 
-      if (showDerivedMetrics && months.length >= 2) {
+      if (showDerivedMetrics && displayMonths.length >= 2) {
         const { delta, percent } = deriveMetrics(row)
         values.push(formatForCsv(delta, row.valueType))
         values.push(percent === null ? '' : (percent * 100).toFixed(2))
@@ -1144,6 +1282,17 @@ export default function FinancialSummaryTable() {
                     <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                     {showDerivedMetrics ? 'Hide derived metrics' : 'Show derived metrics'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setDensity(prev => (prev === 'comfortable' ? 'compact' : 'comfortable'))}
+                    className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      density === 'compact'
+                        ? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800'
+                        : 'border border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    {density === 'compact' ? 'Compact density' : 'Comfort density'}
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -1164,6 +1313,21 @@ export default function FinancialSummaryTable() {
                   </button>
                 </div>
               </div>
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1 text-xs">
+                  {activeFilterChips.map(chip => (
+                    <button
+                      key={chip.key}
+                      type="button"
+                      onClick={chip.onRemove}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-100 px-3 py-1 font-medium text-slate-600 transition hover:border-blue-400 hover:text-blue-600"
+                    >
+                      {chip.label}
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <CustomSummaryBuilder
               availableFields={availableFields}
@@ -1221,8 +1385,9 @@ export default function FinancialSummaryTable() {
                 <tr>
                   <th
                     scope="col"
-                    className="sticky left-0 z-30 bg-white/95 px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.3em] text-slate-500"
+                    className={`sticky left-0 z-30 bg-white/95 ${headerPaddingClass} pr-6 text-left text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 relative`}
                     aria-sort={currentSort.column === 'category' ? currentSort.direction || 'none' : 'none'}
+                    style={{ width: columnWidths.category, minWidth: columnWidths.category }}
                   >
                     <button
                       type="button"
@@ -1243,41 +1408,62 @@ export default function FinancialSummaryTable() {
                         onChange={event => handleColumnFilter('category', event.target.value)}
                       />
                     </div>
-                  </th>
-                  {months.map(month => (
-                    <th
-                      key={month}
-                      scope="col"
-                      className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500"
-                      aria-sort={currentSort.column === month ? currentSort.direction || 'none' : 'none'}
+                    <div
+                      role="presentation"
+                      className="absolute right-1 top-1/2 h-8 w-2 -translate-y-1/2 cursor-col-resize"
+                      onMouseDown={event => handleResizeStart(event, 'category')}
                     >
-                      <button
-                        type="button"
-                        onClick={() => handleSort(month)}
-                        className="flex w-full items-center justify-end gap-2 text-slate-700 transition hover:text-blue-600"
+                      <span className="block h-full w-[1px] bg-slate-200" />
+                    </div>
+                  </th>
+                  {displayMonths.map(month => {
+                    const width = columnWidths[month] ?? 140
+                    const isFocused = dashboardFocus.month === month
+                    return (
+                      <th
+                        key={month}
+                        scope="col"
+                        className={`${headerPaddingClass} pr-6 text-right text-xs font-semibold uppercase tracking-[0.3em] ${isFocused ? 'bg-[var(--accent-soft)] text-[var(--foreground)]' : 'text-slate-500'} relative`}
+                        aria-sort={currentSort.column === month ? currentSort.direction || 'none' : 'none'}
+                        style={{ width, minWidth: width }}
+                        onMouseEnter={() => handleMonthHighlight(month)}
+                        onMouseLeave={() => handleMonthHighlight(null)}
                       >
-                        <span className="text-sm font-semibold text-slate-800">{formatMonthLabel(month)}</span>
-                        <span className="flex flex-col text-[10px] leading-[10px] text-slate-400">
-                          <span className={currentSort.column === month && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
-                          <span className={currentSort.column === month && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
-                        </span>
-                      </button>
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          className="w-full rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
-                          placeholder=">=, <=, = value"
-                          onChange={event => handleColumnFilter(month, event.target.value)}
-                        />
-                      </div>
-                    </th>
-                  ))}
-                  {showDerivedMetrics && months.length >= 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleSort(month)}
+                          className="flex w-full items-center justify-end gap-2 text-slate-700 transition hover:text-blue-600"
+                        >
+                          <span className="text-sm font-semibold text-slate-800">{formatMonthLabel(month)}</span>
+                          <span className="flex flex-col text-[10px] leading-[10px] text-slate-400">
+                            <span className={currentSort.column === month && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
+                            <span className={currentSort.column === month && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
+                          </span>
+                        </button>
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            className="w-full rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+                            placeholder=">=, <=, = value"
+                            onChange={event => handleColumnFilter(month, event.target.value)}
+                          />
+                        </div>
+                        <div
+                          role="presentation"
+                          className="absolute right-1 top-1/2 h-8 w-2 -translate-y-1/2 cursor-col-resize"
+                          onMouseDown={event => handleResizeStart(event, month)}
+                        >
+                          <span className="block h-full w-[1px] bg-slate-200" />
+                        </div>
+                      </th>
+                    )
+                  })}
+                  {showDerivedMetrics && displayMonths.length >= 2 && (
                     <>
-                      <th scope="col" className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+                      <th scope="col" className={`${headerPaddingClass} text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500`}>
                         MoM Δ
                       </th>
-                      <th scope="col" className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+                      <th scope="col" className={`${headerPaddingClass} text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500`}>
                         %Δ MoM
                       </th>
                     </>
@@ -1297,12 +1483,12 @@ export default function FinancialSummaryTable() {
                     if (isNewGroup) {
                       lastGroup = row.group
                       const isCollapsed = groupIsCollapsed
-                      const colspan = months.length + 1 + (showDerivedMetrics && months.length >= 2 ? 2 : 0)
+                      const colspan = displayMonths.length + 1 + (showDerivedMetrics && displayMonths.length >= 2 ? 2 : 0)
                       const IconComponent = groupIcons[row.group] ?? Layers3
 
                       rows.push(
                         <tr key={`group-${row.group}`} className="bg-white">
-                          <td colSpan={colspan} className="px-5 py-4">
+                          <td colSpan={colspan} className={`${headerPaddingClass} text-left`}>
                             <button
                               type="button"
                               onClick={() => toggleGroup(row.group)}
@@ -1337,43 +1523,57 @@ export default function FinancialSummaryTable() {
                     }
 
                     const rowBackground = dataIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                    const { delta, percent } = showDerivedMetrics && months.length >= 2 ? deriveMetrics(row) : { delta: null, percent: null }
+                    const { delta, percent } = showDerivedMetrics && displayMonths.length >= 2 ? deriveMetrics(row) : { delta: null, percent: null }
                     const rowId = isNewGroup ? `${groupSlug}-rows` : undefined
+                    const isFocusedRow = dashboardFocus.category === row.label
 
                     rows.push(
                       <tr
                         key={row.key}
-                        className={`group ${rowBackground} border-b border-slate-200 hover:bg-blue-50 focus-within:bg-blue-50 transition-colors`}
+                        className={`group ${rowBackground} border-b border-slate-200 hover:bg-blue-50 focus-within:bg-blue-50 transition-colors ${isFocusedRow ? 'bg-[var(--accent-soft)]/70' : ''}`}
                         data-group={groupSlug}
                       >
                         <th
                           scope="row"
-                          className={`sticky left-0 z-10 ${rowBackground} px-5 py-4 text-left font-semibold text-slate-800 shadow-[1px_0_0_rgba(148,163,184,0.35)] group-hover:bg-blue-50`}
+                          className={`sticky left-0 z-10 ${rowBackground} ${dataCellPaddingClass} text-left font-semibold text-slate-800 shadow-[1px_0_0_rgba(148,163,184,0.35)] group-hover:bg-blue-50`}
                           aria-labelledby={`${groupSlug}-label`}
                           id={rowId}
                           onMouseEnter={event => {
                             const tooltipKey = Object.keys(acronyms).find(acronym => row.label.includes(acronym))
                             if (tooltipKey) showTooltipAt(event, acronyms[tooltipKey])
+                            handleRowFocus(row.label)
                           }}
-                          onMouseLeave={hideTooltip}
+                          onMouseLeave={event => {
+                            hideTooltip()
+                            handleRowFocus(null)
+                          }}
+                          style={{ width: columnWidths.category, minWidth: columnWidths.category }}
                         >
                           {row.label}
                         </th>
-                        {months.map(month => {
+                        {displayMonths.map(month => {
                           const value = row.values[month]
                           const { text, isNegative } = formatDisplay(value, row.valueType)
+                          const width = columnWidths[month] ?? 140
+                          const isFocusedColumn = dashboardFocus.month === month
                           return (
-                            <td key={month} className={`px-5 py-4 text-right tabular-nums ${isNegative ? 'text-rose-600' : 'text-slate-800'}`}>
+                            <td
+                              key={month}
+                              className={`${dataCellPaddingClass} text-right tabular-nums ${isNegative ? 'text-rose-600' : 'text-slate-800'} ${isFocusedColumn ? 'bg-[var(--accent-soft)] font-semibold text-[var(--foreground)]' : ''}`}
+                              style={{ width, minWidth: width }}
+                              onMouseEnter={() => handleMonthHighlight(month)}
+                              onMouseLeave={() => handleMonthHighlight(null)}
+                            >
                               {text}
                             </td>
                           )
                         })}
-                        {showDerivedMetrics && months.length >= 2 && (
+                        {showDerivedMetrics && displayMonths.length >= 2 && (
                           <>
-                            <td className={`px-5 py-4 text-right tabular-nums ${delta !== null && delta < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                            <td className={`${dataCellPaddingClass} text-right tabular-nums ${delta !== null && delta < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
                               {formatDisplay(delta, row.valueType).text}
                             </td>
-                            <td className={`px-5 py-4 text-right tabular-nums ${percent !== null && percent < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                            <td className={`${dataCellPaddingClass} text-right tabular-nums ${percent !== null && percent < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
                               {formatDisplay(percent, 'percent').text}
                             </td>
                           </>
@@ -1390,12 +1590,18 @@ export default function FinancialSummaryTable() {
           <div className="border-t border-slate-200 bg-slate-50/70 px-6 py-5 sm:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-4 text-xs font-medium uppercase tracking-[0.25em] text-slate-500">
-                {months.map(month => (
-                  <div key={month} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm">
-                    <div className="text-[0.65rem] tracking-[0.3em] text-slate-400">{formatMonthShort(month)}</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">{currencyFormatter.format(totalsByMonth[month] ?? 0)}</div>
-                  </div>
-                ))}
+                {displayMonths.map(month => {
+                  const isFocused = dashboardFocus.month === month
+                  return (
+                    <div
+                      key={month}
+                      className={`rounded-xl border px-3 py-2 text-slate-700 shadow-sm ${isFocused ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-slate-200 bg-white'}`}
+                    >
+                      <div className="text-[0.65rem] tracking-[0.3em] text-slate-400">{formatMonthShort(month)}</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900">{currencyFormatter.format(totalsByMonth[month] ?? 0)}</div>
+                    </div>
+                  )
+                })}
                 <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm">
                   <div className="text-[0.65rem] tracking-[0.3em] text-slate-400">Visible Rows</div>
                   <div className="mt-1 text-sm font-semibold text-slate-900">{filteredData.length.toLocaleString()}</div>

@@ -6,9 +6,18 @@ import { TopClaimant } from '@/lib/schemas/fees'
 interface TopClaimantsChartProps {
   claimants: TopClaimant[]
   height?: number
+  activeClaimantId?: string | null
+  onClaimantFocus?: (memberId: string | null) => void
+  onClaimantSelect?: (claimant: TopClaimant) => void
 }
 
-export function TopClaimantsChart({ claimants, height = 350 }: TopClaimantsChartProps) {
+export function TopClaimantsChart({
+  claimants,
+  height = 350,
+  activeClaimantId = null,
+  onClaimantFocus,
+  onClaimantSelect,
+}: TopClaimantsChartProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -93,7 +102,17 @@ export function TopClaimantsChart({ claimants, height = 350 }: TopClaimantsChart
           />
           <Bar dataKey="totalAmount" radius={[6, 6, 6, 6]}>
             {claimants.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={getBarColor(index)} />
+              <Cell
+                key={`cell-${index}`}
+                fill={getBarColor(index)}
+                fillOpacity={activeClaimantId === entry.memberId ? 1 : 0.65}
+                stroke={activeClaimantId === entry.memberId ? 'var(--accent)' : undefined}
+                strokeWidth={activeClaimantId === entry.memberId ? 2 : 0}
+                onMouseEnter={() => onClaimantFocus?.(entry.memberId)}
+                onMouseLeave={() => onClaimantFocus?.(null)}
+                onClick={() => onClaimantSelect?.(entry)}
+                style={{ cursor: 'pointer' }}
+              />
             ))}
           </Bar>
         </BarChart>

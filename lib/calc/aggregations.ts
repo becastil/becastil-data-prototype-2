@@ -13,6 +13,8 @@ export interface ClaimantAmountBand {
   count: number
   totalAmount: number
   averageAmount: number
+  min: number
+  max: number
 }
 
 /**
@@ -139,6 +141,8 @@ export function getClaimantAmountBands(claimants: HighCostClaimant[]): ClaimantA
       count,
       totalAmount,
       averageAmount: count > 0 ? totalAmount / count : 0,
+      min: band.min,
+      max: band.max,
     }
   })
 }
