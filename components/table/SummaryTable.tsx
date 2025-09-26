@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useExperienceData } from '@/lib/store/useAppStore'
 import { getUniqueMonths } from '@/lib/calc/aggregations'
 import exportSummaryTable from '@/lib/pdf/exportSummaryTable'
@@ -22,10 +22,34 @@ function formatMonthLabel(month: string) {
 export default function SummaryTable() {
   const experience = useExperienceData()
   const [isExporting, setIsExporting] = useState(false)
+  const [startMonth, setStartMonth] = useState('')
+  const [endMonth, setEndMonth] = useState('')
   const captureRef = useRef<HTMLDivElement | null>(null)
 
   const months = useMemo(() => getUniqueMonths(experience), [experience])
-  const monthLabels = useMemo(() => months.map(formatMonthLabel), [months])
+  useEffect(() => {
+    if (months.length === 0) {
+      setStartMonth('')
+      setEndMonth('')
+      return
+    }
+
+    setStartMonth(prev => (prev && months.includes(prev) ? prev : months[0]))
+    setEndMonth(prev => (prev && months.includes(prev) ? prev : months[months.length - 1]))
+  }, [months])
+
+  const [rangeStart, rangeEnd] = useMemo(() => {
+    if (!startMonth || !endMonth) return ['', '']
+    return startMonth <= endMonth ? [startMonth, endMonth] : [endMonth, startMonth]
+  }, [startMonth, endMonth])
+
+  const visibleMonths = useMemo(() => {
+    if (!rangeStart || !rangeEnd) return months
+    return months.filter(month => month >= rangeStart && month <= rangeEnd)
+  }, [months, rangeStart, rangeEnd])
+
+  const startValue = rangeStart || (months[0] ?? '')
+  const endValue = rangeEnd || (months[months.length - 1] ?? '')
   const categories = useMemo(() => {
     const seen = new Set<string>()
     const ordered: string[] = []
@@ -49,12 +73,12 @@ export default function SummaryTable() {
   }, [experience])
 
   const totalsByMonth = useMemo(() => {
-    return months.map(month =>
+    return visibleMonths.map(month =>
       experience
         .filter(row => row.month === month)
         .reduce((sum, row) => sum + row.amount, 0),
     )
-  }, [experience, months])
+  }, [experience, visibleMonths])
 
   if (experience.length === 0) {
     return (
@@ -80,6 +104,37 @@ export default function SummaryTable() {
     }
   }
 
+  const applyRange = (start: string, end: string) => {
+    if (!start || !end) return
+    if (start <= end) {
+      setStartMonth(start)
+      setEndMonth(end)
+    } else {
+      setStartMonth(end)
+      setEndMonth(start)
+    }
+  }
+
+  const handleStartSelect = (value: string) => {
+    if (!value) return
+    const effectiveEnd = endValue || value
+    if (value <= effectiveEnd) {
+      applyRange(value, effectiveEnd)
+    } else {
+      applyRange(value, value)
+    }
+  }
+
+  const handleEndSelect = (value: string) => {
+    if (!value) return
+    const effectiveStart = startValue || value
+    if (value >= effectiveStart) {
+      applyRange(effectiveStart, value)
+    } else {
+      applyRange(value, value)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -95,6 +150,84 @@ export default function SummaryTable() {
         </button>
       </div>
 
+      {months.length > 1 && (
+        <div className="rounded-3xl border border-black/10 bg-white/90 p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-black">Quick Select:</span>
+            <button
+              onClick={() => {
+                const startIndex = Math.max(0, months.length - 3)
+                applyRange(months[startIndex], months[months.length - 1])
+              }}
+              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+            >
+              Last 3 Months
+            </button>
+            <button
+              onClick={() => {
+                const startIndex = Math.max(0, months.length - 6)
+                applyRange(months[startIndex], months[months.length - 1])
+              }}
+              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+            >
+              Last 6 Months
+            </button>
+            <button
+              onClick={() => {
+                const currentYear = new Date().getFullYear().toString()
+                const ytdStart = months.find(month => month.startsWith(currentYear)) || months[0]
+                applyRange(ytdStart, months[months.length - 1])
+              }}
+              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+            >
+              YTD
+            </button>
+            <button
+              onClick={() => {
+                applyRange(months[0], months[months.length - 1])
+              }}
+              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+            >
+              All Data
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-sm text-black/70">
+            <label className="flex items-center gap-2">
+              <span>From</span>
+              <select
+                value={startValue}
+                onChange={event => handleStartSelect(event.target.value)}
+                className="rounded-md border border-black/20 bg-white px-2 py-1 text-sm text-black shadow-sm focus:outline-none"
+              >
+                {months.map(month => (
+                  <option key={month} value={month}>
+                    {formatMonthLabel(month)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span>To</span>
+              <select
+                value={endValue}
+                onChange={event => handleEndSelect(event.target.value)}
+                className="rounded-md border border-black/20 bg-white px-2 py-1 text-sm text-black shadow-sm focus:outline-none"
+              >
+                {months.map(month => (
+                  <option key={month} value={month}>
+                    {formatMonthLabel(month)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/50">
+              Showing {visibleMonths.length} month{visibleMonths.length === 1 ? '' : 's'}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         id="summary-table"
         ref={captureRef}
@@ -106,12 +239,12 @@ export default function SummaryTable() {
               <th className="border border-black/40 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.3em] text-white">
                 Cost Category
               </th>
-              {monthLabels.map(label => (
+              {visibleMonths.map(month => (
                 <th
-                  key={label}
+                  key={month}
                   className="border border-black/40 px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.3em] text-white whitespace-nowrap"
                 >
-                  {label}
+                  {formatMonthLabel(month)}
                 </th>
               ))}
             </tr>
@@ -127,7 +260,7 @@ export default function SummaryTable() {
                   <td className="border border-black/10 px-5 py-4 text-left text-[0.95rem] font-semibold text-black">
                     {category}
                   </td>
-                  {months.map(month => {
+                  {visibleMonths.map(month => {
                     const amount = monthValues.get(month) ?? 0
                     return (
                       <td
@@ -149,7 +282,7 @@ export default function SummaryTable() {
               </td>
               {totalsByMonth.map((total, index) => (
                 <td
-                  key={months[index]}
+                  key={visibleMonths[index]}
                   className="border border-black px-5 py-4 text-right text-sm font-semibold tabular-nums text-white"
                 >
                   {currencyFormatter.format(total)}
