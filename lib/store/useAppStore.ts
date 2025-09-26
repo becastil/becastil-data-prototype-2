@@ -43,6 +43,11 @@ export interface StepCompletion {
   charts: boolean
 }
 
+export interface CustomSummaryConfig {
+  enabled: boolean
+  fieldIds: string[]
+}
+
 export interface AppState {
   experience: ExperienceRow[]
   highCostClaimants: HighCostClaimant[]
@@ -59,6 +64,7 @@ export interface AppState {
   budgetByMonth: Record<string, { pepm?: number; total?: number }>
   budgetMonths: string[]
   adjustmentOverrides: Record<string, { rxRebates?: number; stopLossReimbursement?: number }>
+  customSummary: CustomSummaryConfig
 }
 
 export interface AppActions {
@@ -84,6 +90,8 @@ export interface AppActions {
     entry: { rxRebates?: number | null; stopLossReimbursement?: number | null }
   ) => void
   removeAdjustmentOverride: (month: string) => void
+  setCustomSummaryLayout: (fieldIds: string[]) => void
+  setCustomSummaryEnabled: (enabled: boolean) => void
 }
 
 export type AppStore = AppState & AppActions
@@ -174,4 +182,9 @@ export function useBudgetMonths() {
 export function useAdjustmentOverrides() {
   const store = useAppStore()
   return store.adjustmentOverrides
+}
+
+export function useCustomSummaryConfig() {
+  const store = useAppStore()
+  return store.customSummary
 }

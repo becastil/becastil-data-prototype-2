@@ -35,6 +35,10 @@ const initialState: AppState = {
   budgetByMonth: {},
   budgetMonths: [],
   adjustmentOverrides: {},
+  customSummary: {
+    enabled: false,
+    fieldIds: [],
+  },
 }
 
 // Storage key
@@ -56,6 +60,7 @@ function loadFromStorage(): Partial<AppState> {
       budgetByMonth: parsed.budgetByMonth ?? {},
       budgetMonths: parsed.budgetMonths ?? [],
       adjustmentOverrides: parsed.adjustmentOverrides ?? {},
+      customSummary: parsed.customSummary ?? { enabled: false, fieldIds: [] },
     }
   } catch {
     return {}
@@ -76,6 +81,7 @@ function saveToStorage(state: AppState) {
       budgetByMonth: state.budgetByMonth,
       budgetMonths: state.budgetMonths,
       adjustmentOverrides: state.adjustmentOverrides,
+      customSummary: state.customSummary,
     }))
   } catch {
     // Ignore storage errors
@@ -590,6 +596,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           budgetMonths: prevState.budgetMonths.filter(item => item !== normalized),
         })
       })
+    },
+
+    setCustomSummaryLayout: (fieldIds) => {
+      setState(prevState => ({
+        ...prevState,
+        customSummary: {
+          ...prevState.customSummary,
+          fieldIds: Array.from(new Set(fieldIds.filter(Boolean))),
+        },
+      }))
+    },
+
+    setCustomSummaryEnabled: (enabled) => {
+      setState(prevState => ({
+        ...prevState,
+        customSummary: {
+          ...prevState.customSummary,
+          enabled,
+        },
+      }))
     },
   }
   

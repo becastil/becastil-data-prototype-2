@@ -1,34 +1,35 @@
 'use client'
 
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { useExperienceData, useFinancialMetrics } from '@/lib/store/useAppStore'
-
-interface TableRow {
-  category: string
-  dec2025: number | null
-  jan2026: number | null
-  feb2026: number | null
-}
-
-interface GroupConfig {
-  name: string
-  start: number
-  end: number
-}
-
-interface ColumnFilter {
-  [key: string]: string
-}
-
-interface SortState {
-  column: string | null
-  direction: 'asc' | 'desc' | null
-}
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
+import type { MouseEvent } from 'react'
+import {
+  useAppStore,
+  useCustomSummaryConfig,
+  useExperienceData,
+  useFeeComputedByMonth,
+  useFeeDefinitions,
+  useFeeOverrides,
+  useFinancialMetrics,
+} from '@/lib/store/useAppStore'
+import type { FinancialMetrics } from '@/lib/calc/financialMetrics'
+import CustomSummaryBuilder from './CustomSummaryBuilder'
+import type { AvailableField, ValueType } from './summaryTypes'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   minimumFractionDigits: 2,
+})
+
+const numberFormatter = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+})
+
+const percentFormatter = new Intl.NumberFormat('en-US', {
+  style: 'percent',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 })
 
 const acronyms: Record<string, string> = {
@@ -42,283 +43,934 @@ const acronyms: Record<string, string> = {
   'PEPM': 'Per Employee Per Month',
 }
 
-const groups: GroupConfig[] = [
-  { name: "Medical Claims", start: 0, end: 9 },
-  { name: "Rx Claims", start: 10, end: 13 },
-  { name: "Stop Loss", start: 14, end: 15 },
-  { name: "Admin Fees", start: 16, end: 22 },
-  { name: "Monthly Totals", start: 23, end: 24 },
-  { name: "Counts & PEPM", start: 25, end: 32 },
-  { name: "Variance Analysis", start: 33, end: 36 }
+const groupOrder = [
+  'Medical Claims',
+  'Rx Claims',
+  'Stop Loss',
+  'Admin Fees',
+  'Monthly Totals',
+  'Counts & PEPM',
+  'Variance Analysis',
+] as const
+
+const CUSTOM_GROUP_LABEL = 'Custom Layout' as const
+
+export type GroupName = typeof groupOrder[number] | typeof CUSTOM_GROUP_LABEL
+
+const EXPERIENCE_CATEGORY_ALIASES = {
+  domesticHospital: [
+    'Domestic Medical Facility Claims (IP/OP)',
+    'Domestic Hospital Claims',
+  ],
+  nonDomesticHospital: [
+    'Non-Domestic Medical Claims (IP/OP)',
+    'Non Domestic Hospital Claims',
+  ],
+  totalHospital: [
+    'Total Hospital Medical Claims (IP/OP)',
+    'Total Hospital Medical Claims',
+  ],
+  nonHospital: ['Non-Hospital Medical Claims'],
+  totalAllMedical: ['Total All Medical Claims'],
+  ucAdjustment: ['UC Claims Settlement Adjustment'],
+  runOut: ['Run Out Claims'],
+  medicalEba: ['Medical Claims Paid via EBA'],
+  totalMedical: ['Total Medical Claims'],
+  hmnhHighCost: ['High Cost Claims paid via HMNH'],
+  rxGross: ['ESI Pharmacy Claims', 'Pharmacy Claims'],
+  rxRebates: ['Rx Rebates', 'Pharmacy Rebates'],
+  stopLossFees: ['Total Stop Loss Fees'],
+  consulting: ['Consulting'],
+  tpa: ['TPA Claims/COBRA Administration Fee (PEPM)', 'TPA Administration Fee'],
+  anthemJaa: ['Anthem JAA'],
+  kppc: ['KPPC Fees'],
+  kpcm: ['KPCM Fees'],
+  esiPrograms: ['Optional ESI Programs'],
+  incurredTargetPepm: ['Incurred Target PEPM', 'INCURED TARGET PEPM'],
+} as const
+
+type ExperienceAliasKey = keyof typeof EXPERIENCE_CATEGORY_ALIASES
+
+interface TableRow {
+  key: string
+  label: string
+  group: GroupName
+  values: Record<string, number | null>
+  valueType: ValueType
+}
+
+interface RowDefinition {
+  key: string
+  label: string
+  group: GroupName
+  valueType?: ValueType
+  aliasKey?: ExperienceAliasKey
+  metricField?: keyof FinancialMetrics
+  transformMetric?: (
+    value: number | null,
+    month: string,
+    metric?: FinancialMetrics
+  ) => number | null
+  compute?: (context: BuildContext) => Record<string, number | null>
+}
+
+interface BuildContext {
+  months: string[]
+  metricsByMonth: Record<string, FinancialMetrics | undefined>
+  getAliasValues: (aliasKey: ExperienceAliasKey) => Record<string, number | null>
+}
+
+const ROW_DEFINITIONS: RowDefinition[] = [
+  {
+    key: 'domesticMedical',
+    label: 'Domestic Medical Facility Claims (IP/OP)',
+    group: 'Medical Claims',
+    aliasKey: 'domesticHospital',
+  },
+  {
+    key: 'nonDomesticMedical',
+    label: 'Non-Domestic Medical Claims (IP/OP)',
+    group: 'Medical Claims',
+    compute: ({ months, metricsByMonth, getAliasValues }) => {
+      const values = getAliasValues('nonDomesticHospital')
+      const domestic = getAliasValues('domesticHospital')
+      return months.reduce<Record<string, number | null>>((acc, month) => {
+        if (values[month] !== null) {
+          acc[month] = values[month]
+        } else {
+          const metric = metricsByMonth[month]
+          if (!metric) {
+            acc[month] = null
+          } else if (domestic[month] !== null) {
+            acc[month] = metric.totalHospitalMedicalClaims - (domestic[month] ?? 0)
+          } else {
+            acc[month] = null
+          }
+        }
+        return acc
+      }, {})
+    },
+  },
+  {
+    key: 'totalHospitalMedical',
+    label: 'Total Hospital Medical Claims (IP/OP)',
+    group: 'Medical Claims',
+    metricField: 'totalHospitalMedicalClaims',
+  },
+  {
+    key: 'nonHospitalMedical',
+    label: 'Non-Hospital Medical Claims',
+    group: 'Medical Claims',
+    compute: ({ months, metricsByMonth, getAliasValues }) => {
+      const explicit = getAliasValues('nonHospital')
+      return months.reduce<Record<string, number | null>>((acc, month) => {
+        if (explicit[month] !== null) {
+          acc[month] = explicit[month]
+        } else {
+          const metric = metricsByMonth[month]
+          if (!metric) {
+            acc[month] = null
+          } else {
+            acc[month] = metric.totalAllMedicalClaims - metric.totalHospitalMedicalClaims
+          }
+        }
+        return acc
+      }, {})
+    },
+  },
+  {
+    key: 'totalAllMedical',
+    label: 'Total All Medical Claims',
+    group: 'Medical Claims',
+    metricField: 'totalAllMedicalClaims',
+  },
+  {
+    key: 'ucAdjustment',
+    label: 'UC Claims Settlement Adjustment',
+    group: 'Medical Claims',
+    aliasKey: 'ucAdjustment',
+  },
+  {
+    key: 'totalAdjustedMedical',
+    label: 'Total Adjusted Medical Claims',
+    group: 'Medical Claims',
+    metricField: 'totalAdjustedMedicalClaims',
+  },
+  {
+    key: 'runOutClaims',
+    label: 'Run Out Claims',
+    group: 'Medical Claims',
+    aliasKey: 'runOut',
+  },
+  {
+    key: 'medicalClaimsPaidViaEba',
+    label: 'Medical Claims Paid via EBA',
+    group: 'Medical Claims',
+    aliasKey: 'medicalEba',
+  },
+  {
+    key: 'totalMedicalClaims',
+    label: 'Total Medical Claims',
+    group: 'Medical Claims',
+    metricField: 'totalMedicalClaims',
+  },
+  {
+    key: 'highCostHmnh',
+    label: 'High Cost Claims paid via HMNH',
+    group: 'Rx Claims',
+    aliasKey: 'hmnhHighCost',
+  },
+  {
+    key: 'esiPharmacyClaims',
+    label: 'ESI Pharmacy Claims',
+    group: 'Rx Claims',
+    aliasKey: 'rxGross',
+  },
+  {
+    key: 'totalRxClaims',
+    label: 'Total Rx Claims',
+    group: 'Rx Claims',
+    metricField: 'totalRxClaims',
+  },
+  {
+    key: 'rxRebates',
+    label: 'Rx Rebates',
+    group: 'Rx Claims',
+    metricField: 'rxRebates',
+  },
+  {
+    key: 'totalStopLossFees',
+    label: 'Total Stop Loss Fees',
+    group: 'Stop Loss',
+    aliasKey: 'stopLossFees',
+  },
+  {
+    key: 'stopLossReimbursement',
+    label: 'Stop Loss Reimbursement',
+    group: 'Stop Loss',
+    metricField: 'stopLossReimbursement',
+  },
+  {
+    key: 'consultingFees',
+    label: 'Consulting',
+    group: 'Admin Fees',
+    aliasKey: 'consulting',
+  },
+  {
+    key: 'tpaFees',
+    label: 'TPA Claims/COBRA Administration Fee (PEPM)',
+    group: 'Admin Fees',
+    aliasKey: 'tpa',
+  },
+  {
+    key: 'anthemJaa',
+    label: 'Anthem JAA',
+    group: 'Admin Fees',
+    aliasKey: 'anthemJaa',
+  },
+  {
+    key: 'kppcFees',
+    label: 'KPPC Fees',
+    group: 'Admin Fees',
+    aliasKey: 'kppc',
+  },
+  {
+    key: 'kpcmFees',
+    label: 'KPCM Fees',
+    group: 'Admin Fees',
+    aliasKey: 'kpcm',
+  },
+  {
+    key: 'optionalEsiPrograms',
+    label: 'Optional ESI Programs',
+    group: 'Admin Fees',
+    aliasKey: 'esiPrograms',
+  },
+  {
+    key: 'totalAdminFees',
+    label: 'Total Admin Fees',
+    group: 'Admin Fees',
+    metricField: 'totalAdminFees',
+  },
+  {
+    key: 'monthlyClaimsAndExpenses',
+    label: 'Monthly Claims and Expenses',
+    group: 'Monthly Totals',
+    metricField: 'monthlyClaimsAndExpenses',
+  },
+  {
+    key: 'cumulativeClaimsAndExpenses',
+    label: 'Cumulative Claims and Expenses',
+    group: 'Monthly Totals',
+    metricField: 'cumulativeClaimsAndExpenses',
+  },
+  {
+    key: 'eeCount',
+    label: 'EE COUNT (Active & COBRA)',
+    group: 'Counts & PEPM',
+    metricField: 'eeCount',
+    valueType: 'number',
+  },
+  {
+    key: 'memberCount',
+    label: 'MEMBER COUNT',
+    group: 'Counts & PEPM',
+    metricField: 'memberCount',
+    valueType: 'number',
+  },
+  {
+    key: 'pepmActual',
+    label: 'PEPM Non-Lagged Actual',
+    group: 'Counts & PEPM',
+    metricField: 'pepmActual',
+  },
+  {
+    key: 'pepmCumulative',
+    label: 'PEPM Non-Lagged Cumulative',
+    group: 'Counts & PEPM',
+    metricField: 'pepmCumulative',
+  },
+  {
+    key: 'incurredTargetPepm',
+    label: 'Incurred Target PEPM',
+    group: 'Counts & PEPM',
+    aliasKey: 'incurredTargetPepm',
+  },
+  {
+    key: 'budgetPepm',
+    label: '2025-2026 PEPM BUDGET (with 0% Margin)',
+    group: 'Counts & PEPM',
+    metricField: 'budgetPepm',
+  },
+  {
+    key: 'monthlyBudget',
+    label: '2025-2026 PEPM BUDGET x EE COUNTS',
+    group: 'Counts & PEPM',
+    metricField: 'monthlyBudget',
+  },
+  {
+    key: 'cumulativeBudget',
+    label: 'Annual Cumulative Budget',
+    group: 'Counts & PEPM',
+    metricField: 'cumulativeBudget',
+  },
+  {
+    key: 'monthlyDifference',
+    label: 'Actual Monthly Difference',
+    group: 'Variance Analysis',
+    metricField: 'monthlyDifference',
+  },
+  {
+    key: 'monthlyDifferencePct',
+    label: '% Difference (Monthly)',
+    group: 'Variance Analysis',
+    metricField: 'monthlyDifferencePct',
+    valueType: 'percent',
+  },
+  {
+    key: 'cumulativeDifference',
+    label: 'Cumulative Difference',
+    group: 'Variance Analysis',
+    metricField: 'cumulativeDifference',
+  },
+  {
+    key: 'cumulativeDifferencePct',
+    label: '% Difference (Cumulative)',
+    group: 'Variance Analysis',
+    metricField: 'cumulativeDifferencePct',
+    valueType: 'percent',
+  },
 ]
+
+function formatMonthLabel(month: string): string {
+  const [year, monthPart] = month.split('-')
+  const date = new Date(Number(year), Number(monthPart) - 1)
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+function formatDisplay(value: number | null, type: ValueType) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return { text: '—', isNegative: false }
+  }
+
+  if (type === 'currency') {
+    return { text: currencyFormatter.format(value), isNegative: value < 0 }
+  }
+
+  if (type === 'percent') {
+    return { text: percentFormatter.format(value), isNegative: value < 0 }
+  }
+
+  return { text: numberFormatter.format(value), isNegative: value < 0 }
+}
+
+function formatForCsv(value: number | null, type: ValueType): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return ''
+  if (type === 'currency') return value.toFixed(2)
+  if (type === 'percent') return (value * 100).toFixed(2)
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2)
+}
+
+function valueMatchesFilter(value: number, filter: string): boolean {
+  if (filter.startsWith('>=')) {
+    const threshold = Number(filter.substring(2))
+    if (!Number.isNaN(threshold)) return value >= threshold
+  } else if (filter.startsWith('<=')) {
+    const threshold = Number(filter.substring(2))
+    if (!Number.isNaN(threshold)) return value <= threshold
+  } else if (filter.startsWith('=')) {
+    const threshold = Number(filter.substring(1))
+    if (!Number.isNaN(threshold)) return Math.abs(value - threshold) < 0.01
+  } else {
+    return value.toString().toLowerCase().includes(filter.toLowerCase())
+  }
+  return false
+}
 
 export default function FinancialSummaryTable() {
   const experience = useExperienceData()
   const financialMetrics = useFinancialMetrics()
-  
-  // Sample data - in production this would come from your data stores
-  const sampleData: TableRow[] = [
-    {"category": "Domestic Medical Facility Claims (IP/OP)", "dec2025": 2456789.45, "jan2026": 2589456.78, "feb2026": 2678934.56},
-    {"category": "Non-Domestic Medical Claims (IP/OP)", "dec2025": 145678.90, "jan2026": 156789.45, "feb2026": null},
-    {"category": "Total Hospital Medical Claims (IP/OP)", "dec2025": 2602468.35, "jan2026": 2746246.23, "feb2026": 2678934.56},
-    {"category": "Non-Hospital Medical Claims", "dec2025": 987654.32, "jan2026": 1023456.78, "feb2026": 1056789.90},
-    {"category": "Total All Medical Claims", "dec2025": 3590122.67, "jan2026": 3769703.01, "feb2026": 3735724.46},
-    {"category": "UC Claims Settlement Adjustment", "dec2025": -45678.90, "jan2026": -38456.78, "feb2026": -41234.56},
-    {"category": "Total Adjusted Medical Claims", "dec2025": 3544443.77, "jan2026": 3731246.23, "feb2026": 3694489.90},
-    {"category": "Run Out Claims", "dec2025": 234567.89, "jan2026": null, "feb2026": 198765.43},
-    {"category": "Medical Claims Paid via EBA", "dec2025": 89456.78, "jan2026": 92345.67, "feb2026": 94567.89},
-    {"category": "Total Medical Claims", "dec2025": 3868468.44, "jan2026": 3823591.90, "feb2026": 3987823.22},
-    {"category": "High Cost Claims paid via HMNH", "dec2025": 567890.12, "jan2026": 589456.78, "feb2026": 612345.67},
-    {"category": "ESI Pharmacy Claims", "dec2025": 789456.23, "jan2026": 812345.67, "feb2026": 834567.89},
-    {"category": "Total Rx Claims", "dec2025": 789456.23, "jan2026": 812345.67, "feb2026": 834567.89},
-    {"category": "Rx Rebates", "dec2025": -123456.78, "jan2026": -134567.89, "feb2026": -145678.90},
-    {"category": "Total Stop Loss Fees", "dec2025": 45678.90, "jan2026": 46789.12, "feb2026": 47890.23},
-    {"category": "Stop Loss Reimbursement", "dec2025": -234567.89, "jan2026": -245678.90, "feb2026": -256789.12},
-    {"category": "Consulting", "dec2025": 34567.89, "jan2026": 34567.89, "feb2026": 34567.89},
-    {"category": "TPA Claims/COBRA Administration Fee (PEPM)", "dec2025": 23456.78, "jan2026": 24567.89, "feb2026": 25678.90},
-    {"category": "Anthem JAA", "dec2025": 12345.67, "jan2026": 12456.78, "feb2026": 12567.89},
-    {"category": "KPPC Fees", "dec2025": 8901.23, "jan2026": 9012.34, "feb2026": 9123.45},
-    {"category": "KPCM Fees", "dec2025": 6789.12, "jan2026": 6890.23, "feb2026": 6991.34},
-    {"category": "Optional ESI Programs", "dec2025": 4567.89, "jan2026": 4678.90, "feb2026": 4789.12},
-    {"category": "Total Admin Fees", "dec2025": 90358.58, "jan2026": 92214.03, "feb2026": 94187.59},
-    {"category": "MONTHLY CLAIMS AND EXPENSES", "dec2025": 4421036.37, "jan2026": 4362774.69, "feb2026": 4565134.01},
-    {"category": "CUMULATIVE CLAIMS AND EXPENSES", "dec2025": 4421036.37, "jan2026": 8783811.06, "feb2026": 13348945.07},
-    {"category": "EE COUNT (Active & COBRA)", "dec2025": 1250, "jan2026": 1248, "feb2026": 1252},
-    {"category": "MEMBER COUNT", "dec2025": 3125, "jan2026": 3120, "feb2026": 3130},
-    {"category": "PEPM NON-LAGGED ACTUAL", "dec2025": 3536.83, "jan2026": 3496.77, "feb2026": 3646.25},
-    {"category": "PEPM NON-LAGGED CUMULATIVE", "dec2025": 3536.83, "jan2026": 3516.80, "feb2026": 3559.95},
-    {"category": "INCURRED TARGET PEPM", "dec2025": 3450.00, "jan2026": 3450.00, "feb2026": 3450.00},
-    {"category": "2025-2026 PEPM BUDGET (with 0% Margin)", "dec2025": 3500.00, "jan2026": 3500.00, "feb2026": 3500.00},
-    {"category": "2025-2026 PEPM BUDGET x EE COUNTS", "dec2025": 4375000.00, "jan2026": 4368000.00, "feb2026": 4382000.00},
-    {"category": "ANNUAL CUMULATIVE BUDGET", "dec2025": 4375000.00, "jan2026": 8743000.00, "feb2026": 13125000.00},
-    {"category": "ACTUAL MONTHLY DIFFERENCE", "dec2025": 46036.37, "jan2026": -5225.31, "feb2026": 183134.01},
-    {"category": "% DIFFERENCE (MONTHLY)", "dec2025": 1.05, "jan2026": -0.12, "feb2026": 4.18},
-    {"category": "CUMULATIVE DIFFERENCE", "dec2025": 46036.37, "jan2026": 40811.06, "feb2026": 223945.07},
-    {"category": "% DIFFERENCE (CUMULATIVE)", "dec2025": 1.05, "jan2026": 0.47, "feb2026": 1.71}
-  ]
+  const feeDefinitions = useFeeDefinitions()
+  const feeComputedByMonth = useFeeComputedByMonth()
+  const feeOverrides = useFeeOverrides()
+  const customSummary = useCustomSummaryConfig()
+  const { setCustomSummaryLayout, setCustomSummaryEnabled } = useAppStore()
 
-  const [originalData] = useState<TableRow[]>(sampleData)
-  const [filteredData, setFilteredData] = useState<TableRow[]>(sampleData)
-  const [currentSort, setCurrentSort] = useState<SortState>({ column: null, direction: null })
-  const [columnFilters, setColumnFilters] = useState<ColumnFilter>({})
+  const months = useMemo(() => {
+    const monthSet = new Set<string>()
+    experience.forEach(row => monthSet.add(row.month))
+    financialMetrics.forEach(metric => monthSet.add(metric.month))
+    Object.keys(feeComputedByMonth ?? {}).forEach(month => monthSet.add(month))
+    Object.keys(feeOverrides ?? {}).forEach(month => monthSet.add(month))
+    return Array.from(monthSet).sort()
+  }, [experience, financialMetrics, feeComputedByMonth, feeOverrides])
+
+  const metricsByMonth = useMemo(() => {
+    return financialMetrics.reduce<Record<string, FinancialMetrics>>((acc, metric) => {
+      acc[metric.month] = metric
+      return acc
+    }, {})
+  }, [financialMetrics])
+
+  const { experienceCategoryValues, experienceCategoryLabels } = useMemo(() => {
+    const values: Record<string, Record<string, number>> = {}
+    const labels: Record<string, string> = {}
+
+    experience.forEach(row => {
+      const label = row.category.trim()
+      const key = label.toLowerCase()
+      if (!labels[key]) {
+        labels[key] = label
+      }
+      const monthMap = values[key] ?? {}
+      monthMap[row.month] = (monthMap[row.month] ?? 0) + row.amount
+      values[key] = monthMap
+    })
+
+    return { experienceCategoryValues: values, experienceCategoryLabels: labels }
+  }, [experience])
+
+  const { defaultRows, createRowFromDefinition } = useMemo(() => {
+    if (months.length === 0) {
+      return {
+        defaultRows: [] as TableRow[],
+        createRowFromDefinition: (_definition: RowDefinition): TableRow => ({
+          key: _definition.key,
+          label: _definition.label,
+          group: _definition.group,
+          values: months.reduce<Record<string, number | null>>((acc, month) => {
+            acc[month] = null
+            return acc
+          }, {}),
+          valueType: _definition.valueType ?? 'currency',
+        }),
+      }
+    }
+
+    const aliasCache = new Map<ExperienceAliasKey, Record<string, number | null>>()
+
+    const getAliasValues = (aliasKey: ExperienceAliasKey) => {
+      if (aliasCache.has(aliasKey)) {
+        return aliasCache.get(aliasKey)!
+      }
+
+      const aliases = EXPERIENCE_CATEGORY_ALIASES[aliasKey]
+      const monthTotals = months.reduce<Record<string, { value: number; hasValue: boolean }>>((acc, month) => {
+        acc[month] = { value: 0, hasValue: false }
+        return acc
+      }, {})
+
+      aliases.forEach(alias => {
+        const normalized = alias.trim().toLowerCase()
+        const data = experienceCategoryValues[normalized]
+        if (!data) return
+        Object.entries(data).forEach(([month, amount]) => {
+          if (!monthTotals[month]) {
+            monthTotals[month] = { value: 0, hasValue: false }
+          }
+          monthTotals[month].value += amount
+          monthTotals[month].hasValue = true
+        })
+      })
+
+      const result: Record<string, number | null> = {}
+      months.forEach(month => {
+        const entry = monthTotals[month]
+        if (!entry || !entry.hasValue) {
+          result[month] = null
+        } else {
+          result[month] = entry.value
+        }
+      })
+
+      aliasCache.set(aliasKey, result)
+      return result
+    }
+
+    const buildMetricValues = (
+      field: keyof FinancialMetrics,
+      transform?: (
+        value: number | null,
+        month: string,
+        metric?: FinancialMetrics
+      ) => number | null,
+    ) => {
+      return months.reduce<Record<string, number | null>>((acc, month) => {
+        const metric = metricsByMonth[month]
+        let value: number | null | undefined = metric ? (metric[field] as number | null) : null
+        if (transform) {
+          value = transform(value ?? null, month, metric)
+        }
+        acc[month] = value ?? null
+        return acc
+      }, {})
+    }
+
+    const createRowFromDefinition = (definition: RowDefinition): TableRow => {
+      let values: Record<string, number | null>
+
+      if (definition.compute) {
+        values = definition.compute({ months, metricsByMonth, getAliasValues })
+      } else if (definition.metricField) {
+        values = buildMetricValues(definition.metricField, definition.transformMetric)
+      } else if (definition.aliasKey) {
+        values = getAliasValues(definition.aliasKey)
+      } else {
+        values = months.reduce<Record<string, number | null>>((acc, month) => {
+          acc[month] = null
+          return acc
+        }, {})
+      }
+
+      return {
+        key: definition.key,
+        label: definition.label,
+        group: definition.group,
+        values,
+        valueType: definition.valueType ?? 'currency',
+      }
+    }
+
+    const rows = ROW_DEFINITIONS.map(createRowFromDefinition)
+
+    return { defaultRows: rows, createRowFromDefinition }
+  }, [experienceCategoryValues, metricsByMonth, months])
+
+  const availableFields = useMemo<AvailableField[]>(() => {
+    const fields: AvailableField[] = []
+
+    Object.entries(experienceCategoryLabels).forEach(([key, label]) => {
+      fields.push({
+        id: `experience:${key}`,
+        label,
+        source: 'experience',
+        valueType: 'currency',
+        description: 'Experience CSV column',
+      })
+    })
+
+    ROW_DEFINITIONS.forEach(definition => {
+      const isAliasOnly = Boolean(definition.aliasKey && !definition.metricField && !definition.compute)
+      if (isAliasOnly) return
+      fields.push({
+        id: `financial:${definition.key}`,
+        label: definition.label,
+        source: 'financial',
+        valueType: definition.valueType ?? 'currency',
+        description: 'Derived financial metric',
+      })
+    })
+
+    feeDefinitions.forEach(definition => {
+      const label = definition.name?.trim() || 'Unnamed Fee'
+      fields.push({
+        id: `fee:${definition.id}`,
+        label,
+        source: 'fee',
+        valueType: 'currency',
+        description: 'Monthly fee schedule entry',
+      })
+    })
+
+    return fields
+  }, [experienceCategoryLabels, feeDefinitions])
+
+  const feeValuesByMonth = useMemo(() => {
+    const allMonths = new Set<string>()
+    Object.keys(feeComputedByMonth ?? {}).forEach(month => allMonths.add(month))
+    Object.keys(feeOverrides ?? {}).forEach(month => allMonths.add(month))
+
+    const map: Record<string, Record<string, number>> = {}
+    const feeIds = feeDefinitions.map(def => def.id)
+
+    allMonths.forEach(month => {
+      const computed = feeComputedByMonth[month] ?? {}
+      const overrides = feeOverrides[month] ?? {}
+      const monthValues: Record<string, number> = {}
+
+      feeIds.forEach(feeId => {
+        const override = overrides[feeId]
+        const base = computed[feeId]
+        if (override !== undefined && override !== null) {
+          monthValues[feeId] = override
+        } else if (base !== undefined && base !== null) {
+          monthValues[feeId] = base
+        }
+      })
+
+      map[month] = monthValues
+    })
+
+    return map
+  }, [feeComputedByMonth, feeOverrides, feeDefinitions])
+
+  const availableFieldMap = useMemo(() => {
+    return availableFields.reduce<Map<string, AvailableField>>((acc, field) => {
+      acc.set(field.id, field)
+      return acc
+    }, new Map())
+  }, [availableFields])
+
+  const sanitizedCustomFields = useMemo(() => {
+    return customSummary.fieldIds.filter(id => availableFieldMap.has(id))
+  }, [customSummary.fieldIds, availableFieldMap])
+
+  useEffect(() => {
+    const original = customSummary.fieldIds
+    if (original.length === sanitizedCustomFields.length && original.every((id, index) => id === sanitizedCustomFields[index])) {
+      return
+    }
+    setCustomSummaryLayout(sanitizedCustomFields)
+  }, [sanitizedCustomFields, customSummary.fieldIds, setCustomSummaryLayout])
+
+  const useCustomLayout = customSummary.enabled && sanitizedCustomFields.length > 0
+
+  const customRows = useMemo<TableRow[]>(() => {
+    if (!useCustomLayout) return []
+
+    return sanitizedCustomFields
+      .map(fieldId => {
+        const field = availableFieldMap.get(fieldId)
+        if (!field) return null
+
+        if (field.source === 'experience') {
+          const key = fieldId.split(':')[1]
+          const categoryValues = experienceCategoryValues[key] ?? {}
+          const values = months.reduce<Record<string, number | null>>((acc, month) => {
+            const value = categoryValues[month]
+            acc[month] = typeof value === 'number' ? value : null
+            return acc
+          }, {})
+
+          return {
+            key: fieldId,
+            label: field.label,
+            group: CUSTOM_GROUP_LABEL,
+            values,
+            valueType: field.valueType,
+          }
+        }
+
+        if (field.source === 'financial') {
+          const definitionKey = fieldId.split(':')[1]
+          const definition = ROW_DEFINITIONS.find(item => item.key === definitionKey)
+          if (!definition) return null
+          const resolved = createRowFromDefinition(definition)
+          return {
+            ...resolved,
+            key: fieldId,
+            label: field.label,
+            group: CUSTOM_GROUP_LABEL,
+          }
+        }
+
+        if (field.source === 'fee') {
+          const feeId = fieldId.split(':')[1]
+          const values = months.reduce<Record<string, number | null>>((acc, month) => {
+            const monthValues = feeValuesByMonth[month] ?? {}
+            const value = monthValues[feeId]
+            acc[month] = typeof value === 'number' ? value : null
+            return acc
+          }, {})
+
+          return {
+            key: fieldId,
+            label: field.label,
+            group: CUSTOM_GROUP_LABEL,
+            values,
+            valueType: field.valueType,
+          }
+        }
+
+        return null
+      })
+      .filter((row): row is TableRow => row !== null)
+  }, [useCustomLayout, sanitizedCustomFields, availableFieldMap, experienceCategoryValues, months, createRowFromDefinition, feeValuesByMonth])
+
+  const baseRows = useMemo(() => {
+    return useCustomLayout ? customRows : defaultRows
+  }, [useCustomLayout, customRows, defaultRows])
+
+  const [currentSort, setCurrentSort] = useState<{ column: string | null; direction: 'asc' | 'desc' | null }>({
+    column: null,
+    direction: null,
+  })
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
   const [globalSearch, setGlobalSearch] = useState('')
   const [showDerivedMetrics, setShowDerivedMetrics] = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set())
-  const [tooltip, setTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({ 
-    show: false, text: '', x: 0, y: 0 
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<GroupName>>(new Set())
+  const [tooltip, setTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({
+    show: false,
+    text: '',
+    x: 0,
+    y: 0,
   })
 
   const tableRef = useRef<HTMLDivElement>(null)
 
-  const applyFilters = useCallback(() => {
-    let filtered = [...originalData]
-    
-    // Apply global search
+  useEffect(() => {
+    if (!useCustomLayout) return
+    setCollapsedGroups(prev => {
+      if (!prev.has(CUSTOM_GROUP_LABEL)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.delete(CUSTOM_GROUP_LABEL)
+      return next
+    })
+  }, [useCustomLayout])
+
+  const hasData = useMemo(() => {
+    return baseRows.some(row => months.some(month => row.values[month] !== null))
+  }, [months, baseRows])
+
+  const filteredData = useMemo(() => {
+    let data = [...baseRows]
+
     if (globalSearch.trim()) {
-      const term = globalSearch.toLowerCase()
-      filtered = filtered.filter(row => 
-        Object.values(row).some(value => {
-          if (value === null || value === undefined) return false
-          return value.toString().toLowerCase().includes(term)
+      const searchTerm = globalSearch.toLowerCase()
+      data = data.filter(row => {
+        if (row.label.toLowerCase().includes(searchTerm)) return true
+        return months.some(month => {
+          const formatted = formatDisplay(row.values[month], row.valueType).text.toLowerCase()
+          return formatted.includes(searchTerm)
         })
-      )
+      })
     }
-    
-    // Apply column filters
-    Object.keys(columnFilters).forEach(column => {
-      const filter = columnFilters[column]
+
+    Object.entries(columnFilters).forEach(([column, filter]) => {
       if (!filter.trim()) return
-      
       if (column === 'category') {
-        filtered = filtered.filter(row => 
-          row.category.toLowerCase().includes(filter.toLowerCase())
-        )
-      } else {
-        filtered = filtered.filter(row => {
-          const value = row[column as keyof TableRow]
+        data = data.filter(row => row.label.toLowerCase().includes(filter.toLowerCase()))
+        return
+      }
+
+      if (months.includes(column)) {
+        data = data.filter(row => {
+          const value = row.values[column]
           if (value === null || value === undefined) return false
-          
-          if (filter.startsWith('>=')) {
-            const threshold = parseFloat(filter.substring(2))
-            return !isNaN(threshold) && typeof value === 'number' && value >= threshold
-          } else if (filter.startsWith('<=')) {
-            const threshold = parseFloat(filter.substring(2))
-            return !isNaN(threshold) && typeof value === 'number' && value <= threshold
-          } else if (filter.startsWith('=')) {
-            const threshold = parseFloat(filter.substring(1))
-            return !isNaN(threshold) && typeof value === 'number' && Math.abs(value - threshold) < 0.01
-          } else {
-            return value.toString().toLowerCase().includes(filter.toLowerCase())
-          }
+          return valueMatchesFilter(value, filter)
         })
       }
     })
-    
-    // Apply sorting
-    if (currentSort.direction && currentSort.column) {
-      filtered.sort((a, b) => {
-        const col = currentSort.column as keyof TableRow
-        let aVal = a[col]
-        let bVal = b[col]
-        
-        if (aVal === null || aVal === undefined) aVal = col === 'category' ? '' : -Infinity
-        if (bVal === null || bVal === undefined) bVal = col === 'category' ? '' : -Infinity
-        
-        if (col === 'category') {
-          aVal = aVal.toString().toLowerCase()
-          bVal = bVal.toString().toLowerCase()
-        }
-        
-        let result = 0
-        if (aVal < bVal) result = -1
-        else if (aVal > bVal) result = 1
-        
-        return currentSort.direction === 'desc' ? -result : result
-      })
-    }
-    
-    setFilteredData(filtered)
-  }, [originalData, globalSearch, columnFilters, currentSort])
 
-  useEffect(() => {
-    applyFilters()
-  }, [applyFilters])
+    if (currentSort.column) {
+      const { column, direction } = currentSort
+      if (direction) {
+        data.sort((a, b) => {
+          let aValue: number | string | null = null
+          let bValue: number | string | null = null
 
-  const handleSort = (column: string) => {
-    let direction: 'asc' | 'desc' | null = 'asc'
-    
-    if (currentSort.column === column) {
-      if (currentSort.direction === 'asc') {
-        direction = 'desc'
-      } else if (currentSort.direction === 'desc') {
-        direction = null
+          if (column === 'category') {
+            aValue = a.label.toLowerCase()
+            bValue = b.label.toLowerCase()
+          } else if (months.includes(column)) {
+            aValue = a.values[column]
+            bValue = b.values[column]
+          }
+
+          if (aValue === null || aValue === undefined) return 1
+          if (bValue === null || bValue === undefined) return -1
+
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+          }
+
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return direction === 'asc' ? aValue - bValue : bValue - aValue
+          }
+
+          return 0
+        })
       }
     }
-    
-    setCurrentSort({ column: direction ? column : null, direction })
+
+    return data
+  }, [baseRows, globalSearch, columnFilters, currentSort, months])
+
+  const totalsByMonth = useMemo(() => {
+    return months.reduce<Record<string, number>>((acc, month) => {
+      acc[month] = filteredData.reduce((sum, row) => {
+        if (row.valueType !== 'currency') return sum
+        const value = row.values[month]
+        if (typeof value === 'number') return sum + value
+        return sum
+      }, 0)
+      return acc
+    }, {})
+  }, [filteredData, months])
+
+  const handleSort = (column: string) => {
+    setCurrentSort(prev => {
+      if (prev.column === column) {
+        if (prev.direction === 'asc') return { column, direction: 'desc' }
+        if (prev.direction === 'desc') return { column: null, direction: null }
+      }
+      return { column, direction: 'asc' }
+    })
   }
 
   const handleColumnFilter = (column: string, value: string) => {
     setColumnFilters(prev => {
       if (!value.trim()) {
-        const newFilters = { ...prev }
-        delete newFilters[column]
-        return newFilters
+        const { [column]: _, ...rest } = prev
+        return rest
       }
       return { ...prev, [column]: value }
     })
   }
 
-  const toggleGroup = (groupIndex: number) => {
+  const toggleGroup = (group: GroupName) => {
     setCollapsedGroups(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(groupIndex)) {
-        newSet.delete(groupIndex)
+      const next = new Set(prev)
+      if (next.has(group)) {
+        next.delete(group)
       } else {
-        newSet.add(groupIndex)
+        next.add(group)
       }
-      return newSet
+      return next
     })
   }
 
-  const calculateDerivedMetrics = (row: TableRow) => {
-    const jan = row.jan2026
-    const dec = row.dec2025
-    
-    if (jan !== null && jan !== undefined && dec !== null && dec !== undefined) {
-      const delta = jan - dec
-      const percent = (delta / Math.abs(dec)) * 100
-      return { delta, percent }
-    }
-    
-    return { delta: null, percent: null }
-  }
-
-  const showTooltip = (e: React.MouseEvent, text: string) => {
-    const rect = e.currentTarget.getBoundingClientRect()
+  const showTooltipAt = useCallback((event: MouseEvent<HTMLTableCellElement>, text: string) => {
+    const rect = event.currentTarget.getBoundingClientRect()
     setTooltip({
       show: true,
       text,
       x: rect.left,
-      y: rect.top - 40
+      y: rect.top - 40,
     })
-  }
+  }, [])
 
-  const hideTooltip = () => {
+  const hideTooltip = useCallback(() => {
     setTooltip(prev => ({ ...prev, show: false }))
-  }
+  }, [])
+
+  const deriveMetrics = useCallback(
+    (row: TableRow) => {
+      if (months.length < 2) return { delta: null, percent: null }
+      const latestMonth = months[months.length - 1]
+      const previousMonth = months[months.length - 2]
+      const latest = row.values[latestMonth]
+      const previous = row.values[previousMonth]
+      if (latest === null || latest === undefined || previous === null || previous === undefined) {
+        return { delta: null, percent: null }
+      }
+      const delta = latest - previous
+      const percent = previous !== 0 ? delta / Math.abs(previous) : null
+      return { delta, percent }
+    },
+    [months],
+  )
 
   const exportCSV = () => {
-    const headers = ['Cost Category', 'Dec 2025', 'Jan 2026', 'Feb 2026']
-    if (showDerivedMetrics) {
+    const headers = ['Cost Category', ...months.map(formatMonthLabel)]
+    if (showDerivedMetrics && months.length >= 2) {
       headers.push('MoM Δ', '%Δ MoM')
     }
-    
+
     let csv = headers.join(',') + '\n'
-    
+
     filteredData.forEach(row => {
       const values = [
-        `"${row.category}"`,
-        row.dec2025?.toString() ?? '',
-        row.jan2026?.toString() ?? '',
-        row.feb2026?.toString() ?? ''
+        `"${row.label}"`,
+        ...months.map(month => formatForCsv(row.values[month], row.valueType)),
       ]
-      
-      if (showDerivedMetrics) {
-        const { delta, percent } = calculateDerivedMetrics(row)
-        values.push(delta?.toString() ?? '', percent ? percent.toFixed(2) : '')
+
+      if (showDerivedMetrics && months.length >= 2) {
+        const { delta, percent } = deriveMetrics(row)
+        values.push(formatForCsv(delta, row.valueType))
+        values.push(percent === null ? '' : (percent * 100).toFixed(2))
       }
-      
+
       csv += values.join(',') + '\n'
     })
-    
+
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'financial-claims-data.csv'
+    a.download = 'financial-summary-table.csv'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
 
-  if (originalData.length === 0) {
+  if (!hasData) {
     return (
       <div className="py-8 text-center text-sm text-gray-500">
-        No financial data available. Upload the template to populate this summary.
+        No financial data available. Upload the templates and configure fees to populate this summary.
       </div>
     )
   }
 
   return (
     <div className="bg-white">
-      {/* Header */}
       <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Financial Benefits Claims Analysis
         </h1>
-        
-        {/* Toolbar */}
+
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <div className="relative">
               <input
                 type="text"
                 value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
+                onChange={event => setGlobalSearch(event.target.value)}
                 className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="Search all data..."
                 aria-label="Global search"
               />
             </div>
-            
+
             <button
               type="button"
-              onClick={() => setShowDerivedMetrics(!showDerivedMetrics)}
+              onClick={() => setShowDerivedMetrics(prev => !prev)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showDerivedMetrics 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                showDerivedMetrics
+                  ? 'bg-blue-100 text-blue-800 border border-blue-300'
                   : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
               }`}
               aria-pressed={showDerivedMetrics}
@@ -326,7 +978,7 @@ export default function FinancialSummaryTable() {
               {showDerivedMetrics ? 'Hide' : 'Show'} Derived Metrics
             </button>
           </div>
-          
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -344,14 +996,24 @@ export default function FinancialSummaryTable() {
             </button>
           </div>
         </div>
+
+        <div className="mt-6">
+          <CustomSummaryBuilder
+            availableFields={availableFields}
+            selectedFieldIds={sanitizedCustomFields}
+            enabled={customSummary.enabled}
+            useCustomLayout={useCustomLayout}
+            onToggleEnabled={setCustomSummaryEnabled}
+            onLayoutChange={setCustomSummaryLayout}
+          />
+        </div>
       </div>
 
-      {/* Table Container */}
       <div ref={tableRef} className="overflow-x-auto">
         <table className="w-full border-collapse bg-white">
           <thead className="bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
             <tr className="border-b border-gray-200">
-              <th 
+              <th
                 className="text-left p-4 font-semibold text-gray-900 bg-white border-r border-gray-200 sticky left-0 min-w-80 cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => handleSort('category')}
                 tabIndex={0}
@@ -370,26 +1032,26 @@ export default function FinancialSummaryTable() {
                     type="text"
                     className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Filter..."
-                    onChange={(e) => handleColumnFilter('category', e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
+                    onChange={event => handleColumnFilter('category', event.target.value)}
+                    onClick={event => event.stopPropagation()}
                   />
                 </div>
               </th>
-              
-              {['dec2025', 'jan2026', 'feb2026'].map((column) => (
+
+              {months.map(month => (
                 <th
-                  key={column}
+                  key={month}
                   className="text-right p-4 font-semibold text-gray-900 min-w-32 cursor-pointer hover:bg-gray-50 transition-colors border-r border-gray-200"
-                  onClick={() => handleSort(column)}
+                  onClick={() => handleSort(month)}
                   tabIndex={0}
                   role="columnheader"
-                  aria-sort={currentSort.column === column ? currentSort.direction || 'none' : 'none'}
+                  aria-sort={currentSort.column === month ? currentSort.direction || 'none' : 'none'}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="capitalize">{column.replace(/(\d{4})/, ' $1')}</span>
+                    <span>{formatMonthLabel(month)}</span>
                     <div className="flex flex-col text-xs text-gray-400">
-                      <span className={currentSort.column === column && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
-                      <span className={currentSort.column === column && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
+                      <span className={currentSort.column === month && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
+                      <span className={currentSort.column === month && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
                     </div>
                   </div>
                   <div className="mt-2">
@@ -397,14 +1059,14 @@ export default function FinancialSummaryTable() {
                       type="text"
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder=">=, <=, = value"
-                      onChange={(e) => handleColumnFilter(column, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
+                      onChange={event => handleColumnFilter(month, event.target.value)}
+                      onClick={event => event.stopPropagation()}
                     />
                   </div>
                 </th>
               ))}
-              
-              {showDerivedMetrics && (
+
+              {showDerivedMetrics && months.length >= 2 && (
                 <>
                   <th className="text-right p-4 font-semibold text-gray-900 min-w-32 border-r border-gray-200">
                     MoM Δ
@@ -416,134 +1078,72 @@ export default function FinancialSummaryTable() {
               )}
             </tr>
           </thead>
-          
+
           <tbody>
             {(() => {
-              let currentGroupIndex = 0
               const rows: JSX.Element[] = []
-              
-              filteredData.forEach((row, dataIndex) => {
-                const originalIndex = originalData.indexOf(row)
-                
-                // Add group headers
-                while (currentGroupIndex < groups.length && 
-                       originalIndex >= groups[currentGroupIndex].start && 
-                       originalIndex <= groups[currentGroupIndex].end) {
-                  
-                  if (originalIndex === groups[currentGroupIndex].start) {
-                    const group = groups[currentGroupIndex]
-                    const isCollapsed = collapsedGroups.has(currentGroupIndex)
-                    const colspan = showDerivedMetrics ? 6 : 4
-                    
-                    rows.push(
-                      <tr key={`group-${currentGroupIndex}`} className="bg-gradient-to-r from-blue-50 to-white border-t-2 border-blue-200">
-                        <td colSpan={colspan} className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleGroup(currentGroupIndex)}
-                            className="flex items-center gap-2 w-full text-left font-medium text-blue-900 hover:text-blue-700 transition-colors"
-                            aria-expanded={!isCollapsed}
-                          >
-                            <span className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}>▶</span>
-                            <span>{group.name}</span>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  }
-                  break
-                }
-                
-                if (currentGroupIndex < groups.length - 1 && 
-                    originalIndex > groups[currentGroupIndex].end) {
-                  currentGroupIndex++
-                  
-                  if (originalIndex === groups[currentGroupIndex].start) {
-                    const group = groups[currentGroupIndex]
-                    const isCollapsed = collapsedGroups.has(currentGroupIndex)
-                    const colspan = showDerivedMetrics ? 6 : 4
-                    
-                    rows.push(
-                      <tr key={`group-${currentGroupIndex}`} className="bg-gradient-to-r from-blue-50 to-white border-t-2 border-blue-200">
-                        <td colSpan={colspan} className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => toggleGroup(currentGroupIndex)}
-                            className="flex items-center gap-2 w-full text-left font-medium text-blue-900 hover:text-blue-700 transition-colors"
-                            aria-expanded={!isCollapsed}
-                          >
-                            <span className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}>▶</span>
-                            <span>{group.name}</span>
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  }
-                }
-                
-                // Determine group visibility
-                let groupIndex = -1
-                for (let i = 0; i < groups.length; i++) {
-                  if (originalIndex >= groups[i].start && originalIndex <= groups[i].end) {
-                    groupIndex = i
-                    break
-                  }
-                }
-                
-                const isHidden = groupIndex >= 0 && collapsedGroups.has(groupIndex)
-                const { delta, percent } = calculateDerivedMetrics(row)
-                
-                if (!isHidden) {
+              let lastGroup: GroupName | null = null
+
+              filteredData.forEach(row => {
+                if (row.group !== lastGroup) {
+                  lastGroup = row.group
+                  const isCollapsed = collapsedGroups.has(row.group)
+                  const colspan = months.length + 1 + (showDerivedMetrics && months.length >= 2 ? 2 : 0)
+
                   rows.push(
-                    <tr key={`row-${originalIndex}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td 
+                    <tr key={`group-${row.group}`} className="bg-gradient-to-r from-blue-50 to-white border-t-2 border-blue-200">
+                      <td colSpan={colspan} className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(row.group)}
+                          className="flex items-center gap-2 w-full text-left font-medium text-blue-900 hover:text-blue-700 transition-colors"
+                          aria-expanded={!isCollapsed}
+                        >
+                          <span className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}>▶</span>
+                          <span>{row.group}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                }
+
+                const isCollapsed = collapsedGroups.has(row.group)
+                const { delta, percent } = showDerivedMetrics && months.length >= 2 ? deriveMetrics(row) : { delta: null, percent: null }
+
+                if (!isCollapsed) {
+                  rows.push(
+                    <tr key={row.key} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td
                         className="p-4 bg-white border-r border-gray-200 sticky left-0 font-medium text-gray-900"
-                        onMouseEnter={(e) => {
-                          const hasAcronym = Object.keys(acronyms).some(acronym => row.category.includes(acronym))
+                        onMouseEnter={event => {
+                          const hasAcronym = Object.keys(acronyms).some(acronym => row.label.includes(acronym))
                           if (hasAcronym) {
-                            const tooltip = Object.keys(acronyms).find(acronym => row.category.includes(acronym))
-                            if (tooltip) showTooltip(e, acronyms[tooltip])
+                            const tooltipKey = Object.keys(acronyms).find(acronym => row.label.includes(acronym))
+                            if (tooltipKey) showTooltipAt(event, acronyms[tooltipKey])
                           }
                         }}
                         onMouseLeave={hideTooltip}
                       >
-                        {row.category}
+                        {row.label}
                       </td>
-                      
-                      {['dec2025', 'jan2026', 'feb2026'].map((column) => {
-                        const value = row[column as keyof TableRow]
+
+                      {months.map(month => {
+                        const value = row.values[month]
+                        const { text, isNegative } = formatDisplay(value, row.valueType)
                         return (
-                          <td key={column} className="p-4 text-right tabular-nums border-r border-gray-200">
-                            {value === null || value === undefined ? (
-                              <span className="text-gray-400">—</span>
-                            ) : (
-                              <span className={typeof value === 'number' && value < 0 ? 'text-red-600' : 'text-gray-900'}>
-                                {typeof value === 'number' ? currencyFormatter.format(value) : value}
-                              </span>
-                            )}
+                          <td key={month} className={`p-4 text-right tabular-nums border-r border-gray-200 ${isNegative ? 'text-red-600' : 'text-gray-900'}`}>
+                            {text}
                           </td>
                         )
                       })}
-                      
-                      {showDerivedMetrics && (
+
+                      {showDerivedMetrics && months.length >= 2 && (
                         <>
-                          <td className="p-4 text-right tabular-nums border-r border-gray-200">
-                            {delta === null ? (
-                              <span className="text-gray-400">—</span>
-                            ) : (
-                              <span className={delta < 0 ? 'text-red-600' : 'text-gray-900'}>
-                                {currencyFormatter.format(delta)}
-                              </span>
-                            )}
+                          <td className={`p-4 text-right tabular-nums border-r border-gray-200 ${delta !== null && delta < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                            {formatDisplay(delta, row.valueType).text}
                           </td>
-                          <td className="p-4 text-right tabular-nums border-r border-gray-200">
-                            {percent === null ? (
-                              <span className="text-gray-400">—</span>
-                            ) : (
-                              <span className={percent < 0 ? 'text-red-600' : 'text-gray-900'}>
-                                {percent.toFixed(2)}%
-                              </span>
-                            )}
+                          <td className={`p-4 text-right tabular-nums border-r border-gray-200 ${percent !== null && percent < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                            {formatDisplay(percent, 'percent').text}
                           </td>
                         </>
                       )}
@@ -551,34 +1151,25 @@ export default function FinancialSummaryTable() {
                   )
                 }
               })
-              
+
               return rows
             })()}
           </tbody>
         </table>
       </div>
 
-      {/* Footer Totals */}
       <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4">
         <div className="flex gap-8 text-sm">
-          {['dec2025', 'jan2026', 'feb2026'].map((column) => {
-            const total = filteredData.reduce((sum, row) => {
-              const value = row[column as keyof TableRow]
-              if (typeof value === 'number') return sum + value
-              return sum
-            }, 0)
-            
-            return (
-              <div key={column} className="text-center">
-                <div className="font-medium text-gray-600 uppercase text-xs">
-                  {column.replace(/(\d{4})/, ' $1')}
-                </div>
-                <div className="font-bold text-gray-900">
-                  {currencyFormatter.format(total)}
-                </div>
+          {months.map(month => (
+            <div key={month} className="text-center">
+              <div className="font-medium text-gray-600 uppercase text-xs">
+                {formatMonthLabel(month)}
               </div>
-            )
-          })}
+              <div className="font-bold text-gray-900">
+                {currencyFormatter.format(totalsByMonth[month] ?? 0)}
+              </div>
+            </div>
+          ))}
           <div className="text-center">
             <div className="font-medium text-gray-600 uppercase text-xs">Rows</div>
             <div className="font-bold text-gray-900">{filteredData.length}</div>
@@ -586,9 +1177,8 @@ export default function FinancialSummaryTable() {
         </div>
       </div>
 
-      {/* Tooltip */}
       {tooltip.show && (
-        <div 
+        <div
           className="absolute bg-gray-800 text-white text-xs p-2 rounded shadow-lg z-50 max-w-xs"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
