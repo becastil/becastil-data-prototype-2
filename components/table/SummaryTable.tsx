@@ -86,7 +86,7 @@ export default function SummaryTable() {
         <button
           onClick={handleExport}
           disabled={isExporting}
-          className="inline-flex items-center gap-2 rounded-md border border-black px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-black/40 disabled:text-black/40 disabled:hover:bg-transparent"
+          className="inline-flex items-center gap-2 rounded-full border border-black/80 px-5 py-2 text-sm font-semibold tracking-wide text-black transition-all duration-200 hover:-translate-y-0.5 hover:border-black hover:bg-black hover:text-white disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-black/30 disabled:text-black/40 disabled:hover:bg-transparent"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -98,18 +98,18 @@ export default function SummaryTable() {
       <div
         id="summary-table"
         ref={captureRef}
-        className="overflow-x-auto"
+        className="overflow-x-auto rounded-3xl border border-black/10 bg-white/90 p-1 shadow-[0_40px_100px_-60px_rgba(15,15,25,0.75)]"
       >
-        <table className="min-w-full border border-black/20 border-collapse text-sm">
+        <table className="min-w-[720px] table-fixed border-collapse text-sm">
           <thead>
-            <tr className="bg-white">
-              <th className="border border-black/20 px-4 py-3 text-left font-semibold text-black">
+            <tr className="bg-black text-white">
+              <th className="border border-black/40 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.3em] text-white">
                 Cost Category
               </th>
               {monthLabels.map(label => (
                 <th
                   key={label}
-                  className="border border-black/20 px-4 py-3 text-right font-semibold text-black whitespace-nowrap"
+                  className="border border-black/40 px-5 py-3 text-right text-xs font-semibold uppercase tracking-[0.3em] text-white whitespace-nowrap"
                 >
                   {label}
                 </th>
@@ -120,14 +120,20 @@ export default function SummaryTable() {
             {categories.map(category => {
               const monthValues = valuesByCategory.get(category) ?? new Map<string, number>()
               return (
-                <tr key={category} className="bg-white">
-                  <td className="border border-black/15 px-4 py-2 font-medium text-black">
+                <tr
+                  key={category}
+                  className="bg-white/95 transition-colors duration-150 hover:bg-black/[0.04]"
+                >
+                  <td className="border border-black/10 px-5 py-4 text-left text-[0.95rem] font-semibold text-black">
                     {category}
                   </td>
                   {months.map(month => {
                     const amount = monthValues.get(month) ?? 0
                     return (
-                      <td key={month} className="border border-black/15 px-4 py-2 text-right tabular-nums text-black">
+                      <td
+                        key={month}
+                        className="border border-black/10 px-5 py-4 text-right text-sm font-medium tabular-nums text-black/80"
+                      >
                         {amount === 0 ? '—' : currencyFormatter.format(amount)}
                       </td>
                     )
@@ -137,14 +143,14 @@ export default function SummaryTable() {
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-white">
-              <td className="border border-black/20 px-4 py-3 text-left font-semibold text-black">
+            <tr className="bg-black text-white">
+              <td className="border border-black px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.25em] text-white">
                 Total
               </td>
               {totalsByMonth.map((total, index) => (
                 <td
                   key={months[index]}
-                  className="border border-black/20 px-4 py-3 text-right font-semibold tabular-nums text-black"
+                  className="border border-black px-5 py-4 text-right text-sm font-semibold tabular-nums text-white"
                 >
                   {currencyFormatter.format(total)}
                 </td>
