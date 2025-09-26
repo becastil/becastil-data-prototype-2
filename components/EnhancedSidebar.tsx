@@ -114,10 +114,10 @@ export default function EnhancedSidebar({ className, user }: EnhancedSidebarProp
       {/* Mobile Menu Button */}
       <button
         onClick={toggleMobile}
-        className="fixed left-4 top-4 z-50 rounded-lg border border-black/10 bg-white p-2 shadow-lg lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-lg border bg-[var(--surface)] p-2 shadow-lg transition-colors duration-200 lg:hidden [border-color:var(--surface-border)]"
         aria-label="Open navigation menu"
       >
-        <Menu className="h-5 w-5 text-black" />
+        <Menu className="h-5 w-5 text-[var(--foreground)]" />
       </button>
 
       {/* Mobile Overlay */}
@@ -131,7 +131,7 @@ export default function EnhancedSidebar({ className, user }: EnhancedSidebarProp
       {/* Main Sidebar */}
       <aside
         className={`
-          fixed left-0 top-0 z-50 h-full bg-white shadow-xl border-r border-black/10
+          fixed left-0 top-0 z-50 h-full border-r bg-[var(--surface)] shadow-xl transition-colors duration-300 [border-color:var(--surface-border)]
           ${sidebarWidth} ${sidebarTransition}
           ${state.isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${className}

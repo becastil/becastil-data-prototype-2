@@ -24,7 +24,7 @@ export function LossRatioTrendChart({ summaries, height = 350 }: LossRatioTrendC
   
   if (chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#9b9287]">
+      <div className="flex h-64 items-center justify-center text-[var(--foreground)]/60">
         No loss ratio data available
       </div>
     )
@@ -32,29 +32,29 @@ export function LossRatioTrendChart({ summaries, height = 350 }: LossRatioTrendC
   
   return (
     <div className="space-y-4">
-      <ResponsiveContainer width="100%" height={height - 80}>
+      <ResponsiveContainer width="100%" height={height - 60}>
         <LineChart 
           data={chartData}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#d9ccb8" opacity={0.6} />
+          <CartesianGrid strokeDasharray="3 6" stroke="rgba(99, 102, 241, 0.16)" />
           <XAxis 
             dataKey="month" 
-            stroke="#8b7f70"
+            stroke="rgba(15, 23, 42, 0.55)"
             fontSize={12}
           />
           <YAxis 
-            stroke="#8b7f70"
+            stroke="rgba(15, 23, 42, 0.45)"
             fontSize={12}
             tickFormatter={formatPercent}
             domain={[0, 'dataMax + 20']}
           />
           <Tooltip 
             contentStyle={{
-              backgroundColor: '#fdf9f2',
-              border: '1px solid #eadfce',
-              borderRadius: '0.5rem',
-              color: '#2f2a24'
+              backgroundColor: 'var(--muted-background)',
+              border: '1px solid var(--surface-border)',
+              borderRadius: '0.75rem',
+              color: 'var(--foreground)'
             }}
             formatter={(value: any, name: string) => {
               return [formatPercent(value), name === 'lossRatio' ? 'Monthly Loss Ratio' : 'Rolling-12 Loss Ratio']
@@ -62,16 +62,16 @@ export function LossRatioTrendChart({ summaries, height = 350 }: LossRatioTrendC
           />
           
           {/* Reference lines */}
-          <ReferenceLine y={100} stroke="#b3872a" strokeDasharray="5 5" label="100% Break-even" />
-          <ReferenceLine y={80} stroke="#2f6d55" strokeDasharray="3 3" label="80% Target" />
+          <ReferenceLine y={100} stroke="#F97316" strokeDasharray="6 6" label="100% Break-even" />
+          <ReferenceLine y={80} stroke="#22D3EE" strokeDasharray="4 4" label="80% Target" />
           
           {/* Monthly Loss Ratio */}
           <Line
             type="monotone"
             dataKey="lossRatio"
-            stroke="#2f6d55"
-            strokeWidth={2}
-            dot={{ fill: '#2f6d55', strokeWidth: 2, r: 4 }}
+            stroke="#6366F1"
+            strokeWidth={3}
+            dot={{ fill: '#6366F1', strokeWidth: 2, r: 4 }}
             name="lossRatio"
           />
           
@@ -80,10 +80,10 @@ export function LossRatioTrendChart({ summaries, height = 350 }: LossRatioTrendC
             <Line
               type="monotone"
               dataKey="r12LossRatio"
-              stroke="#c75237"
-              strokeWidth={2}
+              stroke="#EC4899"
+              strokeWidth={2.5}
               strokeDasharray="8 4"
-              dot={{ fill: '#c75237', strokeWidth: 2, r: 4 }}
+              dot={{ fill: '#EC4899', strokeWidth: 2, r: 4 }}
               connectNulls={false}
               name="r12LossRatio"
             />
@@ -92,33 +92,33 @@ export function LossRatioTrendChart({ summaries, height = 350 }: LossRatioTrendC
       </ResponsiveContainer>
       
       {/* Summary Stats */}
-      <div className="bg-[#f3ede2] rounded-xl p-4">
-        <div className="grid grid-cols-3 gap-4 text-sm text-[#4f463b]">
+      <div className="rounded-2xl border border-[color:var(--surface-border)] bg-[var(--muted-background)]/80 p-4 shadow-inner">
+        <div className="grid grid-cols-1 gap-4 text-sm text-[var(--foreground)]/75 sm:grid-cols-3">
           <div>
-            <div className="text-[#5b5247]">Latest Ratio</div>
-            <div className={`font-medium ${
+            <div className="text-[var(--foreground)]/60">Latest Ratio</div>
+            <div className={`text-lg font-semibold ${
               chartData[chartData.length - 1]?.lossRatio > 100 
-                ? 'text-[#c75237]'
+                ? 'text-[#EF4444]'
                 : chartData[chartData.length - 1]?.lossRatio > 80
-                ? 'text-[#b3872a]'
-                : 'text-[#2f6d55]'
+                ? 'text-[#F59E0B]'
+                : 'text-[#22C55E]'
             }`}>
               {formatPercent(chartData[chartData.length - 1]?.lossRatio || 0)}
             </div>
           </div>
           <div>
-            <div className="text-[#5b5247]">Average Ratio</div>
-            <div className="font-medium text-[#2f2a24]">
+            <div className="text-[var(--foreground)]/60">Average Ratio</div>
+            <div className="text-lg font-semibold text-[var(--foreground)]">
               {formatPercent(chartData.reduce((sum, d) => sum + d.lossRatio, 0) / chartData.length)}
             </div>
           </div>
           <div>
-            <div className="text-[#5b5247]">Trend</div>
-            <div className={`font-medium ${
+            <div className="text-[var(--foreground)]/60">Trend</div>
+            <div className={`text-lg font-semibold ${
               chartData.length > 1 && 
               chartData[chartData.length - 1].lossRatio > chartData[chartData.length - 2].lossRatio
-                ? 'text-[#c75237]'
-                : 'text-[#2f6d55]'
+                ? 'text-[#EF4444]'
+                : 'text-[#22C55E]'
             }`}>
               {chartData.length > 1 
                 ? (chartData[chartData.length - 1].lossRatio > chartData[chartData.length - 2].lossRatio ? '↗ Rising' : '↘ Falling')

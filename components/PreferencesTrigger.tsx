@@ -6,7 +6,7 @@ import { usePreferences } from './PreferencesProvider'
 const themeOptions = [
   { value: 'system', label: 'Match system' },
   { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'dark', label: 'Dim mode' },
 ] as const
 
 const landingOptions = [
@@ -117,7 +117,7 @@ export default function PreferencesTrigger() {
             <div className="mt-6 space-y-8">
               <section>
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Theme</h3>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Choose your preferred color mode. If you pick system, we’ll follow your OS setting.</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">Choose your preferred color mode. Dim mode softens the interface to a graphite palette.</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   {themeOptions.map((option) => (
                     <button

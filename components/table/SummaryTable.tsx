@@ -151,15 +151,15 @@ export default function SummaryTable() {
       </div>
 
       {months.length > 1 && (
-        <div className="rounded-3xl border border-black/10 bg-white/90 p-4 shadow-sm">
+        <div className="rounded-3xl border bg-[var(--surface)] p-4 shadow-sm transition-colors duration-200 [border-color:var(--surface-border)]">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-black">Quick Select:</span>
+            <span className="text-sm font-medium text-[var(--foreground)]">Quick Select:</span>
             <button
               onClick={() => {
                 const startIndex = Math.max(0, months.length - 3)
                 applyRange(months[startIndex], months[months.length - 1])
               }}
-              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+              className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] transition-colors hover:bg-black hover:text-white [border-color:var(--surface-border)]"
             >
               Last 3 Months
             </button>
@@ -168,7 +168,7 @@ export default function SummaryTable() {
                 const startIndex = Math.max(0, months.length - 6)
                 applyRange(months[startIndex], months[months.length - 1])
               }}
-              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+              className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] transition-colors hover:bg-black hover:text-white [border-color:var(--surface-border)]"
             >
               Last 6 Months
             </button>
@@ -178,7 +178,7 @@ export default function SummaryTable() {
                 const ytdStart = months.find(month => month.startsWith(currentYear)) || months[0]
                 applyRange(ytdStart, months[months.length - 1])
               }}
-              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+              className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] transition-colors hover:bg-black hover:text-white [border-color:var(--surface-border)]"
             >
               YTD
             </button>
@@ -186,19 +186,19 @@ export default function SummaryTable() {
               onClick={() => {
                 applyRange(months[0], months[months.length - 1])
               }}
-              className="rounded-full border border-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-black transition-colors hover:border-black hover:bg-black hover:text-white"
+              className="rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] transition-colors hover:bg-black hover:text-white [border-color:var(--surface-border)]"
             >
               All Data
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-sm text-black/70">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--foreground)] opacity-80">
             <label className="flex items-center gap-2">
               <span>From</span>
               <select
                 value={startValue}
                 onChange={event => handleStartSelect(event.target.value)}
-                className="rounded-md border border-black/20 bg-white px-2 py-1 text-sm text-black shadow-sm focus:outline-none"
+                className="rounded-md border bg-[var(--muted-background)] px-2 py-1 text-sm text-[var(--foreground)] shadow-sm focus:outline-none [border-color:var(--surface-border)]"
               >
                 {months.map(month => (
                   <option key={month} value={month}>
@@ -212,7 +212,7 @@ export default function SummaryTable() {
               <select
                 value={endValue}
                 onChange={event => handleEndSelect(event.target.value)}
-                className="rounded-md border border-black/20 bg-white px-2 py-1 text-sm text-black shadow-sm focus:outline-none"
+                className="rounded-md border bg-[var(--muted-background)] px-2 py-1 text-sm text-[var(--foreground)] shadow-sm focus:outline-none [border-color:var(--surface-border)]"
               >
                 {months.map(month => (
                   <option key={month} value={month}>
@@ -221,7 +221,7 @@ export default function SummaryTable() {
                 ))}
               </select>
             </label>
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-black/50">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)] opacity-70">
               Showing {visibleMonths.length} month{visibleMonths.length === 1 ? '' : 's'}
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function SummaryTable() {
       <div
         id="summary-table"
         ref={captureRef}
-        className="overflow-x-auto rounded-3xl border border-black/10 bg-white/90 p-1 shadow-[0_40px_100px_-60px_rgba(15,15,25,0.75)]"
+        className="overflow-x-auto rounded-3xl border bg-[var(--surface)] p-1 shadow-[0_40px_100px_-60px_rgba(15,15,25,0.75)] transition-colors duration-200 [border-color:var(--surface-border)]"
       >
         <table className="min-w-[720px] table-fixed border-collapse text-sm">
           <thead>
@@ -255,9 +255,9 @@ export default function SummaryTable() {
               return (
                 <tr
                   key={category}
-                  className="bg-white/95 transition-colors duration-150 hover:bg-black/[0.04]"
+                  className="bg-[var(--muted-background)] transition-colors duration-150 hover:bg-black/5"
                 >
-                  <td className="border border-black/10 px-5 py-4 text-left text-[0.95rem] font-semibold text-black">
+                  <td className="border px-5 py-4 text-left text-[0.95rem] font-semibold text-[var(--foreground)] [border-color:var(--surface-border)]">
                     {category}
                   </td>
                   {visibleMonths.map(month => {
@@ -265,7 +265,7 @@ export default function SummaryTable() {
                     return (
                       <td
                         key={month}
-                        className="border border-black/10 px-5 py-4 text-right text-sm font-medium tabular-nums text-black/80"
+                        className="border px-5 py-4 text-right text-sm font-medium tabular-nums text-[var(--foreground)] opacity-80 [border-color:var(--surface-border)]"
                       >
                         {amount === 0 ? '—' : currencyFormatter.format(amount)}
                       </td>

@@ -20,7 +20,7 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
 
   if (totalClaimants === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center text-center text-black/60">
+      <div className="flex h-64 flex-col items-center justify-center text-center text-[var(--foreground)]/60">
         No high-cost claimant data available.
       </div>
     )
@@ -34,16 +34,23 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={enrichedData} layout="vertical" margin={{ top: 20, right: 24, left: 24, bottom: 12 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" opacity={0.6} />
-        <XAxis type="number" stroke="#111827" fontSize={12} tickFormatter={value => numberFormatter.format(Number(value))} />
-        <YAxis type="category" dataKey="label" stroke="#111827" fontSize={12} width={140} tick={{ fontSize: 12 }} />
+        <defs>
+          <linearGradient id="bandBarGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#A855F7" stopOpacity={0.9} />
+            <stop offset="50%" stopColor="#6366F1" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="#22D3EE" stopOpacity={0.9} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 6" stroke="rgba(99,102,241,0.15)" />
+        <XAxis type="number" stroke="rgba(15,23,42,0.55)" fontSize={12} tickFormatter={value => numberFormatter.format(Number(value))} />
+        <YAxis type="category" dataKey="label" stroke="rgba(15,23,42,0.45)" fontSize={12} width={140} tick={{ fontSize: 12 }} />
         <Tooltip
           cursor={{ fill: 'rgba(17, 24, 39, 0.08)' }}
           contentStyle={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.5rem',
-            color: '#111827',
+            backgroundColor: 'var(--muted-background)',
+            border: '1px solid var(--surface-border)',
+            borderRadius: '0.75rem',
+            color: 'var(--foreground)',
           }}
           formatter={(value: any, _name: string, props: any) => {
             if (props && props.payload) {
@@ -57,7 +64,7 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
           }}
           labelFormatter={label => `${label}`}
         />
-        <Bar dataKey="count" fill="#111827" radius={[4, 4, 4, 4]} maxBarSize={48} />
+        <Bar dataKey="count" fill="url(#bandBarGradient)" radius={[6, 6, 6, 6]} maxBarSize={48} />
       </BarChart>
     </ResponsiveContainer>
   )

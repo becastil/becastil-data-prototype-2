@@ -4,51 +4,74 @@ import { useMemo } from 'react'
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts'
 
 interface LossGaugeCardProps {
-  lossRatioPercent: number
+  fuelPercent: number | null
   stopLossPercent: number
-  mode: 'loss' | 'stopLoss'
-  onModeChange: (mode: 'loss' | 'stopLoss') => void
+  mode: 'fuel' | 'stopLoss'
+  onModeChange: (mode: 'fuel' | 'stopLoss') => void
 }
 
 const GaugeBackground = () => (
   <RadialBar
     dataKey="max"
     cornerRadius={30}
-    fill="#e5e7eb"
+    fill="#d1d5db"
     stroke="none"
   />
 )
 
-export function LossGaugeCard({ lossRatioPercent, stopLossPercent, mode, onModeChange }: LossGaugeCardProps) {
-  const clampedLoss = Math.min(Math.max(lossRatioPercent, 0), 200)
+function computeFuelColor(percent: number | null) {
+  if (percent === null) return '#94a3b8'
+  if (percent < 95) return '#16a34a'
+  if (percent <= 105) return '#facc15'
+  return '#dc2626'
+}
+
+export function LossGaugeCard({ fuelPercent, stopLossPercent, mode, onModeChange }: LossGaugeCardProps) {
+  const clampedFuel = fuelPercent === null ? null : Math.min(Math.max(fuelPercent, 0), 200)
   const clampedStopLoss = Math.min(Math.max(stopLossPercent, 0), 200)
 
+  const activeFuelValue = clampedFuel ?? 0
+
   const data = useMemo(() => {
-    const value = mode === 'loss' ? clampedLoss : clampedStopLoss
+    const value = mode === 'fuel' ? activeFuelValue : clampedStopLoss
     return [
       { name: 'value', value },
       { name: 'max', max: 200 },
     ]
-  }, [mode, clampedLoss, clampedStopLoss])
+  }, [mode, activeFuelValue, clampedStopLoss])
 
-  const label = mode === 'loss' ? 'YTD Loss Ratio' : 'Stop-Loss Reimbursement %'
+  const gaugeColor = useMemo(() => {
+    return mode === 'fuel' ? computeFuelColor(fuelPercent) : '#2563eb'
+  }, [mode, fuelPercent])
+
+  const label = mode === 'fuel' ? 'Cumulative vs Budget' : 'Stop-Loss Reimbursement %'
   const helper =
-    mode === 'loss'
-      ? 'Target is 100%. Values above 100% indicate higher claim costs.'
-      : 'Share of claims recovered through stop-loss coverage.'
+    mode === 'fuel'
+      ? 'Latest cumulative spend as a % of budget. Aim for 100%; 95-105% is caution.'
+      : 'Share of claim dollars reimbursed through stop-loss coverage.'
 
-  const displayValue = mode === 'loss' ? clampedLoss : clampedStopLoss
+  const valueLabel = mode === 'fuel'
+    ? fuelPercent !== null
+      ? `${fuelPercent.toFixed(1)}%`
+      : '—'
+    : `${clampedStopLoss.toFixed(1)}%`
+
+  const secondaryText = mode === 'fuel'
+    ? fuelPercent !== null
+      ? `${fuelPercent - 100 >= 0 ? '+' : ''}${(fuelPercent - 100).toFixed(1)}% vs plan`
+      : 'Awaiting budget inputs'
+    : 'Year-to-date'
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={() => onModeChange('loss')}
+          onClick={() => onModeChange('fuel')}
           className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
-            mode === 'loss'
-              ? 'border-black bg-black text-white'
-              : 'border-black/40 text-black/60 hover:border-black hover:text-black'
+            mode === 'fuel'
+              ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
+              : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
           }`}
         >
           Fuel Gauge
@@ -58,8 +81,8 @@ export function LossGaugeCard({ lossRatioPercent, stopLossPercent, mode, onModeC
           onClick={() => onModeChange('stopLoss')}
           className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
             mode === 'stopLoss'
-              ? 'border-black bg-black text-white'
-              : 'border-black/40 text-black/60 hover:border-black hover:text-black'
+              ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
+              : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
           }`}
         >
           Stop-Loss
@@ -83,28 +106,27 @@ export function LossGaugeCard({ lossRatioPercent, stopLossPercent, mode, onModeC
             />
             <GaugeBackground />
             <RadialBar
-              background
               dataKey="value"
               cornerRadius={16}
-              fill="#111827"
+              fill={gaugeColor}
               clockWise
             />
           </RadialBarChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute flex flex-col items-center justify-center text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-black/60">
+          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--foreground)] opacity-60">
             {label}
           </span>
-          <span className="mt-2 text-3xl font-bold text-black tabular-nums">
-            {displayValue.toFixed(1)}%
+          <span className="mt-2 text-3xl font-bold text-[var(--foreground)] tabular-nums">
+            {valueLabel}
           </span>
-          <span className="mt-1 text-[11px] uppercase tracking-[0.35em] text-black/40">
-            YTD
+          <span className="mt-1 text-[11px] uppercase tracking-[0.35em] text-[var(--foreground)] opacity-50">
+            {secondaryText}
           </span>
         </div>
       </div>
 
-      <p className="text-xs leading-relaxed text-black/60">
+      <p className="text-xs leading-relaxed text-[var(--foreground)] opacity-70">
         {helper}
       </p>
     </div>

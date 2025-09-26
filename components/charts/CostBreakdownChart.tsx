@@ -14,10 +14,10 @@ interface CostBreakdownChartProps {
 }
 
 const COLORS = [
-  '#2f6d55', // Medical - Green
-  '#c75237', // Rx - Red
-  '#b3872a', // Admin - Yellow
-  '#5b4a84', // Stop Loss - Purple
+  '#6366F1', // Medical - Indigo
+  '#EC4899', // Rx - Pink
+  '#14B8A6', // Admin - Teal
+  '#F59E0B', // Stop Loss - Amber
 ]
 
 const formatCurrency = (value: number) => {
@@ -81,7 +81,7 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
 
   if (chartData.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-black/60">
+      <div className="flex h-64 items-center justify-center text-sm text-[var(--foreground)]/60">
         No cost breakdown data available.
       </div>
     )
@@ -91,9 +91,9 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload
       return (
-        <div className="rounded-lg border border-black/20 bg-white p-3 shadow-lg">
-          <div className="font-semibold text-black">{data.name}</div>
-          <div className="text-sm text-black/70">
+        <div className="rounded-2xl border border-[color:var(--surface-border)] bg-[var(--muted-background)] p-4 shadow-lg shadow-indigo-500/5">
+          <div className="font-semibold text-[var(--foreground)]">{data.name}</div>
+          <div className="mt-2 text-sm text-[var(--foreground)]/75">
             <div>{formatCurrency(data.value)}</div>
             <div>{formatPercent(data.percentage)} of total</div>
           </div>
@@ -105,14 +105,14 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
 
   const CustomLegend = ({ payload }: any) => {
     return (
-      <div className="flex flex-wrap justify-center gap-4 mt-4">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
+          <div key={index} className="flex items-center gap-2 text-sm text-[var(--foreground)]/70">
             <div
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-black/70">{entry.value}</span>
+            <span className="text-[var(--foreground)]/70">{entry.value}</span>
           </div>
         ))}
       </div>
@@ -121,7 +121,7 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
 
   return (
     <div className="space-y-4">
-      <ResponsiveContainer width="100%" height={height - 100}>
+      <ResponsiveContainer width="100%" height={height - 80}>
         <PieChart>
           <Pie
             data={chartData}
@@ -129,7 +129,7 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
             cy="50%"
             innerRadius={80}
             outerRadius={120}
-            paddingAngle={2}
+            paddingAngle={4}
             dataKey="value"
           >
             {chartData.map((entry, index) => (
@@ -147,15 +147,15 @@ export function CostBreakdownChart({ financialMetrics, height = 400 }: CostBreak
       </ResponsiveContainer>
       
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
         {chartData.map((item, index) => (
-          <div key={item.name} className="text-center">
+          <div key={item.name} className="rounded-2xl border border-[color:var(--surface-border)] bg-[var(--muted-background)]/70 p-3 text-center shadow-sm">
             <div
               className="h-3 w-12 mx-auto mb-2 rounded"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
             />
-            <div className="font-medium text-black">{formatCurrency(item.value)}</div>
-            <div className="text-xs text-black/60">{item.name}</div>
+            <div className="font-medium text-[var(--foreground)]">{formatCurrency(item.value)}</div>
+            <div className="text-xs text-[var(--foreground)]/60">{item.name}</div>
           </div>
         ))}
       </div>

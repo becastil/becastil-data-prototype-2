@@ -32,16 +32,27 @@ const defaultPreferences: Preferences = {
 
 const PreferencesContext = createContext<PreferencesContextValue | undefined>(undefined)
 
-function resolveTheme(_: ThemePreference) {
-  return 'light'
+function resolveTheme(preference: ThemePreference) {
+  if (preference === 'system') {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return 'light'
+  }
+  return preference
 }
 
 function applyTheme(theme: ThemePreference) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   const resolved = resolveTheme(theme)
-  if (resolved === 'light') {
-    root.classList.remove('dark')
+  root.classList.remove('dark')
+  root.removeAttribute('data-theme')
+
+  if (resolved === 'dark') {
+    root.classList.add('dark')
+    root.setAttribute('data-theme', 'dim')
+  } else {
     root.setAttribute('data-theme', 'light')
   }
 }
@@ -88,6 +99,18 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!initialized) return
     applyTheme(preferences.theme)
+  }, [preferences.theme, initialized])
+
+  useEffect(() => {
+    if (!initialized) return
+    if (preferences.theme !== 'system') return
+    if (typeof window === 'undefined') return
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = () => applyTheme('system')
+
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
   }, [preferences.theme, initialized])
 
   const updatePreference = useCallback((updates: Partial<Preferences>) => {

@@ -60,15 +60,15 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className="bg-white text-black">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-black`}>
+    <html lang="en" suppressHydrationWarning className="bg-[var(--background)] text-[var(--foreground)]">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300`}>
         <PreferencesProvider>
           <NotificationProvider>
             <div className="flex min-h-screen">
               <EnhancedSidebar user={user} />
               <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
                 <Navigation />
-                <main className="flex-1 bg-white px-4 py-6 lg:px-6">
+                <main className="flex-1 bg-[var(--muted-background)] px-4 py-6 transition-colors duration-300 lg:px-6">
                   {children}
                 </main>
               </div>
