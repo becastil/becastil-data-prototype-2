@@ -1,7 +1,7 @@
 'use client'
 
 import { useStepCompletion } from '@/lib/store/useAppStore'
-import SummaryTable from '@/components/table/SummaryTable'
+import FinancialSummaryTable from '@/components/table/FinancialSummaryTable'
 import Link from 'next/link'
 
 export default function TablePage() {
@@ -54,26 +54,30 @@ export default function TablePage() {
   }
   
   return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">
-            Step 3: Summary Table
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-6">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Step 3: Financial Summary Table
           </h1>
-          <p className="text-sm text-black/70 max-w-3xl mx-auto">
-            Review the experience data by category and month. Export the complete report when ready.
+          <p className="text-sm text-gray-600 max-w-3xl mx-auto">
+            Review financial claims data with advanced filtering, sorting, and grouping capabilities. Export reports when ready.
           </p>
         </div>
+      </div>
 
-        {/* Summary Table */}
-        <SummaryTable />
+      {/* Financial Summary Table */}
+      <div className="max-w-full mx-auto">
+        <FinancialSummaryTable />
+      </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between">
+      {/* Actions */}
+      <div className="bg-white border-t border-gray-200 px-4 py-6">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link 
             href="/dashboard/fees"
-            className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white"
+            className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -83,7 +87,7 @@ export default function TablePage() {
           
           <Link 
             href="/dashboard/charts"
-            className="inline-flex items-center gap-2 rounded-md border border-black px-6 py-3 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white"
+            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
           >
             Continue to Charts
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
