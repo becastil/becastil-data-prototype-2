@@ -1,0 +1,14 @@
+.exportRoot {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.exportRoot table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.exportRoot th,
+.exportRoot td {
+  border: 1px solid #000000;
+}

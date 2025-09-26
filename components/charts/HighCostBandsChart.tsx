@@ -20,7 +20,7 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
 
   if (totalClaimants === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center text-center text-[#9b9287]">
+      <div className="flex h-64 flex-col items-center justify-center text-center text-black/60">
         No high-cost claimant data available.
       </div>
     )
@@ -34,16 +34,16 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={enrichedData} layout="vertical" margin={{ top: 20, right: 24, left: 24, bottom: 12 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#d9ccb8" opacity={0.6} />
-        <XAxis type="number" stroke="#8b7f70" fontSize={12} tickFormatter={value => numberFormatter.format(Number(value))} />
-        <YAxis type="category" dataKey="label" stroke="#8b7f70" fontSize={12} width={120} tick={{ fontSize: 12 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" opacity={0.6} />
+        <XAxis type="number" stroke="#111827" fontSize={12} tickFormatter={value => numberFormatter.format(Number(value))} />
+        <YAxis type="category" dataKey="label" stroke="#111827" fontSize={12} width={140} tick={{ fontSize: 12 }} />
         <Tooltip
-          cursor={{ fill: 'rgba(199, 82, 55, 0.08)' }}
+          cursor={{ fill: 'rgba(17, 24, 39, 0.08)' }}
           contentStyle={{
-            backgroundColor: '#fdf9f2',
-            border: '1px solid #eadfce',
+            backgroundColor: '#ffffff',
+            border: '1px solid #d1d5db',
             borderRadius: '0.5rem',
-            color: '#2f2a24',
+            color: '#111827',
           }}
           formatter={(value: any, _name: string, props: any) => {
             if (props && props.payload) {
@@ -57,7 +57,7 @@ export function HighCostBandsChart({ data, height = 340 }: HighCostBandsChartPro
           }}
           labelFormatter={label => `${label}`}
         />
-        <Bar dataKey="count" fill="#c75237" radius={[4, 4, 4, 4]} maxBarSize={48} />
+        <Bar dataKey="count" fill="#111827" radius={[4, 4, 4, 4]} maxBarSize={48} />
       </BarChart>
     </ResponsiveContainer>
   )
