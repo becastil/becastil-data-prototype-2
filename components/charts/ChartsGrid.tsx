@@ -7,7 +7,6 @@ import { MonthlyActualBudgetChart } from './MonthlyActualBudgetChart'
 import { HighCostBandsChart } from './HighCostBandsChart'
 import EnrollmentTrendChart from './EnrollmentTrendChart'
 import LossGaugeCard from './LossGaugeCard'
-import { KPIDashboard } from './KPIDashboard'
 import { LossRatioTrendChart } from './LossRatioTrendChart'
 import { TopClaimantsChart } from './TopClaimantsChart'
 import { CostBreakdownChart } from './CostBreakdownChart'
@@ -258,18 +257,6 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
   }
 
   const tiles: ChartTile[] = [
-    {
-      id: 'kpi-dashboard',
-      accent: 'bg-gradient-to-br from-indigo-500/12 via-[var(--surface)] to-transparent dark:from-indigo-500/8',
-      header: (
-        <TileHeader
-          badge="Snapshot"
-          title="Key Performance Indicators"
-          description="Quick pulse on the program’s health with year-to-date totals, averages, and current ratios."
-        />
-      ),
-      content: <KPIDashboard financialMetrics={financialMetrics} summaries={summaries} className="flex-1" />,
-    },
     {
       id: 'actual-vs-budget',
       accent: 'bg-gradient-to-br from-rose-500/12 via-[var(--surface)] to-transparent dark:from-rose-500/8',

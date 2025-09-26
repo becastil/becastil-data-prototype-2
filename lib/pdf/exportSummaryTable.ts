@@ -17,7 +17,7 @@ export async function exportSummaryTable(
 
   const {
     filename = `summary-table-${new Date().toISOString().split('T')[0]}.pdf`,
-    margin = 54, // 0.75 inch in points
+    margin = 36, // half inch in points for tighter fit
     scale = 2,
   } = options
 
@@ -33,27 +33,26 @@ export async function exportSummaryTable(
   })
 
   const imgData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' })
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' })
   const pageWidth = pdf.internal.pageSize.getWidth()
   const pageHeight = pdf.internal.pageSize.getHeight()
   const usableWidth = pageWidth - margin * 2
   const usableHeight = pageHeight - margin * 2
 
-  const imgWidth = usableWidth
-  const imgHeight = (canvas.height * imgWidth) / canvas.width
+  const originalWidth = canvas.width
+  const originalHeight = canvas.height
 
-  let heightLeft = imgHeight
-  let position = margin
+  const widthRatio = usableWidth / originalWidth
+  const heightRatio = usableHeight / originalHeight
+  const ratio = Math.min(1, widthRatio, heightRatio)
 
-  pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST')
-  heightLeft -= usableHeight
+  const renderWidth = originalWidth * ratio
+  const renderHeight = originalHeight * ratio
 
-  while (heightLeft > 0) {
-    pdf.addPage()
-    position = margin - (imgHeight - heightLeft)
-    pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST')
-    heightLeft -= usableHeight
-  }
+  const xOffset = (pageWidth - renderWidth) / 2
+  const yOffset = (pageHeight - renderHeight) / 2
+
+  pdf.addImage(imgData, 'PNG', xOffset, yOffset, renderWidth, renderHeight, undefined, 'FAST')
 
   pdf.save(filename)
 }

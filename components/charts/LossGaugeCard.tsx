@@ -8,6 +8,8 @@ interface LossGaugeCardProps {
   stopLossPercent: number
   mode: 'fuel' | 'stopLoss'
   onModeChange: (mode: 'fuel' | 'stopLoss') => void
+  hideModeSwitcher?: boolean
+  className?: string
 }
 
 const GaugeBackground = () => (
@@ -26,7 +28,14 @@ function computeFuelColor(percent: number | null) {
   return '#dc2626'
 }
 
-export function LossGaugeCard({ fuelPercent, stopLossPercent, mode, onModeChange }: LossGaugeCardProps) {
+export function LossGaugeCard({
+  fuelPercent,
+  stopLossPercent,
+  mode,
+  onModeChange,
+  hideModeSwitcher = false,
+  className = '',
+}: LossGaugeCardProps) {
   const clampedFuel = fuelPercent === null ? null : Math.min(Math.max(fuelPercent, 0), 200)
   const clampedStopLoss = Math.min(Math.max(stopLossPercent, 0), 200)
 
@@ -63,31 +72,33 @@ export function LossGaugeCard({ fuelPercent, stopLossPercent, mode, onModeChange
     : 'Year-to-date'
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => onModeChange('fuel')}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
-            mode === 'fuel'
-              ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
-              : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
-          }`}
-        >
-          Fuel Gauge
-        </button>
-        <button
-          type="button"
-          onClick={() => onModeChange('stopLoss')}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
-            mode === 'stopLoss'
-              ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
-              : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
-          }`}
-        >
-          Stop-Loss
-        </button>
-      </div>
+    <div className={`flex flex-col gap-4 ${className}`}>
+      {!hideModeSwitcher && (
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => onModeChange('fuel')}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
+              mode === 'fuel'
+                ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
+                : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            Fuel Gauge
+          </button>
+          <button
+            type="button"
+            onClick={() => onModeChange('stopLoss')}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition-colors ${
+              mode === 'stopLoss'
+                ? 'border-[color:var(--foreground)] bg-[var(--foreground)] text-[var(--muted-background)]'
+                : 'border-[color:var(--surface-border)] text-[var(--foreground)] hover:border-[color:var(--foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            Stop-Loss
+          </button>
+        </div>
+      )}
 
       <div className="relative flex h-56 items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
