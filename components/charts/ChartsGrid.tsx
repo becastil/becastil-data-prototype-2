@@ -10,6 +10,7 @@ import LossGaugeCard from './LossGaugeCard'
 import { LossRatioTrendChart } from './LossRatioTrendChart'
 import { TopClaimantsChart } from './TopClaimantsChart'
 import { CostBreakdownChart } from './CostBreakdownChart'
+import { HealthcareLossRatioGauge } from './HealthcareLossRatioGauge'
 
 interface ChartsGridProps {
   className?: string
@@ -514,6 +515,19 @@ export default function ChartsGrid({ className = '' }: ChartsGridProps) {
           )}
         </div>
       ),
+    },
+    {
+      id: 'healthcare-loss-ratio-gauge',
+      accent: 'bg-gradient-to-br from-pink-500/12 via-[var(--surface)] to-transparent dark:from-pink-500/8',
+      header: (
+        <TileHeader
+          badge="Monitor"
+          badgeClassName="from-pink-500/30 via-pink-500/10 to-transparent text-pink-600 dark:text-pink-200"
+          title="Healthcare Loss Ratio Gauge"
+          description="Interactive gauge showing loss ratio status from bad to good with industry benchmarks."
+        />
+      ),
+      content: <HealthcareLossRatioGauge />,
     },
   ]
 
