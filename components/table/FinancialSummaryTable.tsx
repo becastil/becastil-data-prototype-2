@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { MouseEvent } from 'react'
+import Link from 'next/link'
 import {
   useAppStore,
   useCustomSummaryConfig,
@@ -14,6 +15,9 @@ import {
 import type { FinancialMetrics } from '@/lib/calc/financialMetrics'
 import CustomSummaryBuilder from './CustomSummaryBuilder'
 import type { AvailableField, ValueType } from './summaryTypes'
+import type { LucideIcon } from 'lucide-react'
+import { ChevronRight, Info, LayoutDashboard, Layers3, LineChart as LineChartIcon, Search, Table as TableIcon } from 'lucide-react'
+import { ResponsiveContainer, AreaChart, Area, Tooltip as RechartsTooltip } from 'recharts'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -30,6 +34,13 @@ const percentFormatter = new Intl.NumberFormat('en-US', {
   style: 'percent',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+})
+
+const compactCurrencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 1,
+  notation: 'compact',
 })
 
 const acronyms: Record<string, string> = {
@@ -56,6 +67,56 @@ const groupOrder = [
 const CUSTOM_GROUP_LABEL = 'Custom Layout' as const
 
 export type GroupName = typeof groupOrder[number] | typeof CUSTOM_GROUP_LABEL
+
+const groupIcons: Partial<Record<GroupName, LucideIcon>> = {
+  'Medical Claims': Layers3,
+  'Rx Claims': Layers3,
+  'Stop Loss': LineChartIcon,
+  'Admin Fees': LayoutDashboard,
+  'Monthly Totals': TableIcon,
+  'Counts & PEPM': LineChartIcon,
+  'Variance Analysis': LayoutDashboard,
+  [CUSTOM_GROUP_LABEL]: TableIcon,
+}
+
+type HighlightTone = 'default' | 'positive' | 'negative'
+
+interface HighlightCardData {
+  label: string
+  value: string
+  helper: string
+  icon: LucideIcon
+  tone?: HighlightTone
+  deltaLabel?: string
+}
+
+function SummaryHighlightCard({ card }: { card: HighlightCardData }) {
+  const Icon = card.icon
+  const toneClass =
+    card.tone === 'positive' ? 'text-emerald-600' : card.tone === 'negative' ? 'text-rose-600' : 'text-slate-900'
+  const badgeClass =
+    card.tone === 'positive'
+      ? 'bg-emerald-100 text-emerald-600'
+      : card.tone === 'negative'
+      ? 'bg-rose-100 text-rose-600'
+      : 'bg-sky-100 text-sky-600'
+
+  return (
+    <div className="group rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg focus-within:shadow-lg">
+      <div className="flex items-start gap-3">
+        <span className={`rounded-2xl p-2 ${badgeClass}`} aria-hidden="true">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-slate-500">{card.label}</p>
+          <p className={`mt-2 text-2xl font-semibold tabular-nums ${toneClass}`}>{card.value}</p>
+          <p className="mt-1 text-xs text-slate-500">{card.helper}</p>
+          {card.deltaLabel && <p className="mt-1 text-xs font-medium text-slate-500">{card.deltaLabel}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const EXPERIENCE_CATEGORY_ALIASES = {
   domesticHospital: [
@@ -386,6 +447,16 @@ function formatMonthLabel(month: string): string {
   const [year, monthPart] = month.split('-')
   const date = new Date(Number(year), Number(monthPart) - 1)
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
+function formatMonthShort(month: string): string {
+  const [year, monthPart] = month.split('-')
+  const date = new Date(Number(year), Number(monthPart) - 1)
+  return date.toLocaleDateString('en-US', { month: 'short' })
+}
+
+function formatCompactCurrency(value: number): string {
+  return compactCurrencyFormatter.format(value)
 }
 
 function formatDisplay(value: number | null, type: ValueType) {
@@ -731,6 +802,26 @@ export default function FinancialSummaryTable() {
     return useCustomLayout ? customRows : defaultRows
   }, [useCustomLayout, customRows, defaultRows])
 
+  const baseTotalsByMonth = useMemo(() => {
+    return months.reduce<Record<string, number>>((acc, month) => {
+      acc[month] = baseRows.reduce((sum, row) => {
+        if (row.valueType !== 'currency') return sum
+        const value = row.values[month]
+        return typeof value === 'number' ? sum + value : sum
+      }, 0)
+      return acc
+    }, {})
+  }, [months, baseRows])
+
+  const miniChartData = useMemo(() => {
+    return months.map(month => ({
+      month: formatMonthLabel(month),
+      total: baseTotalsByMonth[month] ?? 0,
+    }))
+  }, [months, baseTotalsByMonth])
+
+  const areaGradientId = useMemo(() => `summaryAreaGradient-${Math.random().toString(36).slice(2)}`, [])
+
   const [currentSort, setCurrentSort] = useState<{ column: string | null; direction: 'asc' | 'desc' | null }>({
     column: null,
     direction: null,
@@ -827,6 +918,73 @@ export default function FinancialSummaryTable() {
 
     return data
   }, [baseRows, globalSearch, columnFilters, currentSort, months])
+
+  const highlightCards = useMemo<HighlightCardData[]>(() => {
+    const cards: HighlightCardData[] = []
+    if (months.length === 0) return cards
+
+    const latestMonth = months[months.length - 1]
+    const latestTotal = baseTotalsByMonth[latestMonth] ?? 0
+    const previousMonth = months.length > 1 ? months[months.length - 2] : undefined
+
+    let deltaLabel: string | undefined
+    let tone: HighlightTone = 'default'
+    if (previousMonth) {
+      const previousTotal = baseTotalsByMonth[previousMonth] ?? 0
+      const delta = latestTotal - previousTotal
+      if (delta !== 0) {
+        const prefix = delta >= 0 ? '+' : '−'
+        deltaLabel = `${prefix}${formatCompactCurrency(Math.abs(delta))} vs ${formatMonthShort(previousMonth)}`
+        tone = delta <= 0 ? 'positive' : 'negative'
+      }
+    }
+
+    cards.push({
+      label: 'Latest Spend',
+      value: currencyFormatter.format(latestTotal),
+      helper: formatMonthLabel(latestMonth),
+      icon: LineChartIcon,
+      tone,
+      deltaLabel,
+    })
+
+    cards.push({
+      label: 'Visible Categories',
+      value: filteredData.length.toLocaleString(),
+      helper: `${baseRows.length.toLocaleString()} total tracked`,
+      icon: TableIcon,
+    })
+
+    const latestMetric = metricsByMonth[latestMonth]
+    if (latestMetric) {
+      const variance = latestMetric.monthlyDifference ?? 0
+      const varianceTone: HighlightTone = variance <= 0 ? 'positive' : 'negative'
+      const deltaPercent = latestMetric.monthlyDifferencePct
+      cards.push({
+        label: 'Monthly Variance',
+        value: currencyFormatter.format(variance),
+        helper: variance <= 0 ? 'Under budget' : 'Over budget',
+        icon: LayoutDashboard,
+        tone: varianceTone,
+        deltaLabel: typeof deltaPercent === 'number' ? `${(deltaPercent * 100).toFixed(2)}% vs budget` : undefined,
+      })
+    }
+
+    return cards
+  }, [months, baseTotalsByMonth, filteredData.length, baseRows.length, metricsByMonth])
+
+  const renderAreaTooltip = useCallback(({ active, payload }: { active?: boolean; payload?: any[] }) => {
+    if (!active || !payload || payload.length === 0) return null
+    const datum = payload[0]
+    const monthLabel = datum.payload?.month as string
+    const total = datum.payload?.total as number
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs font-medium text-slate-700 shadow-lg backdrop-blur">
+        <div className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-400">{monthLabel}</div>
+        <div className="mt-1 text-sm font-semibold text-slate-800">{currencyFormatter.format(total)}</div>
+      </div>
+    )
+  }, [])
 
   const totalsByMonth = useMemo(() => {
     return months.reduce<Record<string, number>>((acc, month) => {
@@ -939,247 +1097,333 @@ export default function FinancialSummaryTable() {
 
   if (!hasData) {
     return (
-      <div className="py-8 text-center text-sm text-gray-500">
-        No financial data available. Upload the templates and configure fees to populate this summary.
+      <div className="mx-auto w-full max-w-3xl rounded-3xl border border-slate-200 bg-white/90 px-8 py-12 text-center shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Summary table is waiting for data</h2>
+        <p className="mt-3 text-sm text-slate-600">
+          Upload experience data and complete the monthly fee configuration to unlock interactive financial summaries and charts.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white">
-      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Financial Benefits Claims Analysis
-        </h1>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <div className="relative">
-              <input
-                type="text"
-                value={globalSearch}
-                onChange={event => setGlobalSearch(event.target.value)}
-                className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Search all data..."
-                aria-label="Global search"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowDerivedMetrics(prev => !prev)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showDerivedMetrics
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
-              }`}
-              aria-pressed={showDerivedMetrics}
-            >
-              {showDerivedMetrics ? 'Hide' : 'Show'} Derived Metrics
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={exportCSV}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Print
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <CustomSummaryBuilder
-            availableFields={availableFields}
-            selectedFieldIds={sanitizedCustomFields}
-            enabled={customSummary.enabled}
-            useCustomLayout={useCustomLayout}
-            onToggleEnabled={setCustomSummaryEnabled}
-            onLayoutChange={setCustomSummaryLayout}
-          />
-        </div>
-      </div>
-
-      <div ref={tableRef} className="overflow-x-auto">
-        <table className="w-full border-collapse bg-white">
-          <thead className="bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
-            <tr className="border-b border-gray-200">
-              <th
-                className="text-left p-4 font-semibold text-gray-900 bg-white border-r border-gray-200 sticky left-0 min-w-80 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => handleSort('category')}
-                tabIndex={0}
-                role="columnheader"
-                aria-sort={currentSort.column === 'category' ? currentSort.direction || 'none' : 'none'}
-              >
-                <div className="flex items-center justify-between">
-                  <span>Cost Category</span>
-                  <div className="flex flex-col text-xs text-gray-400">
-                    <span className={currentSort.column === 'category' && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
-                    <span className={currentSort.column === 'category' && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <input
-                    type="text"
-                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Filter..."
-                    onChange={event => handleColumnFilter('category', event.target.value)}
-                    onClick={event => event.stopPropagation()}
-                  />
-                </div>
-              </th>
-
-              {months.map(month => (
-                <th
-                  key={month}
-                  className="text-right p-4 font-semibold text-gray-900 min-w-32 cursor-pointer hover:bg-gray-50 transition-colors border-r border-gray-200"
-                  onClick={() => handleSort(month)}
-                  tabIndex={0}
-                  role="columnheader"
-                  aria-sort={currentSort.column === month ? currentSort.direction || 'none' : 'none'}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>{formatMonthLabel(month)}</span>
-                    <div className="flex flex-col text-xs text-gray-400">
-                      <span className={currentSort.column === month && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
-                      <span className={currentSort.column === month && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
-                    </div>
-                  </div>
-                  <div className="mt-2">
+    <div className="bg-gradient-to-b from-slate-50 via-white to-white text-slate-900">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+          <div className="space-y-6 border-b border-slate-200 px-6 py-8 sm:px-8">
+            <div className="flex flex-col gap-6">
+              <div>
+                <h1 className="text-3xl font-semibold text-slate-900">Financial Benefits Claims Analysis</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                  Monitor medical, pharmacy, stop-loss, and administrative spend with contextual grouping, variance trends, and export-ready detail.
+                </p>
+              </div>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="relative flex w-full max-w-xs items-center">
+                    <span className="sr-only">Search all data</span>
+                    <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-400" aria-hidden="true" />
                     <input
                       type="text"
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder=">=, <=, = value"
-                      onChange={event => handleColumnFilter(month, event.target.value)}
-                      onClick={event => event.stopPropagation()}
+                      value={globalSearch}
+                      onChange={event => setGlobalSearch(event.target.value)}
+                      className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm font-medium text-slate-700 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      placeholder="Search categories or values"
                     />
-                  </div>
-                </th>
-              ))}
-
-              {showDerivedMetrics && months.length >= 2 && (
-                <>
-                  <th className="text-right p-4 font-semibold text-gray-900 min-w-32 border-r border-gray-200">
-                    MoM Δ
-                  </th>
-                  <th className="text-right p-4 font-semibold text-gray-900 min-w-24 border-r border-gray-200">
-                    %Δ MoM
-                  </th>
-                </>
-              )}
-            </tr>
-          </thead>
-
-          <tbody>
-            {(() => {
-              const rows: JSX.Element[] = []
-              let lastGroup: GroupName | null = null
-
-              filteredData.forEach(row => {
-                if (row.group !== lastGroup) {
-                  lastGroup = row.group
-                  const isCollapsed = collapsedGroups.has(row.group)
-                  const colspan = months.length + 1 + (showDerivedMetrics && months.length >= 2 ? 2 : 0)
-
-                  rows.push(
-                    <tr key={`group-${row.group}`} className="bg-gradient-to-r from-blue-50 to-white border-t-2 border-blue-200">
-                      <td colSpan={colspan} className="p-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(row.group)}
-                          className="flex items-center gap-2 w-full text-left font-medium text-blue-900 hover:text-blue-700 transition-colors"
-                          aria-expanded={!isCollapsed}
-                        >
-                          <span className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`}>▶</span>
-                          <span>{row.group}</span>
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                }
-
-                const isCollapsed = collapsedGroups.has(row.group)
-                const { delta, percent } = showDerivedMetrics && months.length >= 2 ? deriveMetrics(row) : { delta: null, percent: null }
-
-                if (!isCollapsed) {
-                  rows.push(
-                    <tr key={row.key} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td
-                        className="p-4 bg-white border-r border-gray-200 sticky left-0 font-medium text-gray-900"
-                        onMouseEnter={event => {
-                          const hasAcronym = Object.keys(acronyms).some(acronym => row.label.includes(acronym))
-                          if (hasAcronym) {
-                            const tooltipKey = Object.keys(acronyms).find(acronym => row.label.includes(acronym))
-                            if (tooltipKey) showTooltipAt(event, acronyms[tooltipKey])
-                          }
-                        }}
-                        onMouseLeave={hideTooltip}
-                      >
-                        {row.label}
-                      </td>
-
-                      {months.map(month => {
-                        const value = row.values[month]
-                        const { text, isNegative } = formatDisplay(value, row.valueType)
-                        return (
-                          <td key={month} className={`p-4 text-right tabular-nums border-r border-gray-200 ${isNegative ? 'text-red-600' : 'text-gray-900'}`}>
-                            {text}
-                          </td>
-                        )
-                      })}
-
-                      {showDerivedMetrics && months.length >= 2 && (
-                        <>
-                          <td className={`p-4 text-right tabular-nums border-r border-gray-200 ${delta !== null && delta < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                            {formatDisplay(delta, row.valueType).text}
-                          </td>
-                          <td className={`p-4 text-right tabular-nums border-r border-gray-200 ${percent !== null && percent < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                            {formatDisplay(percent, 'percent').text}
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  )
-                }
-              })
-
-              return rows
-            })()}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-white p-4">
-        <div className="flex gap-8 text-sm">
-          {months.map(month => (
-            <div key={month} className="text-center">
-              <div className="font-medium text-gray-600 uppercase text-xs">
-                {formatMonthLabel(month)}
-              </div>
-              <div className="font-bold text-gray-900">
-                {currencyFormatter.format(totalsByMonth[month] ?? 0)}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDerivedMetrics(prev => !prev)}
+                    className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      showDerivedMetrics
+                        ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+                        : 'border border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                    aria-pressed={showDerivedMetrics}
+                  >
+                    <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                    {showDerivedMetrics ? 'Hide derived metrics' : 'Show derived metrics'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={exportCSV}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600"
+                  >
+                    <TableIcon className="h-4 w-4" aria-hidden="true" />
+                    Export CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-blue-400 hover:text-blue-600"
+                  >
+                    <LineChartIcon className="h-4 w-4" aria-hidden="true" />
+                    Print
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
-          <div className="text-center">
-            <div className="font-medium text-gray-600 uppercase text-xs">Rows</div>
-            <div className="font-bold text-gray-900">{filteredData.length}</div>
+            <CustomSummaryBuilder
+              availableFields={availableFields}
+              selectedFieldIds={sanitizedCustomFields}
+              enabled={customSummary.enabled}
+              useCustomLayout={useCustomLayout}
+              onToggleEnabled={setCustomSummaryEnabled}
+              onLayoutChange={setCustomSummaryLayout}
+            />
           </div>
-        </div>
-      </div>
+          {highlightCards.length > 0 && (
+            <div className="space-y-6 border-b border-slate-200 px-6 pb-8 pt-6 sm:px-8">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {highlightCards.map((card, index) => (
+                  <SummaryHighlightCard key={`${card.label}-${index}`} card={card} />
+                ))}
+              </div>
+              {miniChartData.length > 1 && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-4 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Trend</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">Monthly totals</p>
+                    </div>
+                    <Info className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                  </div>
+                  <div className="mt-4 h-40 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={miniChartData}>
+                        <defs>
+                          <linearGradient id={areaGradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563EB" stopOpacity={0.45} />
+                            <stop offset="95%" stopColor="#2563EB" stopOpacity={0.05} />
+                          </linearGradient>
+                        </defs>
+                        <Area
+                          type="monotone"
+                          dataKey="total"
+                          stroke="#2563EB"
+                          strokeWidth={2}
+                          fill={`url(#${areaGradientId})`}
+                          name="Total"
+                        />
+                        <RechartsTooltip content={renderAreaTooltip} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div ref={tableRef} className="overflow-x-auto px-2 pb-2 pt-4 sm:px-6">
+            <table className="min-w-full divide-y divide-slate-200 overflow-hidden rounded-2xl text-sm">
+              <thead className="sticky top-0 z-20 bg-white/95 backdrop-blur">
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-30 bg-white/95 px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.3em] text-slate-500"
+                    aria-sort={currentSort.column === 'category' ? currentSort.direction || 'none' : 'none'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort('category')}
+                      className="flex items-center gap-2 text-slate-700 transition hover:text-blue-600"
+                    >
+                      <span className="text-sm font-semibold text-slate-800">Cost Category</span>
+                      <span className="flex flex-col text-[10px] leading-[10px] text-slate-400">
+                        <span className={currentSort.column === 'category' && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
+                        <span className={currentSort.column === 'category' && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
+                      </span>
+                    </button>
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        className="w-full rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+                        placeholder="Filter…"
+                        onChange={event => handleColumnFilter('category', event.target.value)}
+                      />
+                    </div>
+                  </th>
+                  {months.map(month => (
+                    <th
+                      key={month}
+                      scope="col"
+                      className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500"
+                      aria-sort={currentSort.column === month ? currentSort.direction || 'none' : 'none'}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSort(month)}
+                        className="flex w-full items-center justify-end gap-2 text-slate-700 transition hover:text-blue-600"
+                      >
+                        <span className="text-sm font-semibold text-slate-800">{formatMonthLabel(month)}</span>
+                        <span className="flex flex-col text-[10px] leading-[10px] text-slate-400">
+                          <span className={currentSort.column === month && currentSort.direction === 'asc' ? 'text-blue-600' : ''}>▲</span>
+                          <span className={currentSort.column === month && currentSort.direction === 'desc' ? 'text-blue-600' : ''}>▼</span>
+                        </span>
+                      </button>
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          className="w-full rounded-full border border-slate-300 px-3 py-1 text-xs text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+                          placeholder=">=, <=, = value"
+                          onChange={event => handleColumnFilter(month, event.target.value)}
+                        />
+                      </div>
+                    </th>
+                  ))}
+                  {showDerivedMetrics && months.length >= 2 && (
+                    <>
+                      <th scope="col" className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+                        MoM Δ
+                      </th>
+                      <th scope="col" className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+                        %Δ MoM
+                      </th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-800">
+                {(() => {
+                  const rows: JSX.Element[] = []
+                  let lastGroup: GroupName | null = null
 
+                  filteredData.forEach((row, dataIndex) => {
+                    const groupSlug = row.group.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'group'
+                    const groupIsCollapsed = collapsedGroups.has(row.group)
+                    const isNewGroup = row.group !== lastGroup
+
+                    if (isNewGroup) {
+                      lastGroup = row.group
+                      const isCollapsed = groupIsCollapsed
+                      const colspan = months.length + 1 + (showDerivedMetrics && months.length >= 2 ? 2 : 0)
+                      const IconComponent = groupIcons[row.group] ?? Layers3
+
+                      rows.push(
+                        <tr key={`group-${row.group}`} className="bg-white">
+                          <td colSpan={colspan} className="px-5 py-4">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(row.group)}
+                              className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                              aria-expanded={!isCollapsed}
+                              aria-controls={`${groupSlug}-rows`}
+                            >
+                              <span className="flex items-center gap-3">
+                                <span className={`grid h-10 w-10 place-items-center rounded-2xl ${isCollapsed ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'}`}>
+                                  <IconComponent className="h-5 w-5" aria-hidden="true" />
+                                </span>
+                                <span id={`${groupSlug}-label`} className="text-sm font-semibold text-slate-800">
+                                  {row.group}
+                                </span>
+                              </span>
+                              <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">
+                                <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+                                <ChevronRight className={`h-4 w-4 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} aria-hidden="true" />
+                              </span>
+                            </button>
+                          </td>
+                        </tr>
+                      )
+
+                      if (isCollapsed) {
+                        return
+                      }
+                    }
+
+                    if (groupIsCollapsed) {
+                      return
+                    }
+
+                    const rowBackground = dataIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                    const { delta, percent } = showDerivedMetrics && months.length >= 2 ? deriveMetrics(row) : { delta: null, percent: null }
+                    const rowId = isNewGroup ? `${groupSlug}-rows` : undefined
+
+                    rows.push(
+                      <tr
+                        key={row.key}
+                        className={`group ${rowBackground} border-b border-slate-200 hover:bg-blue-50 focus-within:bg-blue-50 transition-colors`}
+                        data-group={groupSlug}
+                      >
+                        <th
+                          scope="row"
+                          className={`sticky left-0 z-10 ${rowBackground} px-5 py-4 text-left font-semibold text-slate-800 shadow-[1px_0_0_rgba(148,163,184,0.35)] group-hover:bg-blue-50`}
+                          aria-labelledby={`${groupSlug}-label`}
+                          id={rowId}
+                          onMouseEnter={event => {
+                            const tooltipKey = Object.keys(acronyms).find(acronym => row.label.includes(acronym))
+                            if (tooltipKey) showTooltipAt(event, acronyms[tooltipKey])
+                          }}
+                          onMouseLeave={hideTooltip}
+                        >
+                          {row.label}
+                        </th>
+                        {months.map(month => {
+                          const value = row.values[month]
+                          const { text, isNegative } = formatDisplay(value, row.valueType)
+                          return (
+                            <td key={month} className={`px-5 py-4 text-right tabular-nums ${isNegative ? 'text-rose-600' : 'text-slate-800'}`}>
+                              {text}
+                            </td>
+                          )
+                        })}
+                        {showDerivedMetrics && months.length >= 2 && (
+                          <>
+                            <td className={`px-5 py-4 text-right tabular-nums ${delta !== null && delta < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                              {formatDisplay(delta, row.valueType).text}
+                            </td>
+                            <td className={`px-5 py-4 text-right tabular-nums ${percent !== null && percent < 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                              {formatDisplay(percent, 'percent').text}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })
+
+                  return rows
+                })()}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-slate-200 bg-slate-50/70 px-6 py-5 sm:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-4 text-xs font-medium uppercase tracking-[0.25em] text-slate-500">
+                {months.map(month => (
+                  <div key={month} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm">
+                    <div className="text-[0.65rem] tracking-[0.3em] text-slate-400">{formatMonthShort(month)}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-900">{currencyFormatter.format(totalsByMonth[month] ?? 0)}</div>
+                  </div>
+                ))}
+                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm">
+                  <div className="text-[0.65rem] tracking-[0.3em] text-slate-400">Visible Rows</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">{filteredData.length.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/dashboard/fees"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600"
+                >
+                  <ChevronRight className="h-4 w-4 rotate-180" aria-hidden="true" />
+                  Back to Fees
+                </Link>
+                <Link
+                  href="/dashboard/charts"
+                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                >
+                  Continue to Charts
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
       {tooltip.show && (
         <div
-          className="absolute bg-gray-800 text-white text-xs p-2 rounded shadow-lg z-50 max-w-xs"
+          className="pointer-events-none fixed z-50 rounded-xl border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-lg"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           {tooltip.text}
