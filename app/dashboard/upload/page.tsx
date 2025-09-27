@@ -2,111 +2,128 @@
 
 import { useExperienceData, useHighCostClaimants } from '@/lib/store/useAppStore'
 import CsvUploadForm from '@/components/upload/CsvUploadForm'
+import InfoTooltip from '@/components/ui/InfoTooltip'
+import FocusWrapper from '@/components/focus/FocusWrapper'
+import { useFocusMode } from '@/components/focus/FocusProvider'
 import Link from 'next/link'
 
 export default function UploadPage() {
   const experience = useExperienceData()
   const highCostClaimants = useHighCostClaimants()
+  const { isFocusMode } = useFocusMode()
 
   const hasExperience = experience.length > 0
   const hasHighCost = highCostClaimants.length > 0
   const hasAllData = hasExperience && hasHighCost
 
-  return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-black">
-            Step 1: Upload Experience & High-Cost Data
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg text-black/80">
-            Download the templates, validate your data, and upload up to five CSV files at once. Valid files feed directly into
-            the summary tables and charts throughout the dashboard.
+  const csvFormatSections = [
+    {
+      title: 'Experience Data Template',
+      content: (
+        <>
+          <p>
+            Keep <code>Category</code> in the first column, then use month columns formatted as <code>M/D/YYYY</code> (for example <code>1/1/2025</code>).
           </p>
-        </div>
+          <p>
+            Dates must be the first day of each month with numeric values only.
+          </p>
+          <p>
+            Provide rows for <em>Domestic Hospital Claims</em> and <em>Total Hospital Medical Claims</em>; the system derives <em>Non Domestic Hospital Claims</em> automatically.
+          </p>
+        </>
+      ),
+    },
+    {
+      title: 'High-Cost Claimants Template',
+      content: (
+        <>
+          <p>All columns are mandatory and case-sensitive.</p>
+          <p>Percentages may include <code>%</code>; currency fields may include <code>$</code> and commas.</p>
+          <p>Enrollment and stop-loss flags must be <code>Y</code> or <code>N</code>.</p>
+        </>
+      ),
+    },
+    {
+      title: 'Upload Checklist',
+      content: (
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Upload up to five CSVs at one time.</li>
+          <li>Keep columns in the template order with no extras.</li>
+          <li>Use UTF-8 encoding and keep files under 10MB.</li>
+        </ul>
+      ),
+    },
+  ]
 
-        {/* Upload Form */}
-        <div className="mb-10 rounded-lg border border-black/10 bg-white p-8 shadow-sm">
-          <CsvUploadForm />
-        </div>
-
-        {/* Data Status */}
-        {(hasExperience || hasHighCost) && (
-          <div className="mb-10 grid gap-6 md:grid-cols-2">
-            <DataStatusCard
-              title="Experience Data"
-              success={hasExperience}
-              description={
-                hasExperience
-                  ? `${experience.length} records loaded across ${getUniqueMonths(experience).length} months.`
-                  : 'Upload the experience template to power the summary table and trend charts.'
-              }
-              stats={hasExperience ? [
-                { label: 'Months', value: String(getUniqueMonths(experience).length) },
-                { label: 'Categories', value: String(getUniqueCategories(experience).length) },
-                { label: 'Date Range', value: getDateRange(experience) },
-                { label: 'Total Amount', value: formatCurrency(getTotalAmount(experience)) },
-              ] : undefined}
-            />
-            <DataStatusCard
-              title="High-Cost Claimants"
-              success={hasHighCost}
-              description={
-                hasHighCost
-                  ? `${highCostClaimants.length} claimant profiles ready for breakdown tables and high-cost charts.`
-                  : 'Upload the high-cost claimants template to unlock claimant breakdown tables and diagnosis insights.'
-              }
-              stats={hasHighCost ? [
-                { label: 'Top Diagnosis', value: topPrimaryDiagnosis(highCostClaimants) },
-                { label: 'Total Cost', value: formatCurrency(totalHighCost(highCostClaimants)) },
-                { label: 'Hit Stop Loss', value: `${countStopLossHits(highCostClaimants)} members` },
-                { label: 'Avg % Plan Paid', value: `${averagePercentPaid(highCostClaimants).toFixed(1)}%` },
-              ] : undefined}
-            />
-          </div>
-        )}
-
-        {/* Instructions */}
-        <div className="mb-10 rounded-lg border border-black/10 bg-white p-6">
-          <h2 className="mb-3 text-lg font-medium text-black">CSV Format Requirements</h2>
-          <div className="space-y-4 text-sm text-black">
-            <div>
-              <h3 className="font-semibold">Experience Data Template</h3>
-              <p>Keep <code>Category</code> in the first column, then use date format <code>M/D/YYYY</code> for month columns (for example <code>1/1/2025</code>, <code>2/1/2025</code>, <code>3/1/2025</code>). Dates must be the 1st day of each month. Each month must contain numeric values only.</p>
-              <p className="mt-2 text-sm text-black/60">Provide rows for <em>Domestic Hospital Claims</em> and <em>Total Hospital Medical Claims</em>; the system will automatically derive <em>Non Domestic Hospital Claims</em> as the difference.</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">High-Cost Claimants Template</h3>
-              <p>All columns are mandatory and case-sensitive. Percentages may include <code>%</code>; currency fields may include <code>$</code> and commas. Enrollment and stop-loss flags must be <code>Y</code> or <code>N</code> (any case).</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Upload Checklist</h3>
-              <ul className="list-disc space-y-1 pl-5">
-                <li>Upload up to five CSVs at one time.</li>
-                <li>No extra, missing, or out-of-order columns.</li>
-                <li>UTF-8 encoded CSV, maximum file size 10MB.</li>
-              </ul>
+  return (
+    <FocusWrapper step={1} title="Upload CSV">
+      <div className={`${isFocusMode ? '' : 'min-h-screen '}bg-white text-black`}>
+        <div className="mx-auto max-w-5xl px-4 py-8">
+          <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <h1 className="text-3xl font-bold text-black">Upload CSV</h1>
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-black/50">
+              CSV Format
+              <InfoTooltip label="CSV format requirements" sections={csvFormatSections} />
             </div>
           </div>
-        </div>
 
-        {/* Next Step */}
-        {hasAllData && (
-          <div className="text-center">
-            <Link
-              href="/dashboard/fees"
-              className="inline-flex items-center gap-2 rounded-lg border border-black px-6 py-3 font-medium text-black transition-colors hover:bg-black/5"
-            >
-              Continue to Fees Form
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+          {/* Upload Form */}
+          <div className="mb-10 rounded-lg border border-black/10 bg-white p-8 shadow-sm">
+            <CsvUploadForm />
           </div>
-        )}
+
+          {/* Data Status */}
+          {(hasExperience || hasHighCost) && (
+            <div className="mb-10 grid gap-6 md:grid-cols-2">
+              <DataStatusCard
+                title="Experience Data"
+                success={hasExperience}
+                description={
+                  hasExperience
+                    ? `${experience.length} records loaded across ${getUniqueMonths(experience).length} months.`
+                    : 'Upload the experience template to power the summary table and trend charts.'
+                }
+                stats={hasExperience ? [
+                  { label: 'Months', value: String(getUniqueMonths(experience).length) },
+                  { label: 'Categories', value: String(getUniqueCategories(experience).length) },
+                  { label: 'Date Range', value: getDateRange(experience) },
+                  { label: 'Total Amount', value: formatCurrency(getTotalAmount(experience)) },
+                ] : undefined}
+              />
+              <DataStatusCard
+                title="High-Cost Claimants"
+                success={hasHighCost}
+                description={
+                  hasHighCost
+                    ? `${highCostClaimants.length} claimant profiles ready for breakdown tables and high-cost charts.`
+                    : 'Upload the high-cost claimants template to unlock claimant breakdown tables and diagnosis insights.'
+                }
+                stats={hasHighCost ? [
+                  { label: 'Top Diagnosis', value: topPrimaryDiagnosis(highCostClaimants) },
+                  { label: 'Total Cost', value: formatCurrency(totalHighCost(highCostClaimants)) },
+                  { label: 'Hit Stop Loss', value: `${countStopLossHits(highCostClaimants)} members` },
+                  { label: 'Avg % Plan Paid', value: `${averagePercentPaid(highCostClaimants).toFixed(1)}%` },
+                ] : undefined}
+              />
+            </div>
+          )}
+
+          {!isFocusMode && hasAllData && (
+            <div className="text-center">
+              <Link
+                href="/dashboard/fees"
+                className="inline-flex items-center gap-2 rounded-lg border border-black px-6 py-3 font-medium text-black transition-colors hover:bg-black/5"
+              >
+                Continue to Fees Form
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </FocusWrapper>
   )
 }
 
