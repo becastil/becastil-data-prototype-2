@@ -11,7 +11,9 @@
     "templates": "tsx scripts/templates/generate.ts",
     "test": "jest",
     "test:templates": "jest scripts/templates",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "install:render": "npm install --legacy-peer-deps",
+    "build:render": "npm run install:render && npm run build"
   },
   "dependencies": {
     "@ant-design/cssinjs": "^1.21.1",

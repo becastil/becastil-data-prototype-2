@@ -1,32 +1,14 @@
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+'use client'
+
+import type { User } from '@supabase/supabase-js'
 import NavigationClient from './NavigationClient'
 
-export default async function Navigation() {
-  const cookieStore = await cookies()
+interface NavigationProps {
+  user: User | null
+  mobileMenuOpen?: boolean
+  setMobileMenuOpen?: (open: boolean) => void
+}
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return <NavigationClient user={null} />
-  }
-
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    }
-  )
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  return <NavigationClient user={user} />
+export default function Navigation(props: NavigationProps) {
+  return <NavigationClient {...props} />
 }
