@@ -1,4 +1,5 @@
 import type { ThemeConfig } from 'antd'
+import { theme } from 'antd'
 
 export const lightTheme: ThemeConfig = {
   token: {
@@ -121,7 +122,7 @@ export const lightTheme: ThemeConfig = {
 
 export const darkTheme: ThemeConfig = {
   ...lightTheme,
-  algorithm: 'darkAlgorithm' as any,
+  algorithm: theme.darkAlgorithm,
   token: {
     ...lightTheme.token,
     // Background colors for dark mode

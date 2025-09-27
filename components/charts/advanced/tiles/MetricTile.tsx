@@ -1,7 +1,8 @@
 'use client'
 
 import { ReactNode } from 'react'
-import PremiumCard from '@/components/ui/PremiumCard'
+import { Card, Statistic, Skeleton } from 'antd'
+import { ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from '@ant-design/icons'
 
 export interface MetricTileProps {
   title: string
@@ -16,7 +17,7 @@ export interface MetricTileProps {
   className?: string
 }
 
-const formatValue = (value: string | number): string => {
+const formatValue = (value: string | number): string | number => {
   if (typeof value === 'number') {
     // If it's a currency value (large numbers), format accordingly
     if (value >= 1000000) {
@@ -39,48 +40,33 @@ const formatValue = (value: string | number): string => {
       // Percentage values
       return `${(value * 100).toFixed(1)}%`
     } else {
-      return value.toLocaleString()
+      return value
     }
   }
-  return value.toString()
+  return value
 }
 
 const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
   switch (trend) {
     case 'up':
-      return (
-        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 17l9.2-9.2M17 17V7M17 7H7" />
-        </svg>
-      )
+      return <ArrowUpOutlined />
     case 'down':
-      return (
-        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 7l-9.2 9.2M7 7v10M7 7h10" />
-        </svg>
-      )
+      return <ArrowDownOutlined />
     case 'neutral':
     default:
-      return (
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />
-        </svg>
-      )
+      return <MinusOutlined />
   }
 }
 
-const getColorClasses = (color: MetricTileProps['color']) => {
-  switch (color) {
-    case 'success':
-      return 'border-emerald-200 bg-emerald-50'
-    case 'warning':
-      return 'border-amber-200 bg-amber-50'
-    case 'error':
-      return 'border-red-200 bg-red-50'
-    case 'primary':
-      return 'border-cyan-200 bg-cyan-50'
+const getTrendColor = (trend: 'up' | 'down' | 'neutral') => {
+  switch (trend) {
+    case 'up':
+      return '#3f8600'
+    case 'down':
+      return '#cf1322'
+    case 'neutral':
     default:
-      return ''
+      return '#8c8c8c'
   }
 }
 
@@ -98,55 +84,61 @@ export default function MetricTile({
 }: MetricTileProps) {
   const isClickable = Boolean(onClick)
   
+  const cardStyles = {
+    cursor: isClickable ? 'pointer' : 'default',
+    transition: 'all 0.2s',
+    ...(isClickable && {
+      ':hover': {
+        transform: 'scale(1.02)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+      }
+    })
+  }
+
+  const valueStyle = {
+    color: color === 'success' ? '#3f8600' :
+           color === 'warning' ? '#faad14' :
+           color === 'error' ? '#cf1322' :
+           color === 'primary' ? '#1890ff' :
+           undefined
+  }
+  
   return (
-    <PremiumCard 
-      variant="default" 
-      className={`p-4 transition-all duration-200 ${
-        isClickable ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : ''
-      } ${getColorClasses(color)} ${className}`}
+    <Card 
+      style={cardStyles}
+      className={className}
       onClick={onClick}
+      size="small"
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h4 className="text-sm font-medium text-gray-600 mb-1">{title}</h4>
-          
-          {loading ? (
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded mb-2 w-24"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
-            </div>
-          ) : (
-            <>
-              <div className="text-2xl font-bold text-black mb-1">
-                {formatValue(value)}
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 2 }} />
+      ) : (
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <Statistic
+              title={title}
+              value={formatValue(value)}
+              valueStyle={valueStyle}
+              prefix={icon}
+              suffix={
+                change !== undefined ? (
+                  <div className="flex items-center gap-1 mt-1">
+                    <span style={{ color: getTrendColor(trend), fontSize: '12px' }}>
+                      {getTrendIcon(trend)}
+                      {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                    </span>
+                  </div>
+                ) : null
+              }
+            />
+            {subtitle && (
+              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
+                {subtitle}
               </div>
-              
-              {subtitle && (
-                <p className="text-xs text-gray-500">{subtitle}</p>
-              )}
-              
-              {change !== undefined && (
-                <div className="flex items-center gap-1 mt-2">
-                  {getTrendIcon(trend)}
-                  <span className={`text-xs font-medium ${
-                    trend === 'up' ? 'text-emerald-600' :
-                    trend === 'down' ? 'text-red-600' :
-                    'text-gray-500'
-                  }`}>
-                    {change > 0 ? '+' : ''}{change.toFixed(1)}%
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        
-        {icon && (
-          <div className="ml-3 text-gray-400">
-            {icon}
+            )}
           </div>
-        )}
-      </div>
-    </PremiumCard>
+        </div>
+      )}
+    </Card>
   )
 }

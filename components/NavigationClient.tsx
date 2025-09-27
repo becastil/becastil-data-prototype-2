@@ -6,84 +6,79 @@ import { usePathname } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import LogoutButton from './LogoutButton'
 import ThemeToggle from './ThemeToggle'
+import { Space, Avatar, Dropdown, Button } from 'antd'
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons'
+import type { MenuProps } from 'antd'
 
 interface NavigationClientProps {
   user: User | null
+  mobileMenuOpen?: boolean
+  setMobileMenuOpen?: (open: boolean) => void
 }
 
-export default function NavigationClient({ user }: NavigationClientProps) {
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
+export default function NavigationClient({ user, mobileMenuOpen, setMobileMenuOpen }: NavigationClientProps) {
   const pathname = usePathname()
-  const userMenuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handler = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
-        setUserMenuOpen(false)
-      }
-    }
-
-    if (userMenuOpen) {
-      document.addEventListener('mousedown', handler)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handler)
-    }
-  }, [userMenuOpen])
-
   const userInitial = user?.email?.[0]?.toUpperCase()
 
-  return (
-    <header className="border-b bg-[var(--surface)] transition-colors duration-300 [border-color:var(--surface-border)]">
-      <div className="flex items-center justify-between px-6 py-3">
-        {/* Page Title Area - Will be populated by individual pages */}
-        <div className="flex-1">
-          {/* This space can be used for page titles, breadcrumbs, etc. */}
+  // User dropdown menu items
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      label: (
+        <div className="px-2 py-1">
+          <div className="text-sm font-medium">{user?.email}</div>
+          <div className="text-xs text-gray-500">Authenticated User</div>
         </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      label: (
+        <LogoutButton className="text-red-600 hover:text-red-700" />
+      ),
+      icon: <LogoutOutlined />,
+    },
+  ]
 
-        {/* Right side actions */}
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          {user && (
-            <div className="relative" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen((open) => !open)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border bg-[var(--surface)] text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-black/5 hover:text-black [border-color:var(--surface-border)]"
-                aria-label="User menu"
-              >
-                {userInitial}
-              </button>
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-xl border bg-[var(--surface)] p-4 shadow-xl [border-color:var(--surface-border)]">
-                  <div className="flex items-center gap-3 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border bg-[var(--surface)] text-sm font-semibold text-[var(--foreground)] [border-color:var(--surface-border)]">
-                      {userInitial}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-[var(--foreground)]">{user.email}</p>
-                      <p className="text-xs text-[var(--foreground)] opacity-70">Authenticated User</p>
-                    </div>
-                  </div>
-                  <div className="border-t pt-3 [border-color:var(--surface-border)]">
-                    <LogoutButton className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 hover:text-red-700" />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {!user && (
-            <Link
-              href="/auth/login"
-              className="rounded-lg border bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-black/5 hover:text-black [border-color:var(--surface-border)]"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
+  return (
+    <div className="flex items-center justify-between w-full">
+      {/* Page Title Area - Will be populated by individual pages */}
+      <div className="flex-1">
+        {/* This space can be used for page titles, breadcrumbs, etc. */}
       </div>
-    </header>
+
+      {/* Right side actions */}
+      <Space>
+        <ThemeToggle />
+        {user ? (
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            placement="bottomRight"
+            trigger={['click']}
+          >
+            <Avatar
+              style={{ 
+                backgroundColor: '#06b6d4', 
+                cursor: 'pointer',
+                border: '1px solid #e5e7eb'
+              }}
+              icon={userInitial ? undefined : <UserOutlined />}
+            >
+              {userInitial}
+            </Avatar>
+          </Dropdown>
+        ) : (
+          <Link href="/auth/login">
+            <Button type="default">
+              Sign In
+            </Button>
+          </Link>
+        )}
+      </Space>
+    </div>
   )
 }
