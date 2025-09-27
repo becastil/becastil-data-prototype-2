@@ -95,7 +95,7 @@ export default function InfoTooltip({
         onBlur={hideWithDelay}
         onKeyDown={handleKeyDown}
         onClick={handleClick}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 bg-white text-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black/40 hover:border-black/30 hover:bg-black/5 ${
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-gray-400 transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400 hover:border-white/20 hover:bg-white/10 hover:text-white ${
           triggerClassName ?? ''
         }`}
       >
@@ -106,18 +106,18 @@ export default function InfoTooltip({
         id={tooltipId}
         role="tooltip"
         aria-hidden={!open}
-        className={`pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-xl border border-black/10 bg-white p-4 text-sm text-black shadow-lg transition-all duration-150 ease-out ${
-          open ? 'translate-y-0 opacity-100' : '-translate-y-1 opacity-0'
+        className={`pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-xl border border-white/10 bg-[var(--surface)] backdrop-blur-lg p-4 text-sm text-white shadow-lg transition-all duration-200 ease-out ${
+          open ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
         } ${contentClassName ?? ''}`}
       >
-        <span className="pointer-events-none absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border border-black/10 border-b-0 border-r-0 bg-white" />
+        <span className="pointer-events-none absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border border-white/10 border-b-0 border-r-0 bg-[var(--surface)]" />
         <div className="space-y-3">
           {sections.map((section, index) => (
             <div key={index} className="space-y-1">
               {section.title ? (
-                <div className="font-semibold text-black">{section.title}</div>
+                <div className="font-semibold text-white">{section.title}</div>
               ) : null}
-              <div className="text-[13px] leading-relaxed text-black/80">{section.content}</div>
+              <div className="text-[13px] leading-relaxed text-gray-300">{section.content}</div>
             </div>
           ))}
         </div>

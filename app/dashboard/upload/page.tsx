@@ -4,6 +4,9 @@ import { useExperienceData, useHighCostClaimants } from '@/lib/store/useAppStore
 import CsvUploadForm from '@/components/upload/CsvUploadForm'
 import InfoTooltip from '@/components/ui/InfoTooltip'
 import FocusWrapper from '@/components/focus/FocusWrapper'
+import AppShell from '@/components/layout/AppShell'
+import StatCard from '@/components/ui/StatCard'
+import PremiumCard from '@/components/ui/PremiumCard'
 import { useFocusMode } from '@/components/focus/FocusProvider'
 import Link from 'next/link'
 
@@ -55,64 +58,132 @@ export default function UploadPage() {
     },
   ]
 
+  // Create right panel content for validation and insights
+  const rightPanelContent = (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-white mb-4">
+          Validation & Insights
+        </h3>
+        <div className="text-sm text-gray-400 mb-6">
+          Real-time file status and data metrics
+        </div>
+      </div>
+
+      {/* Experience Data Stats */}
+      {hasExperience && (
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-gray-300 uppercase tracking-wide">
+            Experience Data
+          </h4>
+          <div className="grid gap-3">
+            <StatCard
+              label="Months"
+              value={getUniqueMonths(experience).length}
+              variant="glow"
+              size="default"
+            />
+            <StatCard
+              label="Categories"
+              value={getUniqueCategories(experience).length}
+              variant="default"
+              size="default"
+            />
+            <StatCard
+              label="Total Amount"
+              value={formatCurrency(getTotalAmount(experience))}
+              variant="glow"
+              size="default"
+            />
+          </div>
+          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <div className="text-xs text-emerald-400 font-medium">Date Range</div>
+            <div className="text-sm text-white">{getDateRange(experience)}</div>
+          </div>
+        </div>
+      )}
+
+      {/* High-Cost Claimants Stats */}
+      {hasHighCost && (
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium text-gray-300 uppercase tracking-wide">
+            High-Cost Claimants
+          </h4>
+          <div className="grid gap-3">
+            <StatCard
+              label="Total Claimants"
+              value={highCostClaimants.length}
+              variant="glow"
+              size="default"
+            />
+            <StatCard
+              label="Stop Loss Hits"
+              value={`${countStopLossHits(highCostClaimants)} members`}
+              variant="default"
+              size="default"
+            />
+            <StatCard
+              label="Total Cost"
+              value={formatCurrency(totalHighCost(highCostClaimants))}
+              variant="glow"
+              size="default"
+            />
+          </div>
+          <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+            <div className="text-xs text-cyan-400 font-medium">Top Diagnosis</div>
+            <div className="text-sm text-white">{topPrimaryDiagnosis(highCostClaimants)}</div>
+          </div>
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="text-xs text-amber-400 font-medium">Avg % Plan Paid</div>
+            <div className="text-sm text-white">{averagePercentPaid(highCostClaimants).toFixed(1)}%</div>
+          </div>
+        </div>
+      )}
+
+      {!hasExperience && !hasHighCost && (
+        <div className="text-center text-gray-400 mt-20">
+          <div className="w-16 h-16 mx-auto mb-4 opacity-30">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-sm">Upload files to see validation results</p>
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <FocusWrapper step={1} title="Upload CSV">
-      <div className={`${isFocusMode ? '' : 'min-h-screen '}bg-white text-black`}>
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <h1 className="text-3xl font-bold text-black">Upload CSV</h1>
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-black/50">
-              CSV Format
+      <AppShell currentStep={1} rightPanel={rightPanelContent}>
+        <div className="space-y-8">
+          {/* Header */}
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-white">Upload CSV</h1>
+              <p className="text-gray-400 mt-2">
+                Start with templates to avoid header errors. Both include required columns and sample rows.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                CSV Format
+              </span>
               <InfoTooltip label="CSV format requirements" sections={csvFormatSections} />
             </div>
           </div>
 
           {/* Upload Form */}
-          <div className="mb-10 rounded-lg border border-black/10 bg-white p-8 shadow-sm">
+          <PremiumCard variant="glass" className="p-8">
             <CsvUploadForm />
-          </div>
+          </PremiumCard>
 
-          {/* Data Status */}
-          {(hasExperience || hasHighCost) && (
-            <div className="mb-10 grid gap-6 md:grid-cols-2">
-              <DataStatusCard
-                title="Experience Data"
-                success={hasExperience}
-                description={
-                  hasExperience
-                    ? `${experience.length} records loaded across ${getUniqueMonths(experience).length} months.`
-                    : 'Upload the experience template to power the summary table and trend charts.'
-                }
-                stats={hasExperience ? [
-                  { label: 'Months', value: String(getUniqueMonths(experience).length) },
-                  { label: 'Categories', value: String(getUniqueCategories(experience).length) },
-                  { label: 'Date Range', value: getDateRange(experience) },
-                  { label: 'Total Amount', value: formatCurrency(getTotalAmount(experience)) },
-                ] : undefined}
-              />
-              <DataStatusCard
-                title="High-Cost Claimants"
-                success={hasHighCost}
-                description={
-                  hasHighCost
-                    ? `${highCostClaimants.length} claimant profiles ready for breakdown tables and high-cost charts.`
-                    : 'Upload the high-cost claimants template to unlock claimant breakdown tables and diagnosis insights.'
-                }
-                stats={hasHighCost ? [
-                  { label: 'Top Diagnosis', value: topPrimaryDiagnosis(highCostClaimants) },
-                  { label: 'Total Cost', value: formatCurrency(totalHighCost(highCostClaimants)) },
-                  { label: 'Hit Stop Loss', value: `${countStopLossHits(highCostClaimants)} members` },
-                  { label: 'Avg % Plan Paid', value: `${averagePercentPaid(highCostClaimants).toFixed(1)}%` },
-                ] : undefined}
-              />
-            </div>
-          )}
-
-          {!isFocusMode && hasAllData && (
-            <div className="text-center">
+          {/* Continue Button */}
+          {hasAllData && (
+            <div className="sticky bottom-0 bg-[var(--background)]/80 backdrop-blur-lg border-t border-white/6 p-6 -mx-8">
               <Link
                 href="/dashboard/fees"
-                className="inline-flex items-center gap-2 rounded-lg border border-black px-6 py-3 font-medium text-black transition-colors hover:bg-black/5"
+                className="btn-premium btn-premium--primary w-full justify-center"
               >
                 Continue to Fees Form
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +193,7 @@ export default function UploadPage() {
             </div>
           )}
         </div>
-      </div>
+      </AppShell>
     </FocusWrapper>
   )
 }
@@ -180,43 +251,3 @@ function formatCurrency(amount = 0): string {
   }).format(amount)
 }
 
-interface DataStatusCardProps {
-  title: string
-  description: string
-  success: boolean
-  stats?: Array<{ label: string; value: string }>
-}
-
-function DataStatusCard({ title, description, success, stats }: DataStatusCardProps) {
-  return (
-    <div className={`rounded-lg border p-6 ${success ? 'border-black/20 bg-white' : 'border-dashed border-black/20 bg-white/60'}`}>
-      <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${success ? 'bg-green-100 text-green-700' : 'bg-black/5 text-black/60'}`}>
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {success ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 6h.01" />
-            )}
-          </svg>
-        </div>
-        <div className="flex-1 space-y-3">
-          <div>
-            <h3 className="text-lg font-medium text-black">{title}</h3>
-            <p className="text-sm text-black/70">{description}</p>
-          </div>
-          {stats && (
-            <div className="grid grid-cols-2 gap-4 text-sm text-black">
-              {stats.map(stat => (
-                <div key={stat.label}>
-                  <div className="text-black/60">{stat.label}</div>
-                  <div className="font-semibold text-black">{stat.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}

@@ -175,9 +175,9 @@ export function FocusToggleButton({ className }: { className?: string }) {
     <button
       type="button"
       onClick={handleClick}
-      className={`inline-flex items-center gap-2 rounded-full border border-black/20 bg-white px-3 py-1.5 text-sm font-medium text-black shadow-sm transition hover:border-black/40 hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black/40 ${
-        className ?? ''
-      } ${isFocusMode ? 'border-black/60 bg-black text-white hover:bg-black/80' : ''}`}
+      className={`btn-premium ${
+        isFocusMode ? 'btn-premium--primary' : 'btn-premium--secondary'
+      } text-sm ${className ?? ''}`}
     >
       <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
       {isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}

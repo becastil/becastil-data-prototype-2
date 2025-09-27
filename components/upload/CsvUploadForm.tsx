@@ -181,9 +181,9 @@ export default function CsvUploadForm() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-lg border border-black/10 bg-white p-6">
-        <h3 className="text-lg font-medium text-black mb-3">Download Templates</h3>
-        <p className="text-sm text-black/70 mb-4">
+      <section className="surface-card surface-card--glass p-6">
+        <h3 className="text-lg font-semibold text-white mb-3">Download Templates</h3>
+        <p className="text-sm text-gray-300 mb-6">
           Start with the exact templates to avoid header validation errors. Both templates include
           the required columns and a sample row for reference.
         </p>
@@ -191,9 +191,9 @@ export default function CsvUploadForm() {
           <button
             type="button"
             onClick={handleDownloadExperienceTemplate}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black/5"
+            className="btn-premium btn-premium--secondary"
           >
-            Download Experience Data CSV
+            Experience Data CSV
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -201,9 +201,9 @@ export default function CsvUploadForm() {
           <button
             type="button"
             onClick={handleDownloadHighCostTemplate}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-black/5"
+            className="btn-premium btn-premium--secondary"
           >
-            Download High-Cost Claimants CSV
+            High-Cost Claimants CSV
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -214,32 +214,38 @@ export default function CsvUploadForm() {
       <section
         {...getRootProps()}
         className={`
-          cursor-pointer rounded-lg border-2 border-dashed p-10 text-center transition-colors
-          ${isDragActive ? 'border-black bg-black/5' : 'border-black/20 hover:border-black/40'}
+          dropzone cursor-pointer p-12 text-center
+          ${isDragActive ? 'dropzone--active' : ''}
           ${isProcessing ? 'opacity-60 pointer-events-none' : ''}
         `}
       >
         <input {...getInputProps()} />
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-black/10">
-          <svg className="h-6 w-6 text-black/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 border border-white/10">
+          <svg className="h-8 w-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-black">Drop up to {MAX_FILES} CSV files</h3>
-        <p className="mt-1 text-sm text-black/70">
+        <h3 className="text-xl font-semibold text-white mb-2">Drop up to {MAX_FILES} CSV files</h3>
+        <p className="text-gray-300 mb-1">
           Include both the experience data and high-cost claimant templates. Files are validated instantly.
         </p>
-        <p className="mt-2 text-xs text-black/50">Accepted format: .csv • Max size per file: 10MB</p>
+        <p className="text-sm text-gray-400">Accepted format: .csv • Max size per file: 10MB</p>
+        
+        {isDragActive && (
+          <div className="mt-4 text-cyan-400 font-medium">
+            Release to upload files
+          </div>
+        )}
       </section>
 
       {hasUploads && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-black">Upload Results</h3>
+            <h3 className="text-lg font-semibold text-white">Upload Results</h3>
             <button
               type="button"
               onClick={resetUploads}
-              className="text-sm font-medium text-black/70 hover:text-black"
+              className="btn-premium btn-premium--ghost text-sm"
             >
               Clear list
             </button>
@@ -330,24 +336,24 @@ function UploadResultCard({ item }: { item: UploadItem }) {
   const statusStyles = useMemo(() => {
     switch (item.status) {
       case 'success':
-        return 'border-green-500/40 bg-green-50'
+        return 'surface-card--glow border-emerald-500/40'
       case 'error':
-        return 'border-red-500/40 bg-red-50'
+        return 'border-red-500/40'
       default:
-        return 'border-black/20 bg-white'
+        return 'border-white/10'
     }
   }, [item.status])
 
   return (
-    <article className={`rounded-lg border px-4 py-3 ${statusStyles}`}>
-      <div className="flex flex-col gap-2">
+    <article className={`surface-card ${statusStyles} px-6 py-4`}>
+      <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h4 className="text-sm font-semibold text-black">
+            <h4 className="text-sm font-semibold text-white">
               {item.fileName}
             </h4>
             {item.type && (
-              <p className="text-xs uppercase tracking-wide text-black/60">
+              <p className="text-xs uppercase tracking-wide text-gray-400">
                 {item.type === 'experience' ? 'Experience data' : 'High-cost claimants'}
               </p>
             )}
@@ -356,11 +362,11 @@ function UploadResultCard({ item }: { item: UploadItem }) {
         </div>
 
         {item.message && (
-          <p className="text-sm text-black/80">{item.message}</p>
+          <p className="text-sm text-gray-300">{item.message}</p>
         )}
 
         {item.issues && (
-          <div className="rounded bg-white/60 p-3 text-xs text-black">
+          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300">
             {item.issues.missing.length > 0 && (
               <p className="mb-1"><strong>Missing:</strong> {item.issues.missing.join(', ')}</p>
             )}
@@ -374,22 +380,22 @@ function UploadResultCard({ item }: { item: UploadItem }) {
         )}
 
         {item.preview && item.preview.length > 0 && (
-          <div className="overflow-x-auto rounded border border-black/10 bg-white">
+          <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20">
             <table className="min-w-full text-xs">
-              <thead className="bg-black/5">
+              <thead className="bg-white/5">
                 <tr>
                   {Object.keys(item.preview[0]).map(key => (
-                    <th key={key} className="px-3 py-2 text-left font-medium text-black">
+                    <th key={key} className="px-3 py-2 text-left font-medium text-gray-300">
                       {key}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/10">
+              <tbody className="divide-y divide-white/5">
                 {item.preview.map((row, rowIndex) => (
                   <tr key={rowIndex}>
                     {Object.values(row).map((value, cellIndex) => (
-                      <td key={cellIndex} className="px-3 py-2 text-black/80">
+                      <td key={cellIndex} className="px-3 py-2 text-gray-400">
                         {`${value ?? ''}`}
                       </td>
                     ))}
@@ -406,15 +412,41 @@ function UploadResultCard({ item }: { item: UploadItem }) {
 
 function StatusPill({ status }: { status: UploadItem['status'] }) {
   const config = {
-    success: { label: 'Success', className: 'bg-green-600/10 text-green-700 border border-green-600/30' },
-    error: { label: 'Error', className: 'bg-red-600/10 text-red-700 border border-red-600/30' },
-    processing: { label: 'Processing', className: 'bg-black/5 text-black border border-black/10' },
+    success: { 
+      label: 'Success', 
+      className: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40',
+      icon: (
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    error: { 
+      label: 'Error', 
+      className: 'bg-red-500/20 text-red-400 border border-red-500/40',
+      icon: (
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    processing: { 
+      label: 'Processing', 
+      className: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
+      icon: (
+        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      )
+    },
   } as const
 
-  const { label, className } = config[status]
+  const { label, className, icon } = config[status]
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${className}`}>
+      {icon}
       {label}
     </span>
   )
