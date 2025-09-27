@@ -487,6 +487,34 @@ button {
   font: inherit;
 }
 
+/* Focus Mode Styles */
+.focus-substep {
+  animation: focusStepIn 0.3s ease-out;
+}
+
+.focus-substep-content {
+  position: relative;
+}
+
+@keyframes focusStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus navigation bar styles */
+.focus-nav-bar {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -495,5 +523,9 @@ button {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  
+  .focus-substep {
+    animation: none;
   }
 }

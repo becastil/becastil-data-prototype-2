@@ -1,6 +1,5 @@
 'use client'
 
-import { FocusToggleButton } from '@/components/focus/FocusProvider'
 import SkipNavigation from '@/components/ui/SkipNavigation'
 
 export default function TopBar() {
@@ -58,7 +57,6 @@ export default function TopBar() {
               </svg>
             </button>
 
-            <FocusToggleButton className="btn-premium btn-premium--secondary text-sm" />
           </nav>
         </div>
       </header>

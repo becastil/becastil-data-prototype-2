@@ -2,33 +2,26 @@
 
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { useFocusMode } from './FocusProvider'
-import FocusControls from './FocusControls'
+import FocusNavBar from './FocusNavBar'
 
 interface FocusWrapperProps {
-  step: number
-  title: string
+  step?: number // Made optional since we now use sub-steps
+  title?: string // Made optional since title comes from current step
   children: ReactNode
 }
 
-export default function FocusWrapper({ step, title, children }: FocusWrapperProps) {
-  const { isFocusMode, currentStepIndex, steps, nextStep, prevStep } = useFocusMode()
-  const stepIndex = step - 1
-  const isRecognizedStep = stepIndex >= 0 && stepIndex < steps.length
-  const isActiveStep = isRecognizedStep && currentStepIndex === stepIndex
+export default function FocusWrapper({ children }: FocusWrapperProps) {
+  const { nextStep, prevStep } = useFocusMode()
   const [isVisible, setIsVisible] = useState(false)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
-    if (isFocusMode && isActiveStep) {
-      const frame = requestAnimationFrame(() => setIsVisible(true))
-      return () => {
-        cancelAnimationFrame(frame)
-        setIsVisible(false)
-      }
+    const frame = requestAnimationFrame(() => setIsVisible(true))
+    return () => {
+      cancelAnimationFrame(frame)
+      setIsVisible(false)
     }
-    setIsVisible(false)
-    return undefined
-  }, [isActiveStep, isFocusMode])
+  }, [])
 
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0]
@@ -51,33 +44,28 @@ export default function FocusWrapper({ step, title, children }: FocusWrapperProp
     }
   }
 
-  if (!isFocusMode || !isRecognizedStep || currentStepIndex === -1) {
-    return <>{children}</>
-  }
-
-  if (!isActiveStep) {
-    return null
-  }
+  // Always render in focus mode
 
   return (
-    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-12">
-      <div className="mx-auto flex max-w-5xl flex-col gap-10">
-        <FocusControls title={title} variant="header" />
-
-        <div
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className={`relative w-full rounded-3xl border border-black/10 bg-white p-6 shadow-lg transition-all duration-300 ease-out sm:p-10 ${
-            isVisible ? 'opacity-100 shadow-xl' : 'translate-y-3 opacity-0'
-          }`}
-        >
-          <div className="focus-visible:outline-none">
-            {children}
+    <>
+      <div className="min-h-screen bg-white px-4 py-12 pb-32 sm:px-6 lg:px-12">
+        <div className="mx-auto flex max-w-5xl flex-col">
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className={`relative w-full rounded-3xl border border-black/10 bg-white p-6 shadow-lg transition-all duration-300 ease-out sm:p-10 ${
+              isVisible ? 'opacity-100 shadow-xl' : 'translate-y-3 opacity-0'
+            }`}
+          >
+            <div className="focus-visible:outline-none">
+              {children}
+            </div>
           </div>
         </div>
-
-        <FocusControls title={title} variant="footer" />
       </div>
-    </div>
+      
+      {/* Fixed navigation bar */}
+      <FocusNavBar />
+    </>
   )
 }

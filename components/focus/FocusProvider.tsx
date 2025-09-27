@@ -2,107 +2,133 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-
-export interface FocusStep {
-  id: string
-  title: string
-  path: string
-}
-
-export const focusSteps: FocusStep[] = [
-  { id: 'upload', title: 'Upload CSV', path: '/dashboard/upload' },
-  { id: 'fees', title: 'Monthly Fees', path: '/dashboard/fees' },
-  { id: 'table', title: 'Summary Table', path: '/dashboard/table' },
-  { id: 'charts', title: 'Charts', path: '/dashboard/charts' },
-]
+import { focusSteps, getStepByPathAndSubStep, getStepIndex, getNextStep, getPrevStep, type FocusStep } from './focusSteps'
 
 interface FocusContextValue {
   steps: FocusStep[]
   isFocusMode: boolean
   currentStepIndex: number
   currentStep: FocusStep | null
-  enableFocusMode: () => void
-  disableFocusMode: () => void
-  toggleFocusMode: () => void
+  currentSubStep: number
   goToStep: (index: number) => void
+  goToStepById: (stepId: string) => void
   nextStep: () => void
   prevStep: () => void
+  setSubStep: (subStep: number) => void
 }
 
 const FocusModeContext = createContext<FocusContextValue | undefined>(undefined)
 FocusModeContext.displayName = 'FocusModeContext'
 
-const STORAGE_KEY = 'dashboard-focus-mode'
+const STORAGE_KEY = 'dashboard-current-step'
+const SUB_STEP_STORAGE_KEY = 'dashboard-current-substep'
 
 export function FocusProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [isFocusMode, setIsFocusMode] = useState(false)
+  const [currentSubStep, setCurrentSubStep] = useState(0)
+  const [currentStepId, setCurrentStepId] = useState<string | null>(null)
+
+  // Focus mode is always enabled
+  const isFocusMode = true
+
+  const currentStep = useMemo(() => {
+    if (currentStepId) {
+      return focusSteps.find(step => step.id === currentStepId) || null
+    }
+    // Fallback: find step by path and substep
+    return getStepByPathAndSubStep(pathname, currentSubStep) || null
+  }, [currentStepId, pathname, currentSubStep])
 
   const currentStepIndex = useMemo(() => {
-    return focusSteps.findIndex(step => step.path === pathname)
-  }, [pathname])
-
-  const currentStep = currentStepIndex >= 0 ? focusSteps[currentStepIndex] : null
+    return currentStep ? getStepIndex(currentStep.id) : -1
+  }, [currentStep])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored === 'true') {
-      setIsFocusMode(true)
+    const storedStepId = window.localStorage.getItem(STORAGE_KEY)
+    const storedSubStep = window.localStorage.getItem(SUB_STEP_STORAGE_KEY)
+    
+    if (storedStepId) {
+      setCurrentStepId(storedStepId)
+    }
+    if (storedSubStep) {
+      setCurrentSubStep(parseInt(storedSubStep, 10))
     }
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(STORAGE_KEY, isFocusMode ? 'true' : 'false')
-  }, [isFocusMode])
+    if (currentStep) {
+      window.localStorage.setItem(STORAGE_KEY, currentStep.id)
+      window.localStorage.setItem(SUB_STEP_STORAGE_KEY, currentSubStep.toString())
+    }
+  }, [currentStep, currentSubStep])
 
   const goToStep = useCallback(
     (index: number) => {
       const target = focusSteps[index]
       if (!target) return
-      router.push(target.path)
+      setCurrentStepId(target.id)
+      if (target.path !== pathname) {
+        router.push(target.path)
+      }
+      if (target.subStep !== undefined) {
+        setCurrentSubStep(target.subStep)
+      }
     },
-    [router],
+    [router, pathname],
+  )
+
+  const goToStepById = useCallback(
+    (stepId: string) => {
+      const stepIndex = getStepIndex(stepId)
+      if (stepIndex >= 0) {
+        goToStep(stepIndex)
+      }
+    },
+    [goToStep],
+  )
+
+  const setSubStep = useCallback(
+    (subStep: number) => {
+      const step = getStepByPathAndSubStep(pathname, subStep)
+      if (step) {
+        setCurrentStepId(step.id)
+        setCurrentSubStep(subStep)
+      }
+    },
+    [pathname],
   )
 
   const nextStep = useCallback(() => {
-    if (currentStepIndex < focusSteps.length - 1 && currentStepIndex >= 0) {
-      goToStep(currentStepIndex + 1)
+    if (currentStep) {
+      const next = getNextStep(currentStep.id)
+      if (next) {
+        const stepIndex = getStepIndex(next.id)
+        goToStep(stepIndex)
+      }
     }
-  }, [currentStepIndex, goToStep])
+  }, [currentStep, goToStep])
 
   const prevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      goToStep(currentStepIndex - 1)
+    if (currentStep) {
+      const prev = getPrevStep(currentStep.id)
+      if (prev) {
+        const stepIndex = getStepIndex(prev.id)
+        goToStep(stepIndex)
+      }
     }
-  }, [currentStepIndex, goToStep])
+  }, [currentStep, goToStep])
 
-  const enableFocusMode = useCallback(() => {
-    setIsFocusMode(true)
-    if (currentStepIndex === -1) {
+  // Initialize to first step if no step is set
+  useEffect(() => {
+    if (!currentStep && focusSteps.length > 0) {
       goToStep(0)
     }
-  }, [currentStepIndex, goToStep])
-
-  const disableFocusMode = useCallback(() => {
-    setIsFocusMode(false)
-  }, [])
-
-  const toggleFocusMode = useCallback(() => {
-    setIsFocusMode(prev => {
-      const nextValue = !prev
-      if (!prev && currentStepIndex === -1) {
-        goToStep(0)
-      }
-      return nextValue
-    })
-  }, [currentStepIndex, goToStep])
+  }, [currentStep, goToStep])
 
   useEffect(() => {
-    if (!isFocusMode) return
-
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
@@ -123,31 +149,26 @@ export function FocusProvider({ children }: { children: ReactNode }) {
         event.preventDefault()
         prevStep()
       }
-
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        disableFocusMode()
-      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [disableFocusMode, isFocusMode, nextStep, prevStep])
+  }, [nextStep, prevStep])
 
   const value = useMemo<FocusContextValue>(() => ({
     steps: focusSteps,
     isFocusMode,
     currentStepIndex,
     currentStep,
-    enableFocusMode,
-    disableFocusMode,
-    toggleFocusMode,
+    currentSubStep,
     goToStep,
+    goToStepById,
     nextStep,
     prevStep,
-  }), [currentStep, currentStepIndex, disableFocusMode, enableFocusMode, goToStep, isFocusMode, nextStep, prevStep, toggleFocusMode])
+    setSubStep,
+  }), [currentStep, currentStepIndex, currentSubStep, goToStep, goToStepById, nextStep, prevStep, setSubStep, isFocusMode])
 
   return <FocusModeContext.Provider value={value}>{children}</FocusModeContext.Provider>
 }
@@ -160,27 +181,3 @@ export function useFocusMode() {
   return context
 }
 
-export function FocusToggleButton({ className }: { className?: string }) {
-  const { isFocusMode, enableFocusMode, disableFocusMode } = useFocusMode()
-
-  const handleClick = () => {
-    if (isFocusMode) {
-      disableFocusMode()
-    } else {
-      enableFocusMode()
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`btn-premium ${
-        isFocusMode ? 'btn-premium--primary' : 'btn-premium--secondary'
-      } text-sm ${className ?? ''}`}
-    >
-      <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-      {isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-    </button>
-  )
-}
