@@ -86,11 +86,11 @@ export default function StatCard({
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           {icon && (
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 text-cyan-400">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-black/5 text-cyan-500">
               {icon}
             </div>
           )}
-          <span className="text-sm font-medium text-gray-300 uppercase tracking-wide">
+          <span className="text-sm font-medium text-gray-600 uppercase tracking-wide">
             {label}
           </span>
         </div>
@@ -102,7 +102,7 @@ export default function StatCard({
       </div>
       
       <div className="flex items-end justify-between">
-        <div className={`font-bold text-white text-tabular ${valueSize}`}>
+        <div className={`font-bold text-black text-tabular ${valueSize}`}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
         
@@ -110,7 +110,7 @@ export default function StatCard({
           <div className={`flex items-center gap-1 text-sm ${getTrendColor(trend.direction)}`}>
             {getTrendIcon(trend.direction)}
             <span className="font-medium">{trend.value}%</span>
-            <span className="text-xs text-gray-400">{trend.label}</span>
+            <span className="text-xs text-gray-500">{trend.label}</span>
           </div>
         )}
       </div>

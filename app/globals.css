@@ -1,52 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  /* Premium Dark Slate Theme */
-  --background: #0B1220;
-  --background-elevated: #0F1628;
-  --foreground: #E8ECF3;
-  --foreground-muted: #A6B0C3;
-  --muted-background: #0F1628;
-  --surface: rgba(15, 22, 40, 0.95);
-  --surface-glass: rgba(15, 22, 40, 0.8);
-  --surface-border: rgba(255, 255, 255, 0.06);
-  --surface-border-strong: rgba(255, 255, 255, 0.12);
-  --muted-foreground: #A6B0C3;
+  /* UI/UX Redesign Color Palette */
+  --background: #FFFFFF;
+  --background-elevated: #FAF9F7;
+  --foreground: #0A0A0A;
+  --foreground-muted: #6B7280;
+  --muted-background: #FAF9F7;
+  --surface: rgba(255, 255, 255, 0.95);
+  --surface-glass: rgba(250, 249, 247, 0.8);
+  --surface-border: rgba(10, 10, 10, 0.08);
+  --surface-border-strong: rgba(10, 10, 10, 0.12);
+  --muted-foreground: #6B7280;
   
-  /* Premium Accent Colors */
-  --accent: #0EA5E9;
-  --accent-emerald: #10B981;
-  --accent-soft: rgba(14, 165, 233, 0.12);
-  --accent-glow: rgba(14, 165, 233, 0.3);
+  /* Deep Teal Accent System */
+  --accent: #007E7A;
+  --accent-emerald: #10b981;
+  --accent-soft: rgba(0, 126, 122, 0.1);
+  --accent-glow: rgba(0, 126, 122, 0.2);
   --accent-contrast: #ffffff;
   
   /* Semantic Colors */
-  --positive: #10B981;
-  --negative: #EF4444;
-  --warning: #F59E0B;
+  --positive: #10b981;
+  --negative: #ef4444;
+  --warning: #f59e0b;
   --positive-soft: rgba(16, 185, 129, 0.1);
   --negative-soft: rgba(239, 68, 68, 0.1);
   --warning-soft: rgba(245, 158, 11, 0.1);
   
   /* Enhanced Shadow System */
-  --shadow-ambient: 0 8px 32px -12px rgba(0, 0, 0, 0.25);
-  --shadow-soft: 0 24px 64px -36px rgba(0, 0, 0, 0.4);
-  --shadow-strong: 0 32px 96px -44px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 24px rgba(14, 165, 233, 0.15);
-  --shadow-glow-strong: 0 0 32px rgba(14, 165, 233, 0.25);
+  --shadow-ambient: 0 8px 32px -12px rgba(10, 10, 10, 0.08);
+  --shadow-soft: 0 24px 64px -36px rgba(10, 10, 10, 0.12);
+  --shadow-strong: 0 32px 96px -44px rgba(10, 10, 10, 0.15);
+  --shadow-glow: 0 0 24px rgba(0, 126, 122, 0.1);
+  --shadow-glow-strong: 0 0 32px rgba(0, 126, 122, 0.15);
   
   /* Glass Morphism */
   --glass-backdrop: blur(8px);
   --glass-backdrop-strong: blur(16px);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --glass-surface: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(10, 10, 10, 0.08);
+  --glass-surface: rgba(250, 249, 247, 0.6);
   
-  /* Enhanced Spacing & Sizing */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 14px;
+  /* 8px Baseline Grid System */
+  --space-1: 0.5rem;   /* 8px */
+  --space-2: 1rem;     /* 16px */
+  --space-3: 1.5rem;   /* 24px */
+  --space-4: 2rem;     /* 32px */
+  --space-5: 2.5rem;   /* 40px */
+  --space-6: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-10: 5rem;    /* 80px */
+  --space-12: 6rem;    /* 96px */
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-xl: 16px;
-  --radius-2xl: 20px;
+  --radius-2xl: 24px;
+  
+  /* Control Heights */
   --control-height: 2.5rem;
   --control-height-lg: 3rem;
   
@@ -58,16 +71,28 @@
   --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* Typography Scale */
+  /* Typography Scale - Modular Scale (1.25 ratio) */
+  --font-size-xs: 0.8rem;     /* 12.8px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+  
+  /* Font Weights */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  
+  /* Line Heights */
   --line-height-tight: 1.2;
   --line-height-snug: 1.35;
   --line-height-relaxed: 1.5;
   
-  --color-scheme: dark;
+  --color-scheme: light;
 }
 
 @theme inline {
@@ -81,11 +106,14 @@ html {
   color-scheme: var(--color-scheme, light);
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  line-height: 1.6;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -145,7 +173,7 @@ body {
 .btn-premium--primary {
   background: var(--accent);
   color: var(--accent-contrast);
-  border: 1px solid transparent;
+  border: 1px solid var(--accent);
   box-shadow: var(--shadow-ambient), var(--shadow-glow);
 }
 
@@ -153,6 +181,7 @@ body {
   background: var(--accent);
   transform: translateY(-1px);
   box-shadow: var(--shadow-soft), var(--shadow-glow-strong);
+  filter: brightness(0.95);
 }
 
 .btn-premium--secondary {
@@ -160,12 +189,14 @@ body {
   color: var(--foreground);
   border: 1px solid var(--surface-border-strong);
   backdrop-filter: var(--glass-backdrop);
+  box-shadow: var(--shadow-ambient);
 }
 
 .btn-premium--secondary:hover {
-  background: var(--surface-glass);
+  background: var(--background-elevated);
   border-color: var(--accent);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .btn-premium--ghost {
@@ -175,7 +206,7 @@ body {
 }
 
 .btn-premium--ghost:hover {
-  background: var(--surface);
+  background: var(--background-elevated);
   color: var(--foreground);
   border-color: var(--surface-border);
 }
@@ -210,8 +241,8 @@ body {
 /* Premium Dropzone */
 .dropzone {
   border-radius: var(--radius-xl);
-  border: 2px dashed var(--surface-border);
-  background: var(--surface);
+  border: 2px dashed var(--surface-border-strong);
+  background: var(--background-elevated);
   backdrop-filter: var(--glass-backdrop);
   transition: all var(--motion-duration-normal) var(--motion-ease-out);
   position: relative;
@@ -256,13 +287,89 @@ body {
   line-height: var(--line-height-relaxed);
 }
 
-/* Focus and Animation Utilities */
+/* Typography Scale Classes */
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-3xl { font-size: var(--font-size-3xl); }
+.text-4xl { font-size: var(--font-size-4xl); }
+
+/* Font Weight Classes */
+.font-normal { font-weight: var(--font-weight-normal); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+
+/* Accessibility and Focus Management */
 .focus-ring {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-md);
 }
 
+/* Enhanced focus indicators for better accessibility */
+.focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.focus-within\:not-sr-only:focus-within .sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --background: #ffffff;
+    --foreground: #000000;
+    --surface-border: #000000;
+    --surface-border-strong: #000000;
+    --accent: #0066cc;
+    --accent-soft: rgba(0, 102, 204, 0.2);
+  }
+  
+  .surface-card {
+    border: 2px solid var(--surface-border);
+  }
+  
+  .btn-premium {
+    border-width: 2px;
+  }
+}
+
+/* Animation utilities */
 .animate-lift {
   transition: transform var(--motion-duration-fast) var(--motion-ease-out);
 }

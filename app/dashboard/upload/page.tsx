@@ -7,6 +7,9 @@ import FocusWrapper from '@/components/focus/FocusWrapper'
 import AppShell from '@/components/layout/AppShell'
 import StatCard from '@/components/ui/StatCard'
 import PremiumCard from '@/components/ui/PremiumCard'
+import AnimatedCard from '@/components/ui/AnimatedCard'
+import AnimatedButton from '@/components/ui/AnimatedButton'
+import StaggerContainer from '@/components/ui/StaggerContainer'
 import { useFocusMode } from '@/components/focus/FocusProvider'
 import Link from 'next/link'
 
@@ -61,52 +64,56 @@ export default function UploadPage() {
   // Create right panel content for validation and insights
   const rightPanelContent = (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4">
+      <AnimatedCard variant="slideIn" delay={0.1}>
+        <h3 className="text-lg font-semibold text-black mb-4">
           Validation & Insights
         </h3>
-        <div className="text-sm text-gray-400 mb-6">
+        <div className="text-sm text-gray-600 mb-6">
           Real-time file status and data metrics
         </div>
-      </div>
+      </AnimatedCard>
 
       {/* Experience Data Stats */}
       {hasExperience && (
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-300 uppercase tracking-wide">
-            Experience Data
-          </h4>
-          <div className="grid gap-3">
-            <StatCard
-              label="Months"
-              value={getUniqueMonths(experience).length}
-              variant="glow"
-              size="default"
-            />
-            <StatCard
-              label="Categories"
-              value={getUniqueCategories(experience).length}
-              variant="default"
-              size="default"
-            />
-            <StatCard
-              label="Total Amount"
-              value={formatCurrency(getTotalAmount(experience))}
-              variant="glow"
-              size="default"
-            />
+        <AnimatedCard variant="slideUp" delay={0.2}>
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+              Experience Data
+            </h4>
+            <StaggerContainer staggerDelay={0.1}>
+              <StatCard
+                label="Months"
+                value={getUniqueMonths(experience).length}
+                variant="glow"
+                size="default"
+              />
+              <StatCard
+                label="Categories"
+                value={getUniqueCategories(experience).length}
+                variant="default"
+                size="default"
+              />
+              <StatCard
+                label="Total Amount"
+                value={formatCurrency(getTotalAmount(experience))}
+                variant="glow"
+                size="default"
+              />
+            </StaggerContainer>
+            <AnimatedCard variant="scale" delay={0.4}>
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <div className="text-xs text-emerald-700 font-medium">Date Range</div>
+                <div className="text-sm text-black">{getDateRange(experience)}</div>
+              </div>
+            </AnimatedCard>
           </div>
-          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <div className="text-xs text-emerald-400 font-medium">Date Range</div>
-            <div className="text-sm text-white">{getDateRange(experience)}</div>
-          </div>
-        </div>
+        </AnimatedCard>
       )}
 
       {/* High-Cost Claimants Stats */}
       {hasHighCost && (
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-300 uppercase tracking-wide">
+          <h4 className="text-sm font-medium text-gray-600 uppercase tracking-wide">
             High-Cost Claimants
           </h4>
           <div className="grid gap-3">
@@ -129,19 +136,19 @@ export default function UploadPage() {
               size="default"
             />
           </div>
-          <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-            <div className="text-xs text-cyan-400 font-medium">Top Diagnosis</div>
-            <div className="text-sm text-white">{topPrimaryDiagnosis(highCostClaimants)}</div>
+          <div className="p-3 rounded-lg bg-cyan-50 border border-cyan-200">
+            <div className="text-xs text-cyan-700 font-medium">Top Diagnosis</div>
+            <div className="text-sm text-black">{topPrimaryDiagnosis(highCostClaimants)}</div>
           </div>
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <div className="text-xs text-amber-400 font-medium">Avg % Plan Paid</div>
-            <div className="text-sm text-white">{averagePercentPaid(highCostClaimants).toFixed(1)}%</div>
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <div className="text-xs text-amber-700 font-medium">Avg % Plan Paid</div>
+            <div className="text-sm text-black">{averagePercentPaid(highCostClaimants).toFixed(1)}%</div>
           </div>
         </div>
       )}
 
       {!hasExperience && !hasHighCost && (
-        <div className="text-center text-gray-400 mt-20">
+        <div className="text-center text-gray-500 mt-20">
           <div className="w-16 h-16 mx-auto mb-4 opacity-30">
             <svg fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -156,31 +163,35 @@ export default function UploadPage() {
   return (
     <FocusWrapper step={1} title="Upload CSV">
       <AppShell currentStep={1} rightPanel={rightPanelContent}>
-        <div className="space-y-8">
+        <StaggerContainer className="space-y-8" staggerDelay={0.15}>
           {/* Header */}
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-white">Upload CSV</h1>
-              <p className="text-gray-400 mt-2">
+            <AnimatedCard variant="slideIn">
+              <h1 className="text-3xl font-bold text-black">Upload CSV</h1>
+              <p className="text-gray-600 mt-2">
                 Start with templates to avoid header errors. Both include required columns and sample rows.
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                CSV Format
-              </span>
-              <InfoTooltip label="CSV format requirements" sections={csvFormatSections} />
-            </div>
+            </AnimatedCard>
+            <AnimatedCard variant="slideIn" delay={0.1}>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                  CSV Format
+                </span>
+                <InfoTooltip label="CSV format requirements" sections={csvFormatSections} />
+              </div>
+            </AnimatedCard>
           </div>
 
           {/* Upload Form */}
-          <PremiumCard variant="glass" className="p-8">
-            <CsvUploadForm />
-          </PremiumCard>
+          <AnimatedCard variant="scale" whileHover={false}>
+            <PremiumCard variant="glass" className="p-8">
+              <CsvUploadForm />
+            </PremiumCard>
+          </AnimatedCard>
 
           {/* Continue Button */}
           {hasAllData && (
-            <div className="sticky bottom-0 bg-[var(--background)]/80 backdrop-blur-lg border-t border-white/6 p-6 -mx-8">
+            <AnimatedCard variant="slideUp" delay={0.3} className="sticky bottom-0 bg-[var(--background)]/80 backdrop-blur-lg border-t border-white/6 p-6 -mx-8">
               <Link
                 href="/dashboard/fees"
                 className="btn-premium btn-premium--primary w-full justify-center"
@@ -190,7 +201,7 @@ export default function UploadPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
-            </div>
+            </AnimatedCard>
           )}
         </div>
       </AppShell>

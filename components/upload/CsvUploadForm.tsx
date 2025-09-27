@@ -182,8 +182,8 @@ export default function CsvUploadForm() {
   return (
     <div className="space-y-8">
       <section className="surface-card surface-card--glass p-6">
-        <h3 className="text-lg font-semibold text-white mb-3">Download Templates</h3>
-        <p className="text-sm text-gray-300 mb-6">
+        <h3 className="text-lg font-semibold text-black mb-3">Download Templates</h3>
+        <p className="text-sm text-gray-600 mb-6">
           Start with the exact templates to avoid header validation errors. Both templates include
           the required columns and a sample row for reference.
         </p>
@@ -214,26 +214,93 @@ export default function CsvUploadForm() {
       <section
         {...getRootProps()}
         className={`
-          dropzone cursor-pointer p-12 text-center
-          ${isDragActive ? 'dropzone--active' : ''}
+          relative overflow-hidden cursor-pointer p-12 text-center
+          border-2 border-dashed rounded-2xl transition-all duration-300 ease-out
+          ${isDragActive 
+            ? 'border-[var(--accent)] bg-[var(--accent-soft)] scale-[1.02] shadow-lg' 
+            : 'border-gray-300 bg-[var(--background-elevated)] hover:border-[var(--accent)]/60 hover:bg-[var(--accent-soft)]/30'
+          }
           ${isProcessing ? 'opacity-60 pointer-events-none' : ''}
         `}
       >
         <input {...getInputProps()} />
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 border border-white/10">
-          <svg className="h-8 w-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        
+        {/* Animated Background Pattern */}
+        <div className={`absolute inset-0 opacity-5 transition-opacity duration-500 ${
+          isDragActive ? 'opacity-10' : ''
+        }`}>
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] to-transparent"></div>
+        </div>
+        
+        {/* Upload Icon */}
+        <div className={`relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full transition-all duration-300 ${
+          isDragActive 
+            ? 'bg-[var(--accent)]/20 border-2 border-[var(--accent)] scale-110' 
+            : 'bg-gray-100 border border-gray-200 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)]/30'
+        }`}>
+          <svg className={`h-10 w-10 transition-all duration-300 ${
+            isDragActive ? 'text-[var(--accent)] scale-110' : 'text-gray-500'
+          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
+          
+          {/* Pulse animation on drag */}
+          {isDragActive && (
+            <div className="absolute inset-0 rounded-full border-2 border-[var(--accent)] animate-ping"></div>
+          )}
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">Drop up to {MAX_FILES} CSV files</h3>
-        <p className="text-gray-300 mb-1">
-          Include both the experience data and high-cost claimant templates. Files are validated instantly.
-        </p>
-        <p className="text-sm text-gray-400">Accepted format: .csv • Max size per file: 10MB</p>
         
-        {isDragActive && (
-          <div className="mt-4 text-cyan-400 font-medium">
-            Release to upload files
+        {/* Content */}
+        <div className="relative z-10">
+          <h3 className={`text-2xl font-semibold mb-3 transition-colors duration-300 ${
+            isDragActive ? 'text-[var(--accent)]' : 'text-black'
+          }`}>
+            {isDragActive ? 'Drop files here!' : `Drop up to ${MAX_FILES} CSV files`}
+          </h3>
+          
+          {!isDragActive && (
+            <>
+              <p className="text-gray-600 mb-2 text-lg">
+                Include both the experience data and high-cost claimant templates
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Files are validated instantly • Accepted format: .csv • Max size per file: 10MB
+              </p>
+              
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-600 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                or click to browse files
+              </div>
+            </>
+          )}
+          
+          {isDragActive && (
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 text-[var(--accent)] font-medium text-lg mb-2">
+                <svg className="w-5 h-5 animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Release to upload
+                <svg className="w-5 h-5 animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 10.293a1 1 0 010 1.414l-6 6a1 1 0 01-1.414 0l-6-6a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l4.293-4.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-sm text-[var(--accent)]/70">
+                Files will be processed automatically
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {/* Processing overlay */}
+        {isProcessing && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm font-medium text-[var(--accent)]">Processing files...</p>
+            </div>
           </div>
         )}
       </section>
@@ -241,7 +308,7 @@ export default function CsvUploadForm() {
       {hasUploads && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Upload Results</h3>
+            <h3 className="text-lg font-semibold text-black">Upload Results</h3>
             <button
               type="button"
               onClick={resetUploads}
@@ -336,11 +403,11 @@ function UploadResultCard({ item }: { item: UploadItem }) {
   const statusStyles = useMemo(() => {
     switch (item.status) {
       case 'success':
-        return 'surface-card--glow border-emerald-500/40'
+        return 'surface-card--glow border-emerald-200'
       case 'error':
-        return 'border-red-500/40'
+        return 'border-red-200'
       default:
-        return 'border-white/10'
+        return 'border-black/10'
     }
   }, [item.status])
 
@@ -349,11 +416,11 @@ function UploadResultCard({ item }: { item: UploadItem }) {
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h4 className="text-sm font-semibold text-white">
+            <h4 className="text-sm font-semibold text-black">
               {item.fileName}
             </h4>
             {item.type && (
-              <p className="text-xs uppercase tracking-wide text-gray-400">
+              <p className="text-xs uppercase tracking-wide text-gray-500">
                 {item.type === 'experience' ? 'Experience data' : 'High-cost claimants'}
               </p>
             )}
@@ -362,11 +429,11 @@ function UploadResultCard({ item }: { item: UploadItem }) {
         </div>
 
         {item.message && (
-          <p className="text-sm text-gray-300">{item.message}</p>
+          <p className="text-sm text-gray-600">{item.message}</p>
         )}
 
         {item.issues && (
-          <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300">
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700">
             {item.issues.missing.length > 0 && (
               <p className="mb-1"><strong>Missing:</strong> {item.issues.missing.join(', ')}</p>
             )}
@@ -380,22 +447,22 @@ function UploadResultCard({ item }: { item: UploadItem }) {
         )}
 
         {item.preview && item.preview.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20">
+          <div className="overflow-x-auto rounded-lg border border-black/10 bg-gray-50">
             <table className="min-w-full text-xs">
-              <thead className="bg-white/5">
+              <thead className="bg-black/5">
                 <tr>
                   {Object.keys(item.preview[0]).map(key => (
-                    <th key={key} className="px-3 py-2 text-left font-medium text-gray-300">
+                    <th key={key} className="px-3 py-2 text-left font-medium text-gray-700">
                       {key}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-black/5">
                 {item.preview.map((row, rowIndex) => (
                   <tr key={rowIndex}>
                     {Object.values(row).map((value, cellIndex) => (
-                      <td key={cellIndex} className="px-3 py-2 text-gray-400">
+                      <td key={cellIndex} className="px-3 py-2 text-gray-600">
                         {`${value ?? ''}`}
                       </td>
                     ))}
@@ -414,7 +481,7 @@ function StatusPill({ status }: { status: UploadItem['status'] }) {
   const config = {
     success: { 
       label: 'Success', 
-      className: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40',
+      className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
       icon: (
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -423,7 +490,7 @@ function StatusPill({ status }: { status: UploadItem['status'] }) {
     },
     error: { 
       label: 'Error', 
-      className: 'bg-red-500/20 text-red-400 border border-red-500/40',
+      className: 'bg-red-50 text-red-700 border border-red-200',
       icon: (
         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -432,7 +499,7 @@ function StatusPill({ status }: { status: UploadItem['status'] }) {
     },
     processing: { 
       label: 'Processing', 
-      className: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
+      className: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
       icon: (
         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

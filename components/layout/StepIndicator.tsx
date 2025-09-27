@@ -70,8 +70,8 @@ export default function StepIndicator({ currentStep }: StepIndicatorProps) {
 
     if (validation.warning) {
       return (
-        <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
-          <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+        <div className="w-6 h-6 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+          <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
         </div>
@@ -79,7 +79,7 @@ export default function StepIndicator({ currentStep }: StepIndicatorProps) {
     }
 
     return (
-      <div className="w-6 h-6 rounded-full bg-gray-600 border border-gray-500 flex items-center justify-center">
+      <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center">
         <div className="w-2 h-2 rounded-full bg-gray-400"></div>
       </div>
     )
@@ -97,7 +97,7 @@ export default function StepIndicator({ currentStep }: StepIndicatorProps) {
             <div className="flex flex-col items-center">
               {getStatusIcon(status, validation)}
               {index < steps.length - 1 && (
-                <div className="w-px h-8 bg-gray-600 mt-2"></div>
+                <div className="w-px h-8 bg-gray-300 mt-2"></div>
               )}
             </div>
             
@@ -107,17 +107,17 @@ export default function StepIndicator({ currentStep }: StepIndicatorProps) {
                 disabled={!isClickable}
                 className={`text-left w-full group ${
                   isClickable 
-                    ? 'cursor-pointer hover:text-white' 
+                    ? 'cursor-pointer hover:text-black' 
                     : 'cursor-not-allowed opacity-50'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-sm font-medium ${
                     status === 'current' 
-                      ? 'text-cyan-400' 
+                      ? 'text-cyan-600' 
                       : status === 'completed'
-                      ? 'text-emerald-400'
-                      : 'text-gray-300'
+                      ? 'text-emerald-600'
+                      : 'text-gray-600'
                   }`}>
                     {step.title}
                   </span>
@@ -127,13 +127,13 @@ export default function StepIndicator({ currentStep }: StepIndicatorProps) {
                 </div>
                 
                 {validation.warning && validation.message && (
-                  <p className="text-xs text-amber-400 mt-1">
+                  <p className="text-xs text-amber-600 mt-1">
                     {validation.message}
                   </p>
                 )}
                 
                 {status === 'completed' && !validation.warning && (
-                  <p className="text-xs text-emerald-400 mt-1">
+                  <p className="text-xs text-emerald-600 mt-1">
                     ✓ Complete
                   </p>
                 )}
