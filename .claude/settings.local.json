@@ -42,7 +42,9 @@
       "Bash(yarn templates:*)",
       "Bash(ls:*)",
       "Bash(npm test:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(yarn install)",
+      "Bash(yarn install:*)"
     ],
     "deny": [],
     "ask": []
