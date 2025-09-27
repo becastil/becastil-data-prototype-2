@@ -270,6 +270,8 @@ body {
 .animate-lift:hover {
   transform: translateY(-2px);
 }
+
+.surface-card--interactive {
   background: var(--surface);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(14px);
