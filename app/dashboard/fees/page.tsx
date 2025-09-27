@@ -1,45 +1,31 @@
 'use client'
 
-import DynamicFeeForm from '@/components/fees/DynamicFeeForm'
-import BudgetForm from '@/components/fees/BudgetForm'
-import MonthlyAdjustmentsForm from '@/components/fees/MonthlyAdjustmentsForm'
-import InfoTooltip from '@/components/ui/InfoTooltip'
+import dynamic from 'next/dynamic'
 import FocusWrapper from '@/components/focus/FocusWrapper'
 import SubStepWrapper, { SubStepGroup } from '@/components/focus/SubStepWrapper'
 import { Card, Space, Alert, Typography, Tooltip } from 'antd'
 import { InfoCircleOutlined, ExclamationTriangleOutlined } from '@ant-design/icons'
-import {
-  useStepCompletion,
-} from '@/lib/store/useAppStore'
+import { useStepCompletion } from '@/lib/store/useAppStore'
+
+const DynamicFeeForm = dynamic(() => import('@/components/fees/DynamicFeeForm'), {
+  ssr: false,
+  loading: () => <div className="rounded-lg border border-dashed border-black/20 bg-white/60 p-6 text-center text-sm text-black/60">Loading fee configuration…</div>,
+})
+
+const BudgetForm = dynamic(() => import('@/components/fees/BudgetForm'), {
+  ssr: false,
+  loading: () => <div className="rounded-lg border border-dashed border-black/20 bg-white/60 p-6 text-center text-sm text-black/60">Loading budget form…</div>,
+})
+
+const MonthlyAdjustmentsForm = dynamic(() => import('@/components/fees/MonthlyAdjustmentsForm'), {
+  ssr: false,
+  loading: () => <div className="rounded-lg border border-dashed border-black/20 bg-white/60 p-6 text-center text-sm text-black/60">Loading adjustments interface…</div>,
+})
 
 const { Title, Text } = Typography
 
 export default function FeesPage() {
   const stepCompletion = useStepCompletion()
-
-  const modelingTipSections = [
-    {
-      title: 'Rate Basis Guidance',
-      content: (
-        <ul className="list-disc space-y-1 pl-4">
-          <li>Flat monthly: enter the invoice amount as-is.</li>
-          <li>PEPM / PMPM: enter the rate; the dashboard multiplies by EE or member counts.</li>
-          <li>Annual: enter the annual total; it allocates evenly across the schedule.</li>
-          <li>Custom: enter monthly overrides directly in the schedule.</li>
-        </ul>
-      ),
-    },
-    {
-      title: 'Best Practices',
-      content: (
-        <ul className="list-disc space-y-1 pl-4">
-          <li>Enter credits (rebates, reimbursements) as negative values.</li>
-          <li>Track PEPM fees with both rate and invoice to monitor variances.</li>
-          <li>Use custom overrides when a month deviates from the standard pattern.</li>
-        </ul>
-      ),
-    },
-  ]
 
   if (!stepCompletion.upload) {
     return (
