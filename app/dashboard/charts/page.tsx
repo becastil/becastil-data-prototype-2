@@ -1,26 +1,64 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useMemo } from 'react'
 import { useStepCompletion, useExperienceData, useHighCostClaimants } from '@/lib/store/useAppStore'
-import ChartsGrid from '@/components/charts/ChartsGrid'
 import FocusWrapper from '@/components/focus/FocusWrapper'
 import SubStepWrapper, { SubStepGroup } from '@/components/focus/SubStepWrapper'
-import PremiumCard from '@/components/ui/PremiumCard'
 import InfoTooltip from '@/components/ui/InfoTooltip'
+import { Card, Space, Button, Tooltip, Typography } from 'antd'
+import { ExclamationTriangleOutlined, InfoCircleOutlined, DownloadOutlined } from '@ant-design/icons'
+
+const { Title, Text } = Typography
+import MonthlyActualBudgetCombo from '@/components/charts/advanced/MonthlyActualBudgetCombo'
+import LossRatioTrendSection from '@/components/charts/advanced/LossRatioTrendSection'
+import PremiumClaimsSection from '@/components/charts/advanced/PremiumClaimsSection'
+import CostDriversTable from '@/components/charts/advanced/CostDriversTable'
+import MemberDistributionChart from '@/components/charts/advanced/MemberDistributionChart'
+import ConditionsAnalysis from '@/components/charts/advanced/ConditionsAnalysis'
+import {
+  transformMonthlyActualBudgetData,
+  transformLossRatioData,
+  transformPremiumClaimsData,
+  transformCostDriversData,
+  transformMemberDistributionData,
+  transformConditionsData
+} from '@/lib/utils/chartData'
 
 export default function ChartsPage() {
   const router = useRouter()
   const stepCompletion = useStepCompletion()
-  const experience = useExperienceData()
+  const experienceData = useExperienceData()
   const highCostClaimants = useHighCostClaimants()
+
+  // Transform data for each chart section
+  const monthlyActualBudgetData = useMemo(() => 
+    transformMonthlyActualBudgetData(experienceData), [experienceData])
+  
+  const lossRatioData = useMemo(() => 
+    transformLossRatioData(experienceData), [experienceData])
+  
+  const premiumClaimsData = useMemo(() => 
+    transformPremiumClaimsData(experienceData), [experienceData])
+  
+  const costDriversData = useMemo(() => 
+    transformCostDriversData(experienceData), [experienceData])
+  
+  const memberDistributionData = useMemo(() => 
+    transformMemberDistributionData(highCostClaimants), [highCostClaimants])
+  
+  const conditionsData = useMemo(() => 
+    transformConditionsData(highCostClaimants), [highCostClaimants])
 
   const chartInsightsSections = [
     {
       content: (
         <ul className="list-disc space-y-1 pl-4">
-          <li>Watch for months where actual spend exceeds budget to flag overruns.</li>
-          <li>Hover the combo chart to see medical, Rx, admin, and adjustments behind each month.</li>
-          <li>Review high-cost member bands to spot clusters and set program thresholds.</li>
+          <li>Monthly Actual vs Budget shows stacked expense and claims vs budget line.</li>
+          <li>Loss Ratio Trends track performance against 80% and 100% benchmarks.</li>
+          <li>Cost Drivers table reveals top expense categories and trends.</li>
+          <li>Member Distribution analyzes demographics and cost patterns by age.</li>
+          <li>Conditions Analysis breaks down healthcare spending by diagnosis.</li>
         </ul>
       ),
     },
@@ -33,18 +71,18 @@ export default function ChartsPage() {
   if (!stepCompletion.charts) {
     return (
       <FocusWrapper>
-        <div className="text-center py-16">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-black/20 bg-white">
-            <svg className="h-8 w-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h2 className="mb-2 text-2xl font-bold text-black">
-            Previous Steps Required
-          </h2>
-          <p className="mb-6 text-sm text-gray-600">
-            Please complete the data upload and fees form before viewing charts and analytics.
-          </p>
+        <div className="flex justify-center items-center min-h-[400px]">
+          <Card style={{ maxWidth: 400, textAlign: 'center' }}>
+            <Space direction="vertical" size="large">
+              <ExclamationTriangleOutlined style={{ fontSize: 48, color: '#faad14' }} />
+              <div>
+                <Title level={3}>Previous Steps Required</Title>
+                <Text type="secondary">
+                  Please complete the data upload and fees form before viewing charts and analytics.
+                </Text>
+              </div>
+            </Space>
+          </Card>
         </div>
       </FocusWrapper>
     )
@@ -53,134 +91,108 @@ export default function ChartsPage() {
   return (
     <FocusWrapper>
       <SubStepGroup>
-        {/* Sub-step 0: Overview Charts */}
+        {/* Sub-step 0: Monthly Actual vs Budget */}
         <SubStepWrapper
           subStep={0}
-          title="Overview Charts"
-          description="Main financial charts and key metrics visualization"
+          title="Monthly Actual vs Budget"
+          description="Comprehensive view of actual expenses and claims versus budget with combo chart visualization"
         >
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-black">Financial Overview</h3>
-                <p className="text-gray-600 text-sm mt-1">
-                  Interactive charts showing your healthcare financial data
-                </p>
+          <Card 
+            title={
+              <div className="flex items-center justify-between">
+                <div>
+                  <Title level={4} style={{ margin: 0 }}>Monthly Actual vs Budget Analysis</Title>
+                  <Text type="secondary">
+                    Stacked bars show actual expenses and claims vs budgeted amounts
+                  </Text>
+                </div>
+                <Space>
+                  <Tooltip 
+                    title={
+                      <div>
+                        <div><strong>Chart insights and tips:</strong></div>
+                        <ul style={{ paddingLeft: 16, margin: 0 }}>
+                          <li>Monthly Actual vs Budget shows stacked expense and claims vs budget line.</li>
+                          <li>Loss Ratio Trends track performance against 80% and 100% benchmarks.</li>
+                          <li>Cost Drivers table reveals top expense categories and trends.</li>
+                          <li>Member Distribution analyzes demographics and cost patterns by age.</li>
+                          <li>Conditions Analysis breaks down healthcare spending by diagnosis.</li>
+                        </ul>
+                      </div>
+                    }
+                    placement="left"
+                  >
+                    <InfoCircleOutlined style={{ color: '#1890ff', cursor: 'help' }} />
+                  </Tooltip>
+                  <Button
+                    type="default"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExportPDF}
+                  >
+                    Export PDF Report
+                  </Button>
+                </Space>
               </div>
-              <div className="flex items-center gap-3">
-                <InfoTooltip label="Chart insights and tips" sections={chartInsightsSections} />
-                <button
-                  onClick={handleExportPDF}
-                  className="btn-premium btn-premium--secondary"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-4-4m4 4l4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Export PDF Report
-                </button>
-              </div>
-            </div>
-            
-            <ChartsGrid />
-          </div>
+            }
+            size="large"
+          >
+            <MonthlyActualBudgetCombo data={monthlyActualBudgetData} />
+          </Card>
         </SubStepWrapper>
 
-        {/* Sub-step 1: Trends Analysis */}
+        {/* Sub-step 1: Loss Ratio Trends */}
         <SubStepWrapper
           subStep={1}
-          title="Trend Analysis"
-          description="Advanced trend analysis and forecasting insights"
+          title="Loss Ratio Trends"
+          description="Track loss ratio performance over time with industry benchmarks and rolling averages"
         >
-          <PremiumCard variant="glass" className="p-8 text-center">
-            <h3 className="text-xl font-semibold text-black mb-4">Trends Analysis</h3>
-            <p className="text-gray-600 mb-6">Advanced trend analysis and forecasting coming soon</p>
-            <div className="w-16 h-16 mx-auto mb-4 opacity-30">
-              <svg fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </PremiumCard>
+          <Card size="large">
+            <LossRatioTrendSection data={lossRatioData} />
+          </Card>
         </SubStepWrapper>
 
-        {/* Sub-step 2: Cost Breakdown */}
+        {/* Sub-step 2: Premium vs Claims Analysis */}
         <SubStepWrapper
           subStep={2}
-          title="Cost Breakdown"
-          description="Detailed cost analysis and category breakdown"
+          title="Premium vs Claims Analysis"
+          description="Compare premium collections against medical and pharmacy claims with detailed breakdowns"
         >
-          <PremiumCard variant="glass" className="p-8 text-center">
-            <h3 className="text-xl font-semibold text-black mb-4">Cost Breakdown</h3>
-            <p className="text-gray-600 mb-6">Detailed cost analysis and category breakdown coming soon</p>
-            <div className="w-16 h-16 mx-auto mb-4 opacity-30">
-              <svg fill="currentColor" viewBox="0 0 20 20">
-                <path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-              </svg>
-            </div>
-          </PremiumCard>
+          <Card size="large">
+            <PremiumClaimsSection data={premiumClaimsData} />
+          </Card>
         </SubStepWrapper>
 
-        {/* Sub-step 3: Key Insights */}
+        {/* Sub-step 3: Cost Drivers Analysis */}
         <SubStepWrapper
           subStep={3}
-          title="Key Insights"
-          description="Important insights and recommendations based on your data"
+          title="Cost Drivers Analysis"
+          description="Identify and analyze the top cost categories driving healthcare expenses"
         >
-          <PremiumCard variant="glow" className="p-8">
-            <h3 className="text-xl font-semibold text-black mb-6">Key Insights</h3>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">High-Cost Analysis</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Stop Loss Hits</span>
-                    <span className="text-sm font-medium text-black">
-                      {highCostClaimants.filter(c => c.hitStopLoss === 'Y').length} members
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Avg Plan Coverage</span>
-                    <span className="text-sm font-medium text-black">
-                      {highCostClaimants.length > 0 
-                        ? (highCostClaimants.reduce((sum, c) => sum + (c.percentPlanPaid || 0), 0) / highCostClaimants.length).toFixed(1)
-                        : 0}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Impact</span>
-                    <span className="text-sm font-medium text-black">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD',
-                        maximumFractionDigits: 0
-                      }).format(highCostClaimants.reduce((sum, c) => sum + (c.total || 0), 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Experience Trends</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Data Points</span>
-                    <span className="text-sm font-medium text-black">{experience.length} records</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Time Range</span>
-                    <span className="text-sm font-medium text-black">
-                      {new Set(experience.map(e => e.month)).size} months
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Categories</span>
-                    <span className="text-sm font-medium text-black">
-                      {new Set(experience.map(e => e.category)).size} types
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </PremiumCard>
+          <Card size="large">
+            <CostDriversTable data={costDriversData} />
+          </Card>
+        </SubStepWrapper>
+
+        {/* Sub-step 4: Member Distribution */}
+        <SubStepWrapper
+          subStep={4}
+          title="Member Distribution"
+          description="Analyze member demographics and cost distribution across age groups"
+        >
+          <Card size="large">
+            <MemberDistributionChart data={memberDistributionData} />
+          </Card>
+        </SubStepWrapper>
+
+        {/* Sub-step 5: Conditions Analysis */}
+        <SubStepWrapper
+          subStep={5}
+          title="Conditions Analysis"
+          description="Deep dive into healthcare conditions and their associated costs with subcategory breakdowns"
+        >
+          <Card size="large">
+            <ConditionsAnalysis data={conditionsData} />
+          </Card>
         </SubStepWrapper>
       </SubStepGroup>
     </FocusWrapper>

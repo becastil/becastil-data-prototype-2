@@ -64,36 +64,52 @@ export const focusSteps: FocusStep[] = [
   
   // Charts Steps
   {
-    id: 'charts-overview',
-    title: 'Overview Charts',
+    id: 'charts-actual-budget',
+    title: 'Monthly Actual vs Budget',
     path: '/dashboard/charts',
     subStep: 0,
     parentStep: 'charts',
-    description: 'View main financial charts and metrics'
+    description: 'Comprehensive view of actual expenses and claims versus budget with combo chart visualization'
   },
   {
-    id: 'charts-trends',
-    title: 'Trend Analysis',
+    id: 'charts-loss-ratio',
+    title: 'Loss Ratio Trends',
     path: '/dashboard/charts',
     subStep: 1,
     parentStep: 'charts',
-    description: 'Analyze trends and patterns over time'
+    description: 'Track loss ratio performance over time with industry benchmarks and rolling averages'
   },
   {
-    id: 'charts-breakdown',
-    title: 'Cost Breakdown',
+    id: 'charts-premium-claims',
+    title: 'Premium vs Claims',
     path: '/dashboard/charts',
     subStep: 2,
     parentStep: 'charts',
-    description: 'Detailed cost category breakdown'
+    description: 'Compare premium collections against medical and pharmacy claims with detailed breakdowns'
   },
   {
-    id: 'charts-insights',
-    title: 'Key Insights',
+    id: 'charts-cost-drivers',
+    title: 'Cost Drivers Analysis',
     path: '/dashboard/charts',
     subStep: 3,
     parentStep: 'charts',
-    description: 'Important insights and recommendations'
+    description: 'Identify and analyze the top cost categories driving healthcare expenses'
+  },
+  {
+    id: 'charts-member-distribution',
+    title: 'Member Distribution',
+    path: '/dashboard/charts',
+    subStep: 4,
+    parentStep: 'charts',
+    description: 'Analyze member demographics and cost distribution across age groups'
+  },
+  {
+    id: 'charts-conditions',
+    title: 'Conditions Analysis',
+    path: '/dashboard/charts',
+    subStep: 5,
+    parentStep: 'charts',
+    description: 'Deep dive into healthcare conditions and their associated costs with subcategory breakdowns'
   }
 ]
 

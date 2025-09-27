@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
-import EnhancedSidebar from '@/components/EnhancedSidebar'
-import Navigation from '@/components/Navigation'
+import MainLayout from '@/components/layout/MainLayout'
 import NotificationProvider from '@/components/NotificationProvider'
 import { PreferencesProvider } from '@/components/PreferencesProvider'
+import AntdProvider from '@/components/providers/AntdProvider'
 import './globals.css'
 
 const geistSans = Geist({
@@ -64,15 +64,11 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300`}>
         <PreferencesProvider>
           <NotificationProvider>
-            <div className="flex min-h-screen">
-              <EnhancedSidebar user={user} />
-              <div className="flex min-h-screen flex-1 flex-col lg:ml-72">
-                <Navigation />
-                <main className="flex-1 bg-[var(--muted-background)] px-4 py-6 transition-colors duration-300 lg:px-6">
-                  {children}
-                </main>
-              </div>
-            </div>
+            <AntdProvider>
+              <MainLayout user={user}>
+                {children}
+              </MainLayout>
+            </AntdProvider>
           </NotificationProvider>
         </PreferencesProvider>
       </body>

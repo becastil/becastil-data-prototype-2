@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Ant Design Reset - Import Ant Design styles */
+@import 'antd/dist/reset.css';
+
 :root {
   /* UI/UX Redesign Color Palette */
   --background: #FFFFFF;

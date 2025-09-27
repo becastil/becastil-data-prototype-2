@@ -14,6 +14,9 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@ant-design/cssinjs": "^1.21.1",
+    "@ant-design/icons": "^5.5.1",
+    "@ant-design/pro-components": "^2.8.1",
     "@hookform/resolvers": "^5.2.2",
     "@supabase/ssr": "^0.1.0",
     "@supabase/supabase-js": "^2.39.0",
@@ -23,6 +26,7 @@
     "@types/papaparse": "^5.3.14",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "antd": "^5.22.2",
     "csv-parse": "^6.1.0",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.18",
