@@ -8,7 +8,6 @@ import AppShell from '@/components/layout/AppShell'
 import StatCard from '@/components/ui/StatCard'
 import PremiumCard from '@/components/ui/PremiumCard'
 import AnimatedCard from '@/components/ui/AnimatedCard'
-import AnimatedButton from '@/components/ui/AnimatedButton'
 import StaggerContainer from '@/components/ui/StaggerContainer'
 import { useFocusMode } from '@/components/focus/FocusProvider'
 import Link from 'next/link'
@@ -190,7 +189,7 @@ export default function UploadPage() {
           </AnimatedCard>
 
           {/* Continue Button */}
-          {hasAllData && (
+          {!isFocusMode && hasAllData && (
             <AnimatedCard variant="slideUp" delay={0.3} className="sticky bottom-0 bg-[var(--background)]/80 backdrop-blur-lg border-t border-white/6 p-6 -mx-8">
               <Link
                 href="/dashboard/fees"
@@ -203,7 +202,7 @@ export default function UploadPage() {
               </Link>
             </AnimatedCard>
           )}
-        </div>
+        </StaggerContainer>
       </AppShell>
     </FocusWrapper>
   )
@@ -261,4 +260,3 @@ function formatCurrency(amount = 0): string {
     maximumFractionDigits: 0,
   }).format(amount)
 }
-
