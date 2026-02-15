@@ -1,3 +1,9 @@
+# Secrets / Environment
+.env
+.env.local
+.env.production
+.env*.local
+
 # Node
 node_modules/
 app/node_modules/
